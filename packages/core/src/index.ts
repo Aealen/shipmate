@@ -6,3 +6,8 @@ export { newId } from './db/id.js';
 export { createDatabase, withDb, schema, type ShipmateDb, type ShipmateTx } from './db/database.js';
 export * from './db/schema.js';
 export { GroupService, type CreateGroupInput, type GroupSummary, type GroupWithCount } from './services/group.service.js';
+export {
+  ProjectService,
+  type CreateProjectInput,
+  type ProjectSummary,
+} from './services/project.service.js';
