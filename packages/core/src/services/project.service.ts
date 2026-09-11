@@ -8,12 +8,12 @@ import {
   requirements,
   type ChangeLogRow,
   type ProjectRow,
-  type RequirementRow,
 } from '../db/schema.js';
 import { newId } from '../db/id.js';
 import type { Actor } from '../types.js';
 import { DomainError } from '../errors.js';
 import { writeChangeLog } from './change-log.js';
+import { computeOverdue } from './requirement.service.js';
 
 export interface CreateProjectInput {
   groupId?: string;
@@ -36,13 +36,6 @@ export interface ProjectSummary {
   overdueRequirementCount: number;
   pointStatusCounts: Record<PointStatusKey, number>;
   recentChanges: ChangeLogRow[];
-}
-
-/** 过渡版超期判断;Task 7 实现完整 computeOverdue 后,此函数删除并改用导入 */
-function isOverdue(req: RequirementRow, now = Date.now()): boolean {
-  if (!req.planDueAt) return false;
-  if (req.status !== 'draft' && req.status !== 'confirmed') return false;
-  return req.planDueAt < now;
 }
 
 export class ProjectService {
@@ -126,7 +119,7 @@ export class ProjectService {
       project,
       requirementTotal: reqs.length,
       requirementDone: reqs.filter((r) => r.status === 'done').length,
-      overdueRequirementCount: reqs.filter((r) => isOverdue(r)).length,
+      overdueRequirementCount: reqs.filter((r) => computeOverdue(r).overdue).length,
       pointStatusCounts,
       recentChanges,
     };
