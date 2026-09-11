@@ -1,6 +1,7 @@
 node_modules/
 dist/
-data/
+# 仅锚定仓库根数据目录;无斜杠前缀会连带忽略 packages/web/src/app/settings/data/ 路由
+/data/
 .env
 .env.local
 *.tsbuildinfo
