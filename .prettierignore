@@ -1,5 +1,7 @@
-.pnpm-lock.yaml
+pnpm-lock.yaml
 packages/core/drizzle/
 docs/superpowers/
 .playwright-mcp/
 .superpowers/
+.next/
+node_modules/
