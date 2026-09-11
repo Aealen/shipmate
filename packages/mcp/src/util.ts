@@ -4,9 +4,9 @@ import { DomainError, type Actor, type ShipmateCore } from '@shipmate/core';
 /** 工具 handler 统一形态:入参为 zod 解析后的对象,返回 MCP CallToolResult */
 export type ToolHandler<A = Record<string, unknown>> = (args: A) => Promise<CallToolResult>;
 
-/** 成功返回:结果 JSON 序列化为唯一 text 块 */
+/** 成功返回:结果 JSON 序列化为唯一 text 块(void 工具的 undefined 归一为 null) */
 export function ok(result: unknown): CallToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  return { content: [{ type: 'text', text: JSON.stringify(result ?? null, null, 2) }] };
 }
 
 /** 失败返回:DomainError → "CODE: message";其余 → "INTERNAL: <message>" */
