@@ -11,4 +11,6 @@ export {
   type CreateProjectInput,
   type ProjectSummary,
 } from './services/project.service.js';
+export { SettingsService } from './services/settings.service.js';
+export type { LlmConfig } from './llm/client.js';
 export { AuditService, type AuditReport, type ActorKind } from './services/audit.service.js';
