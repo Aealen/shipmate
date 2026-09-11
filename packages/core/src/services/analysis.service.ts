@@ -18,14 +18,20 @@ import { DomainError } from '../errors.js';
 import { writeChangeLog } from './change-log.js';
 import { SettingsService } from './settings.service.js';
 import { chatJson, type LlmConfig } from '../llm/client.js';
-import { analysisResultSchema, type AnalysisResult, type DraftPoint, type DraftRequirement } from '../llm/schema.js';
+import {
+  analysisResultSchema,
+  type AnalysisResult,
+  type DraftPoint,
+  type DraftRequirement,
+} from '../llm/schema.js';
 import { buildSystemPrompt, buildUserPrompt } from '../llm/prompt.js';
 import type { ExistingRequirementDigest } from '../llm/prompt-types.js';
 
 export type LlmInvoker = (system: string, user: string) => Promise<unknown>;
 
 /** 冲突处置决策(spec §9 规则 8):duplicate → merge/create_anyway/skip;contradiction → use_new/use_old/keep_both */
-export type ConflictResolution = 'merge' | 'create_anyway' | 'skip' | 'use_new' | 'use_old' | 'keep_both';
+export type ConflictResolution =
+  'merge' | 'create_anyway' | 'skip' | 'use_new' | 'use_old' | 'keep_both';
 
 /** 按草稿块 title 定位的裁决决定(草稿未落库,无 id 可用) */
 export type ConflictDecision = {
@@ -66,22 +72,41 @@ export class AnalysisService {
     private llm: LlmInvoker,
   ) {}
 
-  async createAnalysisRun(input: { projectId: string; title?: string }, actor: Actor): Promise<AnalysisRunRow> {
+  async createAnalysisRun(
+    input: { projectId: string; title?: string },
+    actor: Actor,
+  ): Promise<AnalysisRunRow> {
     return this.db.transaction(async (tx) => {
       const project = (await tx.select().from(projects).where(eq(projects.id, input.projectId)))[0];
       if (!project) throw new DomainError('NOT_FOUND', `项目 ${input.projectId} 不存在`);
       const now = Date.now();
       const rows = await tx
         .insert(analysisRuns)
-        .values({ id: newId(), projectId: input.projectId, title: input.title?.trim() || defaultRunTitle(), status: 'pending', actor, createdAt: now })
+        .values({
+          id: newId(),
+          projectId: input.projectId,
+          title: input.title?.trim() || defaultRunTitle(),
+          status: 'pending',
+          actor,
+          createdAt: now,
+        })
         .returning();
       const row = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'analysis_run', entityId: row.id, changeType: 'create', after: withoutDraft(row), actor });
+      await writeChangeLog(tx, {
+        entityType: 'analysis_run',
+        entityId: row.id,
+        changeType: 'create',
+        after: withoutDraft(row),
+        actor,
+      });
       return row;
     });
   }
 
-  async addMaterial(input: { runId: string; type: MaterialRow['type']; title?: string; rawContent: string }, actor: Actor): Promise<MaterialRow> {
+  async addMaterial(
+    input: { runId: string; type: MaterialRow['type']; title?: string; rawContent: string },
+    actor: Actor,
+  ): Promise<MaterialRow> {
     if (!input.rawContent?.trim()) throw new DomainError('VALIDATION_ERROR', '素材内容不能为空');
     return this.db.transaction(async (tx) => {
       const run = (await tx.select().from(analysisRuns).where(eq(analysisRuns.id, input.runId)))[0];
@@ -100,7 +125,13 @@ export class AnalysisService {
         })
         .returning();
       const row = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'material', entityId: row.id, changeType: 'create', after: row, actor });
+      await writeChangeLog(tx, {
+        entityType: 'material',
+        entityId: row.id,
+        changeType: 'create',
+        after: row,
+        actor,
+      });
       return row;
     });
   }
@@ -139,7 +170,10 @@ export class AnalysisService {
         return updated;
       });
     } catch (e) {
-      if (e instanceof DomainError && (e.code === 'LLM_ERROR' || e.code === 'LLM_SCHEMA_MISMATCH')) {
+      if (
+        e instanceof DomainError &&
+        (e.code === 'LLM_ERROR' || e.code === 'LLM_SCHEMA_MISMATCH')
+      ) {
         await this.markFailed(runId, actor, e.message);
         throw e;
       }
@@ -152,7 +186,10 @@ export class AnalysisService {
     }
   }
 
-  async listAnalysisRuns(projectId: string, filter?: { status?: AnalysisRunRow['status'] }): Promise<AnalysisRunSummary[]> {
+  async listAnalysisRuns(
+    projectId: string,
+    filter?: { status?: AnalysisRunRow['status'] },
+  ): Promise<AnalysisRunSummary[]> {
     const rows = await this.db
       .select()
       .from(analysisRuns)
@@ -162,7 +199,10 @@ export class AnalysisService {
           : eq(analysisRuns.projectId, projectId),
       )
       .orderBy(desc(analysisRuns.createdAt));
-    const allMats = await this.db.select().from(materials).where(eq(materials.projectId, projectId));
+    const allMats = await this.db
+      .select()
+      .from(materials)
+      .where(eq(materials.projectId, projectId));
     return rows.map((r) => ({
       ...r,
       materialCount: allMats.filter((m) => m.analysisRunId === r.id).length,
@@ -183,17 +223,25 @@ export class AnalysisService {
    */
   async applyAnalysisRun(
     runId: string,
-    options?: { selectedRequirements?: string[]; selectedSupplements?: string[]; decisions?: ConflictDecision[] },
+    options?: {
+      selectedRequirements?: string[];
+      selectedSupplements?: string[];
+      decisions?: ConflictDecision[];
+    },
     actor: Actor = 'human',
   ): Promise<RequirementRow[]> {
     return this.db.transaction(async (tx): Promise<RequirementRow[]> => {
       const run = (await tx.select().from(analysisRuns).where(eq(analysisRuns.id, runId)))[0];
       if (!run) throw new DomainError('NOT_FOUND', `分析批次 ${runId} 不存在`);
       const draft = run.draftResult as AnalysisResult | null;
-      if (!draft) throw new DomainError('VALIDATION_ERROR', '该批次没有分析草稿,请先 start_analysis');
+      if (!draft)
+        throw new DomainError('VALIDATION_ERROR', '该批次没有分析草稿,请先 start_analysis');
 
-      const decisionMap = new Map((options?.decisions ?? []).map((d) => [d.requirementTitle, d.resolution]));
-      const picked = (title: string) => !options?.selectedRequirements || options.selectedRequirements.includes(title);
+      const decisionMap = new Map(
+        (options?.decisions ?? []).map((d) => [d.requirementTitle, d.resolution]),
+      );
+      const picked = (title: string) =>
+        !options?.selectedRequirements || options.selectedRequirements.includes(title);
 
       // 冲突类型与决策合法性 + 相悖强制裁决前置校验(避免半途失败)
       const unresolved: string[] = [];
@@ -203,14 +251,26 @@ export class AnalysisService {
         if (block.conflict?.type === 'contradiction') {
           if (!decision) unresolved.push(block.title);
           else if (!['use_new', 'use_old', 'keep_both'].includes(decision)) {
-            throw new DomainError('VALIDATION_ERROR', `相悖块「${block.title}」的处置只能是 use_new/use_old/keep_both`);
+            throw new DomainError(
+              'VALIDATION_ERROR',
+              `相悖块「${block.title}」的处置只能是 use_new/use_old/keep_both`,
+            );
           }
-        } else if (block.conflict?.type === 'duplicate' && decision && !['merge', 'create_anyway', 'skip'].includes(decision)) {
-          throw new DomainError('VALIDATION_ERROR', `重复块「${block.title}」的处置只能是 merge/create_anyway/skip`);
+        } else if (
+          block.conflict?.type === 'duplicate' &&
+          decision &&
+          !['merge', 'create_anyway', 'skip'].includes(decision)
+        ) {
+          throw new DomainError(
+            'VALIDATION_ERROR',
+            `重复块「${block.title}」的处置只能是 merge/create_anyway/skip`,
+          );
         }
       }
       if (unresolved.length > 0) {
-        throw new DomainError('VALIDATION_ERROR', `相悖块必须人工裁决:${unresolved.join('、')}`, { unresolved });
+        throw new DomainError('VALIDATION_ERROR', `相悖块必须人工裁决:${unresolved.join('、')}`, {
+          unresolved,
+        });
       }
 
       const created: RequirementRow[] = [];
@@ -222,9 +282,19 @@ export class AnalysisService {
 
         if (conflict?.type === 'contradiction') {
           const resolution = decision as 'use_new' | 'use_old' | 'keep_both';
-          const target = await this.findByTitleWithinTx(tx, run.projectId, conflict.target_requirement_title);
+          const target = await this.findByTitleWithinTx(
+            tx,
+            run.projectId,
+            conflict.target_requirement_title,
+          );
           if (resolution === 'use_old') {
-            await this.writeDiscardLog(tx, runId, block, `相悖裁决:采用已有需求,放弃草稿「${block.title}」`, actor);
+            await this.writeDiscardLog(
+              tx,
+              runId,
+              block,
+              `相悖裁决:采用已有需求,放弃草稿「${block.title}」`,
+              actor,
+            );
             continue;
           }
           const req = await this.insertDraftRequirement(tx, run, block, actor);
@@ -244,7 +314,11 @@ export class AnalysisService {
             await this.writeDiscardLog(tx, runId, block, `重复块跳过:「${block.title}」`, actor);
             continue;
           }
-          const target = await this.findByTitleWithinTx(tx, run.projectId, conflict.target_requirement_title);
+          const target = await this.findByTitleWithinTx(
+            tx,
+            run.projectId,
+            conflict.target_requirement_title,
+          );
           if (resolution === 'merge' && target) {
             await this.mergeIntoRequirement(tx, target.id, block, actor);
             continue;
@@ -259,10 +333,19 @@ export class AnalysisService {
       }
 
       for (const supp of draft.supplements) {
-        if (options?.selectedSupplements && !options.selectedSupplements.includes(supp.target_requirement_title)) continue;
-        const target = await this.findByTitleWithinTx(tx, run.projectId, supp.target_requirement_title);
+        if (
+          options?.selectedSupplements &&
+          !options.selectedSupplements.includes(supp.target_requirement_title)
+        )
+          continue;
+        const target = await this.findByTitleWithinTx(
+          tx,
+          run.projectId,
+          supp.target_requirement_title,
+        );
         if (target) {
-          for (const p of supp.points) await this.insertDraftPoint(tx, target.id, p, 'supplement', actor);
+          for (const p of supp.points)
+            await this.insertDraftPoint(tx, target.id, p, 'supplement', actor);
         } else {
           created.push(
             await this.insertDraftRequirement(
@@ -313,10 +396,16 @@ export class AnalysisService {
   }
 
   private async collectExistingDigest(projectId: string): Promise<ExistingRequirementDigest[]> {
-    const reqs = await this.db.select().from(requirements).where(eq(requirements.projectId, projectId));
+    const reqs = await this.db
+      .select()
+      .from(requirements)
+      .where(eq(requirements.projectId, projectId));
     return Promise.all(
       reqs.map(async (r) => {
-        const pts = await this.db.select().from(requirementPoints).where(eq(requirementPoints.requirementId, r.id));
+        const pts = await this.db
+          .select()
+          .from(requirementPoints)
+          .where(eq(requirementPoints.requirementId, r.id));
         return {
           id: r.id,
           title: r.title,
@@ -327,7 +416,11 @@ export class AnalysisService {
     );
   }
 
-  private async findByTitleWithinTx(tx: ShipmateTx, projectId: string, title: string): Promise<RequirementRow | undefined> {
+  private async findByTitleWithinTx(
+    tx: ShipmateTx,
+    projectId: string,
+    title: string,
+  ): Promise<RequirementRow | undefined> {
     return (
       await tx
         .select()
@@ -336,11 +429,29 @@ export class AnalysisService {
     )[0];
   }
 
-  private async writeDiscardLog(tx: ShipmateTx, runId: string, block: unknown, reason: string, actor: Actor): Promise<void> {
-    await writeChangeLog(tx, { entityType: 'analysis_run', entityId: runId, changeType: 'discard', after: block, reason, actor });
+  private async writeDiscardLog(
+    tx: ShipmateTx,
+    runId: string,
+    block: unknown,
+    reason: string,
+    actor: Actor,
+  ): Promise<void> {
+    await writeChangeLog(tx, {
+      entityType: 'analysis_run',
+      entityId: runId,
+      changeType: 'discard',
+      after: block,
+      reason,
+      actor,
+    });
   }
 
-  private async insertDraftRequirement(tx: ShipmateTx, run: AnalysisRunRow, block: DraftRequirement, actor: Actor): Promise<RequirementRow> {
+  private async insertDraftRequirement(
+    tx: ShipmateTx,
+    run: AnalysisRunRow,
+    block: DraftRequirement,
+    actor: Actor,
+  ): Promise<RequirementRow> {
     const now = Date.now();
     const req = (
       await tx
@@ -396,36 +507,78 @@ export class AnalysisService {
         })
         .returning()
     )[0]!;
-    await writeChangeLog(tx, { entityType: 'requirement_point', entityId: row.id, changeType: 'create', after: row, actor });
+    await writeChangeLog(tx, {
+      entityType: 'requirement_point',
+      entityId: row.id,
+      changeType: 'create',
+      after: row,
+      actor,
+    });
     return row;
   }
 
   /** 新需求全部点与目标需求全部点双向记 relations */
-  private async linkRelations(tx: ShipmateTx, newRequirementId: string, targetRequirementId: string, type: 'duplicate' | 'conflict'): Promise<void> {
-    const newPoints = await tx.select().from(requirementPoints).where(eq(requirementPoints.requirementId, newRequirementId));
-    const targetPoints = await tx.select().from(requirementPoints).where(eq(requirementPoints.requirementId, targetRequirementId));
+  private async linkRelations(
+    tx: ShipmateTx,
+    newRequirementId: string,
+    targetRequirementId: string,
+    type: 'duplicate' | 'conflict',
+  ): Promise<void> {
+    const newPoints = await tx
+      .select()
+      .from(requirementPoints)
+      .where(eq(requirementPoints.requirementId, newRequirementId));
+    const targetPoints = await tx
+      .select()
+      .from(requirementPoints)
+      .where(eq(requirementPoints.requirementId, targetRequirementId));
+    // 双向 relations 先在内存累加全部对侧点 id,再每点单次 update,避免循环内旧快照互相覆盖
+    const newPointIds = newPoints.map((p) => p.id);
+    const targetPointIds = targetPoints.map((p) => p.id);
     for (const np of newPoints) {
-      for (const tp of targetPoints) {
-        await tx.update(requirementPoints)
-          .set({ relations: [...(np.relations ?? []), { type, point_id: tp.id }] })
-          .where(eq(requirementPoints.id, np.id));
-        await tx.update(requirementPoints)
-          .set({ relations: [...(tp.relations ?? []), { type, point_id: np.id }] })
-          .where(eq(requirementPoints.id, tp.id));
-      }
+      await tx
+        .update(requirementPoints)
+        .set({
+          relations: [
+            ...(np.relations ?? []),
+            ...targetPointIds.map((id) => ({ type, point_id: id })),
+          ],
+        })
+        .where(eq(requirementPoints.id, np.id));
+    }
+    for (const tp of targetPoints) {
+      await tx
+        .update(requirementPoints)
+        .set({
+          relations: [
+            ...(tp.relations ?? []),
+            ...newPointIds.map((id) => ({ type, point_id: id })),
+          ],
+        })
+        .where(eq(requirementPoints.id, tp.id));
     }
   }
 
   /** 相悖裁决 use_new:目标需求下全部任务打 needs_reassessment(spec 规则 8) */
-  private async reassessTargetTasks(tx: ShipmateTx, targetRequirementId: string, newTitle: string, actor: Actor): Promise<void> {
+  private async reassessTargetTasks(
+    tx: ShipmateTx,
+    targetRequirementId: string,
+    newTitle: string,
+    actor: Actor,
+  ): Promise<void> {
     const pointIds = (
-      await tx.select({ id: requirementPoints.id }).from(requirementPoints).where(eq(requirementPoints.requirementId, targetRequirementId))
+      await tx
+        .select({ id: requirementPoints.id })
+        .from(requirementPoints)
+        .where(eq(requirementPoints.requirementId, targetRequirementId))
     ).map((r) => r.id);
     if (pointIds.length === 0) return;
     const affected = await tx
       .update(tasks)
       .set({ status: 'needs_reassessment', updatedAt: Date.now() })
-      .where(and(inArray(tasks.requirementPointId, pointIds), ne(tasks.status, 'needs_reassessment')))
+      .where(
+        and(inArray(tasks.requirementPointId, pointIds), ne(tasks.status, 'needs_reassessment')),
+      )
       .returning();
     for (const t of affected) {
       await writeChangeLog(tx, {
@@ -440,8 +593,16 @@ export class AnalysisService {
   }
 
   /** 重复块 merge:点级 title 匹配则 evidences 并入,否则作为新点追加进目标需求 */
-  private async mergeIntoRequirement(tx: ShipmateTx, targetRequirementId: string, block: DraftRequirement, actor: Actor): Promise<void> {
-    const existing = await tx.select().from(requirementPoints).where(eq(requirementPoints.requirementId, targetRequirementId));
+  private async mergeIntoRequirement(
+    tx: ShipmateTx,
+    targetRequirementId: string,
+    block: DraftRequirement,
+    actor: Actor,
+  ): Promise<void> {
+    const existing = await tx
+      .select()
+      .from(requirementPoints)
+      .where(eq(requirementPoints.requirementId, targetRequirementId));
     for (const p of block.points) {
       const match = existing.find((e) => e.title === p.title);
       if (match) {
@@ -450,7 +611,12 @@ export class AnalysisService {
             .update(requirementPoints)
             .set({
               evidences: [...(match.evidences ?? []), ...p.evidences] as never,
-              sourceMaterialIds: [...new Set([...(match.sourceMaterialIds ?? []), ...p.evidences.map((e) => e.material_id)])] as never,
+              sourceMaterialIds: [
+                ...new Set([
+                  ...(match.sourceMaterialIds ?? []),
+                  ...p.evidences.map((e) => e.material_id),
+                ]),
+              ] as never,
               updatedAt: Date.now(),
             })
             .where(eq(requirementPoints.id, match.id))
