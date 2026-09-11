@@ -335,9 +335,11 @@
       "materialTitle": "Title (optional)",
       "content": "Content",
       "contentPlaceholder": "Paste the raw material text…",
-      "submit": "Add"
+      "submit": "Add",
+      "submitting": "Adding…"
     },
     "materialAdded": "Material added",
+    "materialUntitled": "Untitled material",
     "startAnalysis": "Start analysis",
     "analyzing": "Analyzing…",
     "analysisFailedState": "Analysis failed; adjust the materials and retry",
@@ -346,6 +348,7 @@
     "resultSkeleton": "AI is analyzing the materials…",
     "draftSummary": "{requirements} requirements · {supplements} supplements",
     "selectedCount": "{count} selected",
+    "selectBlock": "Select this requirement",
     "apply": "Apply",
     "applying": "Applying…",
     "applyNothing": "Select at least one requirement to apply",

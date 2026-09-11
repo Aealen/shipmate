@@ -335,9 +335,11 @@
       "materialTitle": "标题(可选)",
       "content": "内容",
       "contentPlaceholder": "粘贴素材原文…",
-      "submit": "添加"
+      "submit": "添加",
+      "submitting": "添加中…"
     },
     "materialAdded": "素材已添加",
+    "materialUntitled": "未命名素材",
     "startAnalysis": "开始分析",
     "analyzing": "分析中…",
     "analysisFailedState": "分析失败,可调整素材后重试",
@@ -346,6 +348,7 @@
     "resultSkeleton": "AI 正在分析素材…",
     "draftSummary": "需求 {requirements} · 补充 {supplements}",
     "selectedCount": "已选 {count} 项",
+    "selectBlock": "选择此需求",
     "apply": "应用",
     "applying": "应用中…",
     "applyNothing": "请先勾选要应用的需求",

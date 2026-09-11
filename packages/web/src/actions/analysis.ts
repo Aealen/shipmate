@@ -1,15 +1,19 @@
 'use server';
 
-import type {
-  AnalysisRunDetail,
-  AnalysisRunRow,
-  AnalysisRunSummary,
-  ConflictDecision,
-  CreateRequirementInput,
-  MaterialRow,
-  RequirementRow,
-  RequirementWithOverdue,
-  UpdateRequirementInput,
+import { eq } from 'drizzle-orm';
+import {
+  analysisResultSchema,
+  analysisRuns,
+  type AnalysisResult,
+  type AnalysisRunDetail,
+  type AnalysisRunRow,
+  type AnalysisRunSummary,
+  type ConflictDecision,
+  type CreateRequirementInput,
+  type MaterialRow,
+  type RequirementRow,
+  type RequirementWithOverdue,
+  type UpdateRequirementInput,
 } from '@shipmate/core';
 import { getShipmate } from '@/lib/core';
 import { toActionError, type ActionResult } from '@/lib/error';
@@ -86,6 +90,43 @@ export async function startAnalysisAction(runId: string): Promise<ActionResult<A
     const row = await core.analysis.startAnalysis(runId, 'human');
     revalidateApp();
     return { ok: true, data: row };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+/**
+ * P3c 工作台的草稿编辑写回(spec §9 主链路「Web 端编辑草稿」)。
+ * core 的 applyAnalysisRun 只按 Run 内暂存草稿落库、未提供草稿编辑 API,
+ * 而草稿本就是「暂存于 Run 自身、不落业务表」的 UI 工作区数据(§9),
+ * 故此处经 zod 校验后直接更新 analysis_runs.draft_result,
+ * 后续 applyAnalysisRunAction 仍走 core 完整落库管道(勾选/裁决/事务)。
+ */
+export async function saveAnalysisDraftAction(
+  runId: string,
+  draft: AnalysisResult,
+): Promise<ActionResult<AnalysisRunRow>> {
+  const parsed = analysisResultSchema.safeParse(draft);
+  if (!parsed.success) {
+    const at = parsed.error.issues[0]?.path.join('.');
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: `草稿结构不合法${at ? `:${at}` : ''}`,
+    };
+  }
+  try {
+    const { db } = await getShipmate();
+    const rows = await db
+      .update(analysisRuns)
+      .set({ draftResult: parsed.data as never })
+      .where(eq(analysisRuns.id, runId))
+      .returning();
+    if (rows.length === 0) {
+      return { ok: false, code: 'NOT_FOUND', message: `分析批次 ${runId} 不存在` };
+    }
+    revalidateApp();
+    return { ok: true, data: rows[0]! };
   } catch (e) {
     return toActionError(e);
   }
