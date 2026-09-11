@@ -16,7 +16,8 @@ export { schema };
  */
 const DEFAULT_MIGRATIONS_REL = '../../drizzle';
 const MIGRATIONS_FOLDER =
-  process.env.SHIPMATE_MIGRATIONS_DIR ?? fileURLToPath(new URL(DEFAULT_MIGRATIONS_REL, import.meta.url));
+  process.env.SHIPMATE_MIGRATIONS_DIR ??
+  fileURLToPath(new URL(DEFAULT_MIGRATIONS_REL, import.meta.url));
 
 /**
  * 创建数据库连接:pg Pool + drizzle + 执行 migrations(幂等,已应用的跳过)。

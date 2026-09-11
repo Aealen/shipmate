@@ -610,10 +610,7 @@ describe('applyAnalysisRun', () => {
       const projectId = await seedProject(db);
       const xId = await seedExistingX(db, projectId);
       const beforeOld = (
-        await db
-          .select()
-          .from(requirementPoints)
-          .where(eq(requirementPoints.requirementId, xId))
+        await db.select().from(requirementPoints).where(eq(requirementPoints.requirementId, xId))
       )[0]!;
       const runId = await seedDraft(db, projectId, {
         requirements: [goodDraft.requirements[2]!],
