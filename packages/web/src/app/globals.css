@@ -1,0 +1,87 @@
+@import 'tailwindcss';
+
+/* next-themes 采用 class 策略:dark: 变体基于 .dark 类,而非 media 查询 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * 设计 tokens —— light 默认 + .dark 覆盖。
+ * 取值与 shipmate.pen 原型一致(计划 2026-09-11-web-package.md 双主题对照表)。
+ * 注:dark 的 --danger 计划表中为「#E5696」(5 位,不完整),按 6 位补全为 #E56966。
+ */
+:root {
+  --bg: #F5F7FB;
+  --surface: #FFFFFF;
+  --surface-2: #F0F3F9;
+  --border: #E3E8F0;
+  --text-primary: #1A2030;
+  --text-secondary: #5A6478;
+  --text-muted: #8B94A8;
+  --accent: #3B6FE0;
+  --accent-dim: rgba(59, 111, 224, 0.12);
+  --success: #2FA36B;
+  --warning: #E0A03B;
+  --danger: #D9534F;
+  --ai: #7C5CBF;
+  --draft-gray: #9AA0AC;
+}
+
+.dark {
+  --bg: #171A21;
+  --surface: #1F2430;
+  --surface-2: #262C3A;
+  --border: #303748;
+  --text-primary: #E8ECF4;
+  --text-secondary: #9AA4B8;
+  --text-muted: #6B7488;
+  --accent: #5B8DEF;
+  --accent-dim: rgba(91, 141, 239, 0.16);
+  --success: #4CC38A;
+  --warning: #E8B45A;
+  --danger: #E56966;
+  --ai: #9B7FE8;
+  --draft-gray: #6B7280;
+}
+
+/* 映射为 Tailwind 工具类:bg-bg / bg-surface / border-border / text-text-primary /
+   text-accent / bg-accent-dim / text-danger / bg-ai / text-draft-gray … */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-ai: var(--ai);
+  --color-draft-gray: var(--draft-gray);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  /* spec §14:主题切换 150ms 颜色过渡 */
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+/* spec §14:页面切换淡入 + 8px 上移,120ms(app/template.tsx 使用) */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-enter 120ms cubic-bezier(0.2, 0, 0, 1);
+}

@@ -1,0 +1,10 @@
+{
+  "common": {
+    "appName": "ShipMate",
+    "loading": "加载中…"
+  },
+  "home": {
+    "placeholderTitle": "脚手架就绪",
+    "placeholderDesc": "Web 包基建完成中,P1 项目首页将在后续任务落地。"
+  }
+}

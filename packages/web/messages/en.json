@@ -1,0 +1,10 @@
+{
+  "common": {
+    "appName": "ShipMate",
+    "loading": "Loading…"
+  },
+  "home": {
+    "placeholderTitle": "Scaffold ready",
+    "placeholderDesc": "Web package infra in progress; the P1 projects home lands in a later task."
+  }
+}
