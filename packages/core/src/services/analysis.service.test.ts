@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { withDb, type ShipmateDb } from '../db/database.js';
 import {
   analysisRuns,
@@ -602,6 +602,70 @@ describe('applyAnalysisRun', () => {
       )[0]!;
       expect(newPoint.relations).toEqual([{ type: 'conflict', point_id: oldPoint!.id }]);
       expect(oldPoint!.relations).toEqual([{ type: 'conflict', point_id: newPoint.id }]);
+    });
+  });
+
+  it('conflict relations 落审计:被改写点各写 1 条 update log,快照与 updatedAt 正确', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      const xId = await seedExistingX(db, projectId);
+      const beforeOld = (
+        await db
+          .select()
+          .from(requirementPoints)
+          .where(eq(requirementPoints.requirementId, xId))
+      )[0]!;
+      const runId = await seedDraft(db, projectId, {
+        requirements: [goodDraft.requirements[2]!],
+        supplements: [],
+      });
+      const svc = makeService(db, async () => ({}));
+      // 与 seed 间隔数毫秒,确保 updatedAt 刷新可断言
+      await new Promise((r) => setTimeout(r, 5));
+      const created = await svc.applyAnalysisRun(
+        runId,
+        { decisions: [{ requirementTitle: '相悖块C', resolution: 'keep_both' }] },
+        'human',
+      );
+      expect(created).toHaveLength(1);
+      const newPoint = (
+        await db
+          .select()
+          .from(requirementPoints)
+          .where(eq(requirementPoints.requirementId, created[0]!.id))
+      )[0]!;
+      const oldPoint = (
+        await db.select().from(requirementPoints).where(eq(requirementPoints.id, beforeOld.id))
+      )[0]!;
+      expect(oldPoint.updatedAt).toBeGreaterThan(beforeOld.updatedAt);
+
+      const expectedNewRelations = [{ type: 'conflict', point_id: oldPoint.id }];
+      const expectedOldRelations = [{ type: 'conflict', point_id: newPoint.id }];
+      expect(newPoint.relations).toEqual(expectedNewRelations);
+      expect(oldPoint.relations).toEqual(expectedOldRelations);
+
+      for (const [pt, relations] of [
+        [newPoint, expectedNewRelations],
+        [oldPoint, expectedOldRelations],
+      ] as const) {
+        const logs = await db
+          .select()
+          .from(changeLogs)
+          .where(
+            and(
+              eq(changeLogs.entityType, 'requirement_point'),
+              eq(changeLogs.entityId, pt.id),
+              eq(changeLogs.changeType, 'update'),
+            ),
+          );
+        expect(logs).toHaveLength(1);
+        expect(logs[0]!.actor).toBe('human');
+        expect(logs[0]!.reason).toBe('冲突关系建立(重复并入/相悖裁决)');
+        expect((logs[0]!.afterSnapshot as { relations: unknown }).relations).toEqual(relations);
+        expect(
+          (logs[0]!.beforeSnapshot as { relations: unknown } | null)?.relations ?? null,
+        ).toBeNull();
+      }
     });
   });
 

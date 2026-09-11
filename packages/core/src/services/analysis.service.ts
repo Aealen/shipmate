@@ -299,7 +299,7 @@ export class AnalysisService {
           }
           const req = await this.insertDraftRequirement(tx, run, block, actor);
           if (resolution === 'keep_both' && target) {
-            await this.linkRelations(tx, req.id, target.id, 'conflict');
+            await this.linkRelations(tx, req.id, target.id, 'conflict', actor);
           }
           if (resolution === 'use_new' && target) {
             await this.reassessTargetTasks(tx, target.id, block.title, actor);
@@ -324,7 +324,7 @@ export class AnalysisService {
             continue;
           }
           const req = await this.insertDraftRequirement(tx, run, block, actor);
-          if (target) await this.linkRelations(tx, req.id, target.id, 'duplicate');
+          if (target) await this.linkRelations(tx, req.id, target.id, 'duplicate', actor);
           created.push(req);
           continue;
         }
@@ -517,12 +517,13 @@ export class AnalysisService {
     return row;
   }
 
-  /** 新需求全部点与目标需求全部点双向记 relations */
+  /** 新需求全部点与目标需求全部点双向记 relations,并逐点写 update 审计 */
   private async linkRelations(
     tx: ShipmateTx,
     newRequirementId: string,
     targetRequirementId: string,
     type: 'duplicate' | 'conflict',
+    actor: Actor,
   ): Promise<void> {
     const newPoints = await tx
       .select()
@@ -532,30 +533,57 @@ export class AnalysisService {
       .select()
       .from(requirementPoints)
       .where(eq(requirementPoints.requirementId, targetRequirementId));
-    // 双向 relations 先在内存累加全部对侧点 id,再每点单次 update,避免循环内旧快照互相覆盖
+    // 双向 relations 先在内存累加全部对侧点 id,再每点单次 update,避免循环内旧快照互相覆盖;
+    // 每点仅 update 一次,故内存现值即 before 快照
     const newPointIds = newPoints.map((p) => p.id);
     const targetPointIds = targetPoints.map((p) => p.id);
     for (const np of newPoints) {
-      await tx
-        .update(requirementPoints)
-        .set({
-          relations: [
-            ...(np.relations ?? []),
-            ...targetPointIds.map((id) => ({ type, point_id: id })),
-          ],
-        })
-        .where(eq(requirementPoints.id, np.id));
+      const after = (
+        await tx
+          .update(requirementPoints)
+          .set({
+            relations: [
+              ...(np.relations ?? []),
+              ...targetPointIds.map((id) => ({ type, point_id: id })),
+            ],
+            updatedAt: Date.now(),
+          })
+          .where(eq(requirementPoints.id, np.id))
+          .returning()
+      )[0]!;
+      await writeChangeLog(tx, {
+        entityType: 'requirement_point',
+        entityId: np.id,
+        changeType: 'update',
+        before: np,
+        after,
+        reason: '冲突关系建立(重复并入/相悖裁决)',
+        actor,
+      });
     }
     for (const tp of targetPoints) {
-      await tx
-        .update(requirementPoints)
-        .set({
-          relations: [
-            ...(tp.relations ?? []),
-            ...newPointIds.map((id) => ({ type, point_id: id })),
-          ],
-        })
-        .where(eq(requirementPoints.id, tp.id));
+      const after = (
+        await tx
+          .update(requirementPoints)
+          .set({
+            relations: [
+              ...(tp.relations ?? []),
+              ...newPointIds.map((id) => ({ type, point_id: id })),
+            ],
+            updatedAt: Date.now(),
+          })
+          .where(eq(requirementPoints.id, tp.id))
+          .returning()
+      )[0]!;
+      await writeChangeLog(tx, {
+        entityType: 'requirement_point',
+        entityId: tp.id,
+        changeType: 'update',
+        before: tp,
+        after,
+        reason: '冲突关系建立(重复并入/相悖裁决)',
+        actor,
+      });
     }
   }
 

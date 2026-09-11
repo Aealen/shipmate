@@ -47,6 +47,20 @@ describe('ProjectService', () => {
     });
   });
 
+  it('updateProject:description-only 变更也写恰 1 条 update log,快照含前后值', async () => {
+    await withDb(async (db) => {
+      const svc = new ProjectService(db);
+      const p = await svc.createProject({ name: '项目D', description: '旧描述' }, 'human');
+      await svc.updateProject(p.id, { description: '新描述' }, 'human');
+      const logs = await db.select().from(changeLogs).where(eq(changeLogs.entityId, p.id));
+      expect(logs.every((l) => l.changeType !== 'status_change')).toBe(true);
+      const updateLogs = logs.filter((l) => l.changeType === 'update');
+      expect(updateLogs).toHaveLength(1);
+      expect(updateLogs[0]!.beforeSnapshot).toMatchObject({ name: '项目D', description: '旧描述' });
+      expect(updateLogs[0]!.afterSnapshot).toMatchObject({ name: '项目D', description: '新描述' });
+    });
+  });
+
   it('getProject:完成度/点状态分布/超期数/最近变更', async () => {
     await withDb(async (db) => {
       const svc = new ProjectService(db);

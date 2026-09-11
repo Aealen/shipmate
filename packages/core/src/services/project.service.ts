@@ -82,6 +82,7 @@ export class ProjectService {
 
       const patch: Partial<typeof projects.$inferInsert> = { updatedAt: Date.now() };
       let nameChanged = false;
+      let descChanged = false;
       let statusChanged = false;
       if (input.name !== undefined && input.name.trim() !== before.name) {
         if (!input.name.trim()) throw new DomainError('VALIDATION_ERROR', '项目名不能为空');
@@ -90,6 +91,7 @@ export class ProjectService {
       }
       if (input.description !== undefined && input.description !== before.description) {
         patch.description = input.description;
+        descChanged = true;
       }
       if (input.status !== undefined && input.status !== before.status) {
         patch.status = input.status;
@@ -98,7 +100,7 @@ export class ProjectService {
       const after = (
         await tx.update(projects).set(patch).where(eq(projects.id, id)).returning()
       )[0]!;
-      if (nameChanged) {
+      if (nameChanged || descChanged) {
         await writeChangeLog(tx, {
           entityType: 'project',
           entityId: id,
