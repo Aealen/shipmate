@@ -6,6 +6,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "bin": {
+    "shipmate-mcp": "./src/cli.ts"
+  },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
