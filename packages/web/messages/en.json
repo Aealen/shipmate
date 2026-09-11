@@ -25,5 +25,24 @@
     "settings": "Settings",
     "mcp": "MCP Access",
     "logout": "Sign out"
+  },
+  "shared": {
+    "badge": {
+      "draft": "Draft",
+      "confirmed": "Confirmed",
+      "developing": "Developing",
+      "done": "Done",
+      "needs_reassessment": "Needs reassessment",
+      "pending": "Pending",
+      "failed": "Failed",
+      "archived": "Archived",
+      "active": "Active"
+    },
+    "overdueDays": "Overdue by {days} days",
+    "dueSoon": "Due soon",
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied ✓",
+    "copyFailed": "Copy failed"
   }
 }

@@ -25,5 +25,24 @@
     "settings": "设置",
     "mcp": "MCP 接入",
     "logout": "退出登录"
+  },
+  "shared": {
+    "badge": {
+      "draft": "草稿",
+      "confirmed": "已确认",
+      "developing": "开发中",
+      "done": "已完成",
+      "needs_reassessment": "待重估",
+      "pending": "待处理",
+      "failed": "失败",
+      "archived": "已归档",
+      "active": "进行中"
+    },
+    "overdueDays": "已超期 {days} 天",
+    "dueSoon": "即将到期",
+    "close": "关闭",
+    "copy": "复制",
+    "copied": "已复制 ✓",
+    "copyFailed": "复制失败"
   }
 }
