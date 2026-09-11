@@ -10,6 +10,7 @@ export type BadgeStatus =
   | 'done'
   | 'needs_reassessment'
   | 'pending'
+  | 'in_progress'
   | 'failed'
   | 'archived'
   | 'active';
@@ -50,6 +51,11 @@ const STATUS_STYLES: Record<BadgeStatus, { badge: string; dot: string }> = {
   pending: {
     badge: 'bg-[color-mix(in_srgb,var(--text-muted)_12%,transparent)] text-text-muted',
     dot: 'bg-text-muted',
+  },
+  in_progress: {
+    // 任务进行中:计划表无此值,按 developing(开发中)同色系取 warning
+    badge: 'bg-[color-mix(in_srgb,var(--warning)_14%,transparent)] text-warning',
+    dot: 'bg-warning',
   },
   archived: {
     badge: 'bg-[color-mix(in_srgb,var(--text-muted)_12%,transparent)] text-text-muted',

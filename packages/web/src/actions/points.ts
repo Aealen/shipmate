@@ -1,8 +1,12 @@
 'use server';
 
+import { DomainError } from '@shipmate/core';
 import type {
+  MaterialRow,
+  ProjectRow,
   RequirementPointDetail,
   RequirementPointRow,
+  RequirementRow,
   UpdatePointInput,
   UpdatePointResult,
 } from '@shipmate/core';
@@ -22,6 +26,51 @@ import { revalidateApp } from '@/lib/revalidate';
 export async function getRequirementPoint(id: string): Promise<RequirementPointDetail> {
   const { core } = await getShipmate();
   return core.points.getRequirementPoint(id);
+}
+
+/** P4 页面聚合数据:需求点详情 + 面包屑上下文(需求/项目)+ 溯源素材标题 */
+export interface PointPageData extends RequirementPointDetail {
+  requirement: RequirementRow;
+  project: ProjectRow;
+  /** evidences.material_id → 素材标题;标题为 null 的素材未命名 */
+  materialTitles: Record<string, string | null>;
+}
+
+/**
+ * P4 详情页一次取齐:core 门面未提供按 id 单查需求/项目与按 id 批量取素材的方法,
+ * 此处以只读查询补齐面包屑与溯源标题;业务写入仍全部经 core 服务。
+ * 需求点不存在时抛错由页面转 notFound;需求/项目因外键约束必然存在,防御性兜底 NOT_FOUND。
+ */
+export async function getPointPageData(pointId: string): Promise<PointPageData> {
+  const { core, db } = await getShipmate();
+  const detail = await core.points.getRequirementPoint(pointId);
+
+  const requirement = await db.query.requirements.findFirst({
+    where: (r, { eq }) => eq(r.id, detail.point.requirementId),
+  });
+  if (!requirement) {
+    throw new DomainError('NOT_FOUND', `需求 ${detail.point.requirementId} 不存在`);
+  }
+  const project = await db.query.projects.findFirst({
+    where: (p, { eq }) => eq(p.id, requirement.projectId),
+  });
+  if (!project) {
+    throw new DomainError('NOT_FOUND', `项目 ${requirement.projectId} 不存在`);
+  }
+
+  // 溯源标题:收集 evidences 与 sourceMaterialIds 引用的素材 id,批量查标题
+  const materialIds = new Set<string>(detail.point.sourceMaterialIds ?? []);
+  for (const ev of detail.point.evidences ?? []) materialIds.add(ev.material_id);
+  let materials: MaterialRow[] = [];
+  if (materialIds.size > 0) {
+    materials = await db.query.materials.findMany({
+      where: (m, { inArray }) => inArray(m.id, [...materialIds]),
+    });
+  }
+  const materialTitles: Record<string, string | null> = {};
+  for (const m of materials) materialTitles[m.id] = m.title;
+
+  return { ...detail, requirement, project, materialTitles };
 }
 
 export async function listRequirementPoints(filter: {
