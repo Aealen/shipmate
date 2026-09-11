@@ -2478,7 +2478,7 @@ export class RequirementPointService {
 - [ ] **Step 4: 跑测试确认通过**
 
 Run: `pnpm -C packages/core test src/services/requirement-point.service.test.ts && pnpm -C packages/core typecheck`
-Expected: PASS,9 个用例。
+Expected: PASS,11 个用例。
 
 - [ ] **Step 5: 追加导出并 Commit**
 
@@ -3606,7 +3606,7 @@ export function createAnalysisService(db: ShipmateDb): AnalysisService {
 - [ ] **Step 4: 跑测试确认通过**
 
 Run: `pnpm -C packages/core test src/services/analysis.service.test.ts && pnpm -C packages/core typecheck`
-Expected: PASS,8 个用例。
+Expected: PASS,9 个用例。
 
 - [ ] **Step 5: 追加导出并 Commit**
 
