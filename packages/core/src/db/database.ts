@@ -9,8 +9,14 @@ export type ShipmateDb = NodePgDatabase<typeof schema>;
 export type ShipmateTx = Parameters<Parameters<ShipmateDb['transaction']>[0]>[0];
 export { schema };
 
-/** drizzle/ 目录位置:src/db 与 dist/db 的上两级都是包根,两种运行形态下均成立 */
-const MIGRATIONS_FOLDER = fileURLToPath(new URL('../../drizzle', import.meta.url));
+/**
+ * drizzle/ 目录位置:src/db 与 dist/db 的上两级都是包根,两种运行形态下均成立。
+ * bundler 场景(Next web 包)中 import.meta.url 被错位替换,且字面量 new URL 会触发
+ * 静态资产分析报错,故以间接变量绕过静态分析;调用方可用 SHIPMATE_MIGRATIONS_DIR 显式覆盖。
+ */
+const DEFAULT_MIGRATIONS_REL = '../../drizzle';
+const MIGRATIONS_FOLDER =
+  process.env.SHIPMATE_MIGRATIONS_DIR ?? fileURLToPath(new URL(DEFAULT_MIGRATIONS_REL, import.meta.url));
 
 /**
  * 创建数据库连接:pg Pool + drizzle + 执行 migrations(幂等,已应用的跳过)。

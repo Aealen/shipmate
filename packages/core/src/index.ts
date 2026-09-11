@@ -28,27 +28,37 @@ export * from './db/schema.js';
 export {
   GroupService,
   type CreateGroupInput,
+  type UpdateGroupInput,
   type GroupSummary,
   type GroupWithCount,
 } from './services/group.service.js';
 export {
   ProjectService,
   type CreateProjectInput,
+  type UpdateProjectInput,
   type ProjectSummary,
 } from './services/project.service.js';
 export {
   RequirementService,
   computeOverdue,
   type CreateRequirementInput,
+  type UpdateRequirementInput,
   type RequirementWithOverdue,
 } from './services/requirement.service.js';
 export {
   RequirementPointService,
   type PointAction,
+  type UpdatePointInput,
   type UpdatePointResult,
   type RequirementPointDetail,
 } from './services/requirement-point.service.js';
-export { TaskService, type TaskAction, type CreateTaskInput } from './services/task.service.js';
+export {
+  TaskService,
+  type TaskAction,
+  type CreateTaskInput,
+  type UpdateTaskInput,
+  type ListTaskFilter,
+} from './services/task.service.js';
 export { AuditService, type AuditReport, type ActorKind } from './services/audit.service.js';
 export { SettingsService } from './services/settings.service.js';
 export {
@@ -56,6 +66,7 @@ export {
   createAnalysisService,
   type LlmInvoker,
   type AnalysisRunSummary,
+  type AnalysisRunDetail,
   type ConflictDecision,
   type ConflictResolution,
 } from './services/analysis.service.js';
