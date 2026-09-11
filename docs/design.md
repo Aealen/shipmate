@@ -90,6 +90,7 @@ PostgreSQL 类型约定:所有时间戳列(`*_at` / `plan_*_at`)用 `bigint`(dri
 | title | text | 批次标题,可空(默认"素材分析 MM-DD HH:mm") |
 | status | text NOT NULL, enum | `pending`(待分析)/ `done`(已完成)/ `failed`(失败) |
 | actor | text NOT NULL | 发起者,见 §5.1 |
+| draft_result | jsonb, 可空 | 分析草稿暂存(spec §9:草稿不落业务表,暂存于 Run 自身) |
 | created_at / completed_at | integer NOT NULL / 可空 | |
 
 ### 3.3 materials(素材)
@@ -164,7 +165,7 @@ AI 从素材归纳出的需求主题。
 | id | text PK | UUID v7 |
 | entity_type | text NOT NULL, enum | `group` / `project` / `analysis_run` / `material` / `requirement` / `requirement_point` / `task` |
 | entity_id | text NOT NULL | 对应实体 id(多态引用,不设外键) |
-| change_type | text NOT NULL, enum | `create` / `update` / `status_change` / `linkage_impact` / `discard`(作废 draft 时的快照留存) |
+| change_type | text NOT NULL, enum | `create` / `update` / `status_change` / `linkage_impact` / `discard`(作废 draft 时的快照留存) / `delete`(实体删除时的快照留存) |
 | before_snapshot | text(JSON), 可空 | 变更前实体快照;`create` 时为 null |
 | after_snapshot | text(JSON) | 变更后实体快照 |
 | reason | text | 变更原因,可空(工具入参可选传入) |
