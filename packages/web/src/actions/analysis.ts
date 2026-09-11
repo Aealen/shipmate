@@ -27,9 +27,7 @@ import { revalidateApp } from '@/lib/revalidate';
 // ---------- 读 ----------
 
 /** 分析批次卡流(P3 上半:标题/时间/素材数/草稿统计/状态) */
-export async function listAnalysisRuns(
-  projectId: string,
-): Promise<AnalysisRunSummary[]> {
+export async function listAnalysisRuns(projectId: string): Promise<AnalysisRunSummary[]> {
   const { core } = await getShipmate();
   return core.analysis.listAnalysisRuns(projectId);
 }
@@ -82,9 +80,7 @@ export async function addMaterialAction(input: {
 }
 
 /** 开始分析(调 LLM,耗时可达模型 timeout;调用方自行 loading 态) */
-export async function startAnalysisAction(
-  runId: string,
-): Promise<ActionResult<AnalysisRunRow>> {
+export async function startAnalysisAction(runId: string): Promise<ActionResult<AnalysisRunRow>> {
   try {
     const { core } = await getShipmate();
     const row = await core.analysis.startAnalysis(runId, 'human');

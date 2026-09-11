@@ -34,9 +34,7 @@ export async function getTaskChangeLogs(taskId: string): Promise<ChangeLogRow[]>
 
 // ---------- 写 ----------
 
-export async function createTaskAction(
-  input: CreateTaskInput,
-): Promise<ActionResult<TaskRow>> {
+export async function createTaskAction(input: CreateTaskInput): Promise<ActionResult<TaskRow>> {
   try {
     const { core } = await getShipmate();
     const row = await core.tasks.createTask(input, 'human');
@@ -77,9 +75,7 @@ export async function setTaskStatusAction(
 }
 
 /** 确认重估:needs_reassessment → pending(P5c 弹窗确认按钮) */
-export async function confirmTaskReassessmentAction(
-  id: string,
-): Promise<ActionResult<TaskRow>> {
+export async function confirmTaskReassessmentAction(id: string): Promise<ActionResult<TaskRow>> {
   try {
     const { core } = await getShipmate();
     const row = await core.tasks.confirmTaskReassessment(id, 'human');

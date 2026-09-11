@@ -19,9 +19,7 @@ import { revalidateApp } from '@/lib/revalidate';
 // ---------- 读 ----------
 
 /** 需求点详情(点 + 关联任务 + 变更历史)——P4 详情页 */
-export async function getRequirementPoint(
-  id: string,
-): Promise<RequirementPointDetail> {
+export async function getRequirementPoint(id: string): Promise<RequirementPointDetail> {
   const { core } = await getShipmate();
   return core.points.getRequirementPoint(id);
 }

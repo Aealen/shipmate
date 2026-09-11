@@ -5,8 +5,7 @@ import { DomainError } from '@shipmate/core';
  * DomainError.message 即面向用户文案),UI 直接用于 toast,不再二次加工。
  */
 export type ActionResult<T = undefined> =
-  | { ok: true; data: T }
-  | { ok: false; code: string; message: string };
+  { ok: true; data: T } | { ok: false; code: string; message: string };
 
 /** DomainError → { code, message };非 DomainError 兜底为 INTERNAL 并留服务端日志 */
 export function toActionError(e: unknown): { ok: false; code: string; message: string } {

@@ -33,9 +33,7 @@ export async function listGroups(): Promise<GroupWithCount[]> {
 }
 
 /** 项目列表;filter.groupId 传 null 取未分组 */
-export async function listProjects(
-  filter?: { groupId?: string | null },
-): Promise<ProjectRow[]> {
+export async function listProjects(filter?: { groupId?: string | null }): Promise<ProjectRow[]> {
   const { core } = await getShipmate();
   return core.projects.listProjects(filter);
 }
@@ -63,9 +61,7 @@ export async function getProject(id: string): Promise<ProjectSummary> {
 
 // ---------- 写(分组) ----------
 
-export async function createGroupAction(
-  input: CreateGroupInput,
-): Promise<ActionResult<GroupRow>> {
+export async function createGroupAction(input: CreateGroupInput): Promise<ActionResult<GroupRow>> {
   try {
     const { core } = await getShipmate();
     const row = await core.groups.createGroup(input, 'human');

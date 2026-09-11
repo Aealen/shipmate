@@ -40,10 +40,7 @@ export async function getSetting<T = unknown>(key: string): Promise<T | undefine
 
 // ---------- 写 ----------
 
-export async function setSettingAction(
-  key: string,
-  value: unknown,
-): Promise<ActionResult> {
+export async function setSettingAction(key: string, value: unknown): Promise<ActionResult> {
   try {
     const { core } = await getShipmate();
     await core.settings.set(key, value);
@@ -54,9 +51,7 @@ export async function setSettingAction(
   }
 }
 
-export async function saveSettingsAction(
-  entries: Record<string, unknown>,
-): Promise<ActionResult> {
+export async function saveSettingsAction(entries: Record<string, unknown>): Promise<ActionResult> {
   try {
     const { core } = await getShipmate();
     await core.settings.setMany(entries);

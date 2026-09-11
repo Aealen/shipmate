@@ -6,5 +6,24 @@
   "home": {
     "placeholderTitle": "脚手架就绪",
     "placeholderDesc": "Web 包基建完成中,P1 项目首页将在后续任务落地。"
+  },
+  "nav": {
+    "toggleSidebar": "切换侧栏",
+    "home": "首页",
+    "ungrouped": "未分组",
+    "settings": "设置",
+    "mcp": "MCP 接入"
+  },
+  "topbar": {
+    "expandSidebar": "展开侧栏",
+    "userName": "本地用户",
+    "userEmail": "local@shipmate",
+    "darkMode": "深色模式",
+    "lightMode": "浅色模式",
+    "switchToEn": "Switch to English",
+    "switchToZh": "切换到中文",
+    "settings": "设置",
+    "mcp": "MCP 接入",
+    "logout": "退出登录"
   }
 }

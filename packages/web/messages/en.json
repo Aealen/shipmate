@@ -6,5 +6,24 @@
   "home": {
     "placeholderTitle": "Scaffold ready",
     "placeholderDesc": "Web package infra in progress; the P1 projects home lands in a later task."
+  },
+  "nav": {
+    "toggleSidebar": "Toggle sidebar",
+    "home": "Home",
+    "ungrouped": "Ungrouped",
+    "settings": "Settings",
+    "mcp": "MCP Access"
+  },
+  "topbar": {
+    "expandSidebar": "Expand sidebar",
+    "userName": "Local User",
+    "userEmail": "local@shipmate",
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode",
+    "switchToEn": "Switch to English",
+    "switchToZh": "切换到中文",
+    "settings": "Settings",
+    "mcp": "MCP Access",
+    "logout": "Sign out"
   }
 }

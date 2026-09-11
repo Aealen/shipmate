@@ -1,11 +1,6 @@
 import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import {
-  createCore,
-  createDatabase,
-  type ShipmateCore,
-  type ShipmateDb,
-} from '@shipmate/core';
+import { createCore, createDatabase, type ShipmateCore, type ShipmateDb } from '@shipmate/core';
 
 /**
  * 读取仓库根 .env(dev/start 由 pnpm -C packages/web 起动,仓库根即 cwd 上两级)。
@@ -31,9 +26,7 @@ function loadRootDotEnv(): void {
  * (pnpm dev/start 的 cwd 为 packages/web,workspace 依赖必然出现在其 node_modules。)
  */
 function resolveCoreDrizzleDir(): string {
-  const coreRoot = realpathSync(
-    path.join(process.cwd(), 'node_modules', '@shipmate', 'core'),
-  );
+  const coreRoot = realpathSync(path.join(process.cwd(), 'node_modules', '@shipmate', 'core'));
   return path.join(coreRoot, 'drizzle');
 }
 

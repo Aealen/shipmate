@@ -9,37 +9,37 @@
  * 注:dark 的 --danger 计划表中为「#E5696」(5 位,不完整),按 6 位补全为 #E56966。
  */
 :root {
-  --bg: #F5F7FB;
-  --surface: #FFFFFF;
-  --surface-2: #F0F3F9;
-  --border: #E3E8F0;
-  --text-primary: #1A2030;
-  --text-secondary: #5A6478;
-  --text-muted: #8B94A8;
-  --accent: #3B6FE0;
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface-2: #f0f3f9;
+  --border: #e3e8f0;
+  --text-primary: #1a2030;
+  --text-secondary: #5a6478;
+  --text-muted: #8b94a8;
+  --accent: #3b6fe0;
   --accent-dim: rgba(59, 111, 224, 0.12);
-  --success: #2FA36B;
-  --warning: #E0A03B;
-  --danger: #D9534F;
-  --ai: #7C5CBF;
-  --draft-gray: #9AA0AC;
+  --success: #2fa36b;
+  --warning: #e0a03b;
+  --danger: #d9534f;
+  --ai: #7c5cbf;
+  --draft-gray: #9aa0ac;
 }
 
 .dark {
-  --bg: #171A21;
-  --surface: #1F2430;
-  --surface-2: #262C3A;
+  --bg: #171a21;
+  --surface: #1f2430;
+  --surface-2: #262c3a;
   --border: #303748;
-  --text-primary: #E8ECF4;
-  --text-secondary: #9AA4B8;
-  --text-muted: #6B7488;
-  --accent: #5B8DEF;
+  --text-primary: #e8ecf4;
+  --text-secondary: #9aa4b8;
+  --text-muted: #6b7488;
+  --accent: #5b8def;
   --accent-dim: rgba(91, 141, 239, 0.16);
-  --success: #4CC38A;
-  --warning: #E8B45A;
-  --danger: #E56966;
-  --ai: #9B7FE8;
-  --draft-gray: #6B7280;
+  --success: #4cc38a;
+  --warning: #e8b45a;
+  --danger: #e56966;
+  --ai: #9b7fe8;
+  --draft-gray: #6b7280;
 }
 
 /* 映射为 Tailwind 工具类:bg-bg / bg-surface / border-border / text-text-primary /
@@ -84,4 +84,20 @@ body {
 
 .page-enter {
   animation: page-enter 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* spec §14:顶栏头像下拉,120ms 淡入 + 4px 下移复位 */
+@keyframes dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-enter {
+  animation: dropdown-enter 120ms ease-out;
 }
