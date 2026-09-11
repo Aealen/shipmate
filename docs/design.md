@@ -282,7 +282,7 @@ listProjects(filter?: { groupId? }): Project[]
 createAnalysisRun(input: { projectId, title? }, actor): AnalysisRun
 addMaterial(input: { runId, type, title?, rawContent }, actor): Material
 startAnalysis(runId, actor): AnalysisResult           // 产出暂存 Run 草稿(不落业务表),见 §9;重复执行覆盖草稿
-applyAnalysisRun(runId, selectedRequirementIds?: string[], actor): Requirement[]   // 选中项事务落库为 draft,默认全选;见 §9
+applyAnalysisRun(runId, options?: { selectedRequirements?: string[]; selectedSupplements?: string[]; decisions?: ConflictDecision[] }, actor): Requirement[]   // 选中项事务落库为 draft,默认全选;见 §9
 listAnalysisRuns(projectId, filter?: { status? }): AnalysisRunSummary[]   // 含素材数与产出统计
 getAnalysisRun(id): AnalysisRunDetail                 // 含全部素材与产出需求
 
@@ -410,6 +410,7 @@ AnalysisRun(pending)
    - **duplicate 重复**:草稿块打「与已有需求重复」标,默认动作"素材并入已有需求点"(evidences 追加 + ChangeLog);用户可选"仍要新建"(新点 relations 记 duplicate_of,UI 常驻「重复」标)
    - **contradiction 相悖**:**强制人工裁决**,未裁决不能应用该块 — 用新(旧点自动打 `needs_reassessment`,写 conflict ChangeLog)/ 用旧(草稿丢弃)/ 都保留(双向 relations 记 conflict_with)
    - **supplement 补充**:草稿中把匹配到的**已有需求块整体带出** — 已有需求点按实时状态展示(done/developing/…),新增点打「补充」标(origin=supplement);应用时仅追加新点到已有需求下,已有点不动
+   - 注:本条所述「conflict ChangeLog」落地为任务 status_change + 需求点 update 两种既有类型(ChangeType 枚举无 conflict 专用值),冲突语境经 reason 字段标注
 
 ## 10. 配置
 
