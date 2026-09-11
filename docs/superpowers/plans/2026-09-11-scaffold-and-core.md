@@ -82,6 +82,7 @@ shipmate/
 ### Task 1: Monorepo 脚手架与 core 包骨架
 
 **Files:**
+
 - Create: `pnpm-workspace.yaml`
 - Create: `package.json`(根,覆盖已有的最小占位)
 - Create: `tsconfig.base.json`
@@ -95,6 +96,7 @@ shipmate/
 - Test: `packages/core/src/index.test.ts`
 
 **Interfaces:**
+
 - Consumes: 无(起点)。
 - Produces: 可运行的 workspace;`@shipmate/core` 包名;`pnpm -C packages/core test` / `typecheck` 命令;根 `pnpm lint` / `format`。
 
@@ -104,7 +106,7 @@ shipmate/
 
 ```yaml
 packages:
-  - "packages/*"
+  - 'packages/*'
 ```
 
 `package.json`(根):
@@ -230,7 +232,12 @@ data/
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  test: { environment: 'node', include: ['src/**/*.test.ts'], hookTimeout: 30_000, testTimeout: 30_000 },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+    hookTimeout: 30_000,
+    testTimeout: 30_000,
+  },
 });
 ```
 
@@ -282,12 +289,14 @@ git commit -m "chore: pnpm monorepo 脚手架与 @shipmate/core 包骨架"
 ### Task 2: 错误模型 + Actor + UUID v7
 
 **Files:**
+
 - Create: `packages/core/src/errors.ts`
 - Create: `packages/core/src/types.ts`
 - Create: `packages/core/src/db/id.ts`
 - Test: `packages/core/src/errors.test.ts`
 
 **Interfaces:**
+
 - Consumes: 无。
 - Produces(后续所有任务使用):
   - `class DomainError extends Error`,构造 `(code: DomainErrorCode, message: string, details?: unknown)`,字段 `code` / `details`。
@@ -404,6 +413,7 @@ git commit -m "feat(core): DomainError 错误模型、Actor 类型与 UUID v7 �
 ### Task 3: 数据库 schema(9 张表,PostgreSQL)与连接工厂 + 测试工厂
 
 **Files:**
+
 - Create: `packages/core/src/db/schema.ts`
 - Create: `packages/core/src/db/database.ts`
 - Create: `packages/core/src/db/test-utils.ts`
@@ -412,6 +422,7 @@ git commit -m "feat(core): DomainError 错误模型、Actor 类型与 UUID v7 �
 - Test: `packages/core/src/db/database.test.ts`
 
 **Interfaces:**
+
 - Consumes: `newId`;仓库根 `.env` 的 `SHIPMATE_TEST_DATABASE_URL`。
 - Produces(后续所有任务使用):
   - drizzle 表对象(pg-core):`groups / projects / analysisRuns / materials / requirements / requirementPoints / tasks / changeLogs / settings`。
@@ -443,7 +454,17 @@ describe('createDatabase', () => {
       sql`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,
     )) as unknown as { rows: { tablename: string }[] };
     const names = rows.rows.map((r) => r.tablename);
-    for (const t of ['groups', 'projects', 'analysis_runs', 'materials', 'requirements', 'requirement_points', 'tasks', 'change_logs', 'settings']) {
+    for (const t of [
+      'groups',
+      'projects',
+      'analysis_runs',
+      'materials',
+      'requirements',
+      'requirement_points',
+      'tasks',
+      'change_logs',
+      'settings',
+    ]) {
       expect(names).toContain(t);
     }
   });
@@ -452,9 +473,14 @@ describe('createDatabase', () => {
     const db = await createDatabase(TEST_URL!);
     const now = Date.now();
     await expect(
-      db
-        .insert(projects)
-        .values({ id: newId(), groupId: '不存在的组', name: 'p', status: 'active', createdAt: now, updatedAt: now }),
+      db.insert(projects).values({
+        id: newId(),
+        groupId: '不存在的组',
+        name: 'p',
+        status: 'active',
+        createdAt: now,
+        updatedAt: now,
+      }),
     ).rejects.toThrow(/foreign key/i);
   });
 });
@@ -463,7 +489,9 @@ describe('withDb(事务回滚隔离)', () => {
   it('事务内写入可见,回滚后零残留', async () => {
     await withDb(async (db) => {
       const now = Date.now();
-      await db.insert(groups).values({ id: newId(), name: '测试分组', sortOrder: 0, createdAt: now, updatedAt: now });
+      await db
+        .insert(groups)
+        .values({ id: newId(), name: '测试分组', sortOrder: 0, createdAt: now, updatedAt: now });
       const rows = await db.select().from(groups);
       expect(rows).toHaveLength(1);
       expect(rows[0]?.name).toBe('测试分组');
@@ -477,7 +505,9 @@ describe('withDb(事务回滚隔离)', () => {
     await withDb(async (db) => {
       await db.transaction(async (tx) => {
         const now = Date.now();
-        await tx.insert(groups).values({ id: newId(), name: '嵌套写入', sortOrder: 0, createdAt: now, updatedAt: now });
+        await tx
+          .insert(groups)
+          .values({ id: newId(), name: '嵌套写入', sortOrder: 0, createdAt: now, updatedAt: now });
       });
       expect(await db.select().from(groups)).toHaveLength(1);
     });
@@ -599,7 +629,10 @@ export const requirementPoints = pgTable(
     createdAt: bigint('created_at', { mode: 'number' }).notNull(),
     updatedAt: bigint('updated_at', { mode: 'number' }).notNull(),
   },
-  (t) => [index('idx_points_req').on(t.requirementId), index('idx_points_req_status').on(t.requirementId, t.status)],
+  (t) => [
+    index('idx_points_req').on(t.requirementId),
+    index('idx_points_req_status').on(t.requirementId, t.status),
+  ],
 );
 
 // §3.6 tasks
@@ -612,7 +645,9 @@ export const tasks = pgTable(
       .references(() => requirementPoints.id),
     title: text('title').notNull(),
     description: text('description'),
-    status: text('status', { enum: ['pending', 'in_progress', 'done', 'needs_reassessment'] }).notNull(),
+    status: text('status', {
+      enum: ['pending', 'in_progress', 'done', 'needs_reassessment'],
+    }).notNull(),
     sortOrder: integer('sort_order').notNull(),
     commitRefs: jsonb('commit_refs').$type<string[]>(),
     createdAt: bigint('created_at', { mode: 'number' }).notNull(),
@@ -630,7 +665,15 @@ export const changeLogs = pgTable(
   {
     id: text('id').primaryKey(),
     entityType: text('entity_type', {
-      enum: ['group', 'project', 'analysis_run', 'material', 'requirement', 'requirement_point', 'task'],
+      enum: [
+        'group',
+        'project',
+        'analysis_run',
+        'material',
+        'requirement',
+        'requirement_point',
+        'task',
+      ],
     }).notNull(),
     entityId: text('entity_id').notNull(),
     changeType: text('change_type', {
@@ -783,10 +826,12 @@ git commit -m "feat(core): PostgreSQL drizzle schema 9 张表、连接工厂与�
 ### Task 4: 变更日志 helper
 
 **Files:**
+
 - Create: `packages/core/src/services/change-log.ts`
 - Test: `packages/core/src/services/change-log.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ShipmateTx`、`changeLogs`、`newId`、`Actor`、`withDb`。
 - Produces(所有写服务使用):
   - `interface ChangeLogInput { entityType: EntityType; entityId: string; changeType: ChangeType; before?: unknown; after: unknown; reason?: string; actor: Actor }`
@@ -831,10 +876,22 @@ describe('writeChangeLog', () => {
   it('同一事务多次写入互相可见(供联动场景)', async () => {
     await withDb(async (db) => {
       await db.transaction(async (tx) => {
-        await writeChangeLog(tx, { entityType: 'task', entityId: 't1', changeType: 'status_change', after: {}, actor: 'mcp:claude-code' });
+        await writeChangeLog(tx, {
+          entityType: 'task',
+          entityId: 't1',
+          changeType: 'status_change',
+          after: {},
+          actor: 'mcp:claude-code',
+        });
         const seen = await tx.select().from(changeLogs);
         expect(seen).toHaveLength(1);
-        await writeChangeLog(tx, { entityType: 'task', entityId: 't1', changeType: 'linkage_impact', after: {}, actor: 'human' });
+        await writeChangeLog(tx, {
+          entityType: 'task',
+          entityId: 't1',
+          changeType: 'linkage_impact',
+          after: {},
+          actor: 'human',
+        });
       });
       expect(await db.select().from(changeLogs)).toHaveLength(2);
     });
@@ -904,11 +961,13 @@ git commit -m "feat(core): 事务内变更日志 helper"
 ### Task 5: GroupService
 
 **Files:**
+
 - Create: `packages/core/src/services/group.service.ts`
 - Test: `packages/core/src/services/group.service.test.ts`
 - Modify: `packages/core/src/index.ts`(追加导出)
 
 **Interfaces:**
+
 - Consumes: `withDb`、`writeChangeLog`、`DomainError`、`newId`。
 - Produces:
   - `type GroupWithCount = GroupRow & { projectCount: number }`
@@ -949,7 +1008,12 @@ describe('GroupService', () => {
       expect(g.sortOrder).toBe(0);
       const log = await db.select().from(changeLogs).where(eq(changeLogs.entityId, g.id));
       expect(log).toHaveLength(1);
-      expect(log[0]).toMatchObject({ entityType: 'group', changeType: 'create', actor: 'human', beforeSnapshot: null });
+      expect(log[0]).toMatchObject({
+        entityType: 'group',
+        changeType: 'create',
+        actor: 'human',
+        beforeSnapshot: null,
+      });
     });
   });
 
@@ -1082,10 +1146,23 @@ export class GroupService {
       const now = Date.now();
       const rows = await tx
         .insert(groups)
-        .values({ id: newId(), name, description: input.description ?? null, sortOrder: 0, createdAt: now, updatedAt: now })
+        .values({
+          id: newId(),
+          name,
+          description: input.description ?? null,
+          sortOrder: 0,
+          createdAt: now,
+          updatedAt: now,
+        })
         .returning();
       const row = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'group', entityId: row.id, changeType: 'create', after: row, actor });
+      await writeChangeLog(tx, {
+        entityType: 'group',
+        entityId: row.id,
+        changeType: 'create',
+        after: row,
+        actor,
+      });
       return row;
     });
   }
@@ -1105,7 +1182,14 @@ export class GroupService {
         .where(eq(groups.id, id))
         .returning();
       const after = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'group', entityId: id, changeType: 'update', before, after, actor });
+      await writeChangeLog(tx, {
+        entityType: 'group',
+        entityId: id,
+        changeType: 'update',
+        before,
+        after,
+        actor,
+      });
       return after;
     });
   }
@@ -1116,7 +1200,10 @@ export class GroupService {
       if (!before) throw new DomainError('NOT_FOUND', `分组 ${id} 不存在`);
       const owned = await tx.select().from(projects).where(eq(projects.groupId, id));
       if (owned.length > 0) {
-        throw new DomainError('GROUP_NOT_EMPTY', `分组「${before.name}」下仍有 ${owned.length} 个项目,禁止删除`);
+        throw new DomainError(
+          'GROUP_NOT_EMPTY',
+          `分组「${before.name}」下仍有 ${owned.length} 个项目,禁止删除`,
+        );
       }
       await tx.delete(groups).where(eq(groups.id, id));
       await writeChangeLog(tx, {
@@ -1136,7 +1223,10 @@ export class GroupService {
     const projs = await this.db.select().from(projects).where(eq(projects.groupId, id));
     const projectSummaries = await Promise.all(
       projs.map(async (p) => {
-        const reqs = await this.db.select().from(requirements).where(eq(requirements.projectId, p.id));
+        const reqs = await this.db
+          .select()
+          .from(requirements)
+          .where(eq(requirements.projectId, p.id));
         return {
           project: p,
           requirementTotal: reqs.length,
@@ -1150,7 +1240,10 @@ export class GroupService {
   async listGroups(): Promise<GroupWithCount[]> {
     const rows = await this.db.select().from(groups);
     const allProjects = await this.db.select().from(projects);
-    return rows.map((g) => ({ ...g, projectCount: allProjects.filter((p) => p.groupId === g.id).length }));
+    return rows.map((g) => ({
+      ...g,
+      projectCount: allProjects.filter((p) => p.groupId === g.id).length,
+    }));
   }
 }
 ```
@@ -1172,7 +1265,12 @@ export type { Actor } from './types.js';
 export { newId } from './db/id.js';
 export { createDatabase, withDb, schema, type ShipmateDb, type ShipmateTx } from './db/database.js';
 export * from './db/schema.js';
-export { GroupService, type CreateGroupInput, type GroupSummary, type GroupWithCount } from './services/group.service.js';
+export {
+  GroupService,
+  type CreateGroupInput,
+  type GroupSummary,
+  type GroupWithCount,
+} from './services/group.service.js';
 ```
 
 ```bash
@@ -1185,11 +1283,13 @@ git commit -m "feat(core): GroupService 分组服务(GROUP_NOT_EMPTY 守卫与�
 ### Task 6: ProjectService
 
 **Files:**
+
 - Create: `packages/core/src/services/project.service.ts`
 - Test: `packages/core/src/services/project.service.test.ts`
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `writeChangeLog`、`DomainError`、`projects/groups/requirements/requirementPoints/changeLogs` 表、`newId`、本地超期判断:本任务内联实现过渡函数 `isOverdue(row: RequirementRow, now?: number): boolean`(status ∈ {draft, confirmed} 且 planDueAt < now;Task 7 提供完整版 `computeOverdue` 后删除内联版改用导入)。
 - Produces:
   - `type ProjectSummary = { project: ProjectRow; requirementTotal: number; requirementDone: number; overdueRequirementCount: number; pointStatusCounts: Record<'draft'|'confirmed'|'developing'|'done', number>; recentChanges: ChangeLogRow[] }`(recentChanges 限 20 条,按 createdAt 倒序)
@@ -1213,7 +1313,10 @@ import { ProjectService } from './project.service.js';
 
 async function seedGroup(db: ShipmateDb): Promise<string> {
   const now = Date.now();
-  const rows = await db.insert(groups).values({ id: newId(), name: 'G', sortOrder: 0, createdAt: now, updatedAt: now }).returning();
+  const rows = await db
+    .insert(groups)
+    .values({ id: newId(), name: 'G', sortOrder: 0, createdAt: now, updatedAt: now })
+    .returning();
   return rows[0]!.id;
 }
 
@@ -1256,16 +1359,48 @@ describe('ProjectService', () => {
       const now = Date.now();
       const day = 86_400_000;
       const mkReq = (status: 'draft' | 'confirmed' | 'done', planDueAt?: number) =>
-        db.insert(requirements)
-          .values({ id: newId(), projectId: p.id, title: `R-${Math.random()}`, status, priority: 'P2', planDueAt: planDueAt ?? null, createdAt: now, updatedAt: now })
+        db
+          .insert(requirements)
+          .values({
+            id: newId(),
+            projectId: p.id,
+            title: `R-${Math.random()}`,
+            status,
+            priority: 'P2',
+            planDueAt: planDueAt ?? null,
+            createdAt: now,
+            updatedAt: now,
+          })
           .returning();
       const doneReq = await mkReq('done');
       await mkReq('confirmed', now - 10 * day); // 超期
       await mkReq('draft');
       const now2 = Date.now();
       await db.insert(requirementPoints).values([
-        { id: newId(), requirementId: doneReq[0]!.id, title: 't1', status: 'done', version: 1, sourceMaterialIds: [], evidences: [], origin: 'manual', createdAt: now2, updatedAt: now2 },
-        { id: newId(), requirementId: doneReq[0]!.id, title: 't2', status: 'developing', version: 1, sourceMaterialIds: [], evidences: [], origin: 'manual', createdAt: now2, updatedAt: now2 },
+        {
+          id: newId(),
+          requirementId: doneReq[0]!.id,
+          title: 't1',
+          status: 'done',
+          version: 1,
+          sourceMaterialIds: [],
+          evidences: [],
+          origin: 'manual',
+          createdAt: now2,
+          updatedAt: now2,
+        },
+        {
+          id: newId(),
+          requirementId: doneReq[0]!.id,
+          title: 't2',
+          status: 'developing',
+          version: 1,
+          sourceMaterialIds: [],
+          evidences: [],
+          origin: 'manual',
+          createdAt: now2,
+          updatedAt: now2,
+        },
       ]);
 
       const s = await svc.getProject(p.id);
@@ -1362,16 +1497,33 @@ export class ProjectService {
     const name = input.name?.trim();
     if (!name) throw new DomainError('VALIDATION_ERROR', '项目名不能为空');
     return this.db.transaction(async (tx) => {
-      if (input.groupId !== undefined && !(await tx.select().from(groups).where(eq(groups.id, input.groupId)))) {
+      if (
+        input.groupId !== undefined &&
+        !(await tx.select().from(groups).where(eq(groups.id, input.groupId)))
+      ) {
         throw new DomainError('NOT_FOUND', `分组 ${input.groupId} 不存在`);
       }
       const now = Date.now();
       const rows = await tx
         .insert(projects)
-        .values({ id: newId(), groupId: input.groupId ?? null, name, description: input.description ?? null, status: 'active', createdAt: now, updatedAt: now })
+        .values({
+          id: newId(),
+          groupId: input.groupId ?? null,
+          name,
+          description: input.description ?? null,
+          status: 'active',
+          createdAt: now,
+          updatedAt: now,
+        })
         .returning();
       const row = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'project', entityId: row.id, changeType: 'create', after: row, actor });
+      await writeChangeLog(tx, {
+        entityType: 'project',
+        entityId: row.id,
+        changeType: 'create',
+        after: row,
+        actor,
+      });
       return row;
     });
   }
@@ -1396,12 +1548,28 @@ export class ProjectService {
         patch.status = input.status;
         statusChanged = true;
       }
-      const after = (await tx.update(projects).set(patch).where(eq(projects.id, id)).returning())[0]!;
+      const after = (
+        await tx.update(projects).set(patch).where(eq(projects.id, id)).returning()
+      )[0]!;
       if (nameChanged) {
-        await writeChangeLog(tx, { entityType: 'project', entityId: id, changeType: 'update', before, after, actor });
+        await writeChangeLog(tx, {
+          entityType: 'project',
+          entityId: id,
+          changeType: 'update',
+          before,
+          after,
+          actor,
+        });
       }
       if (statusChanged) {
-        await writeChangeLog(tx, { entityType: 'project', entityId: id, changeType: 'status_change', before, after, actor });
+        await writeChangeLog(tx, {
+          entityType: 'project',
+          entityId: id,
+          changeType: 'status_change',
+          before,
+          after,
+          actor,
+        });
       }
       return after;
     });
@@ -1414,10 +1582,18 @@ export class ProjectService {
     const reqs = await this.db.select().from(requirements).where(eq(requirements.projectId, id));
     const reqIds = reqs.map((r) => r.id);
     const points = reqIds.length
-      ? await this.db.select().from(requirementPoints).where(inArray(requirementPoints.requirementId, reqIds))
+      ? await this.db
+          .select()
+          .from(requirementPoints)
+          .where(inArray(requirementPoints.requirementId, reqIds))
       : [];
 
-    const pointStatusCounts: Record<PointStatusKey, number> = { draft: 0, confirmed: 0, developing: 0, done: 0 };
+    const pointStatusCounts: Record<PointStatusKey, number> = {
+      draft: 0,
+      confirmed: 0,
+      developing: 0,
+      done: 0,
+    };
     for (const pt of points) pointStatusCounts[pt.status] += 1;
 
     const entityIds = [id, ...reqIds, ...points.map((pt) => pt.id)];
@@ -1479,12 +1655,14 @@ git commit -m "feat(core): ProjectService 项目服务与概要聚合"
 ### Task 7: RequirementService(含超期/临期计算)
 
 **Files:**
+
 - Create: `packages/core/src/services/requirement.service.ts`
 - Test: `packages/core/src/services/requirement.service.test.ts`
 - Modify: `packages/core/src/services/project.service.ts`(删除过渡 `isOverdue`,改导入 `computeOverdue`)
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `writeChangeLog`、`DomainError`、`requirements` 表、`newId`。
 - Produces:
   - `function computeOverdue(req: RequirementRow, now?: number): { overdue: boolean; overdueDays: number; dueSoon: boolean }`(spec §4.3:status ∈ {draft, confirmed} 才参与;planDueAt < now → overdue=true 且 overdueDays = 向下取整天数;0 ≤ 剩余天数 ≤ 3 → dueSoon=true;未设 planDueAt 全 false)
@@ -1505,35 +1683,61 @@ import { withDb, type ShipmateDb } from '../db/database.js';
 import { changeLogs, projects, type RequirementRow } from '../db/schema.js';
 import { newId } from '../db/id.js';
 import { DomainError } from '../errors.js';
-import { computeOverdue, RequirementService, type RequirementWithOverdue } from './requirement.service.js';
+import {
+  computeOverdue,
+  RequirementService,
+  type RequirementWithOverdue,
+} from './requirement.service.js';
 
 const DAY = 86_400_000;
 
 function baseReq(): RequirementRow {
   return {
-    id: 'r', projectId: 'p', title: 'R', summary: null, priority: 'P2',
-    planStartAt: null, planDueAt: null, completedAt: null,
-    status: 'confirmed', createdAt: 0, updatedAt: 0,
+    id: 'r',
+    projectId: 'p',
+    title: 'R',
+    summary: null,
+    priority: 'P2',
+    planStartAt: null,
+    planDueAt: null,
+    completedAt: null,
+    status: 'confirmed',
+    createdAt: 0,
+    updatedAt: 0,
   };
 }
 
 describe('computeOverdue', () => {
   it('超期:draft/confirmed 且 planDueAt 已过 → overdue + 天数', () => {
     const now = Date.now();
-    expect(computeOverdue({ ...baseReq(), status: 'confirmed', planDueAt: now - 3.5 * DAY }, now)).toEqual({ overdue: true, overdueDays: 3, dueSoon: false });
-    expect(computeOverdue({ ...baseReq(), status: 'draft', planDueAt: now - 1 * DAY }, now)).toEqual({ overdue: true, overdueDays: 1, dueSoon: false });
+    expect(
+      computeOverdue({ ...baseReq(), status: 'confirmed', planDueAt: now - 3.5 * DAY }, now),
+    ).toEqual({ overdue: true, overdueDays: 3, dueSoon: false });
+    expect(
+      computeOverdue({ ...baseReq(), status: 'draft', planDueAt: now - 1 * DAY }, now),
+    ).toEqual({ overdue: true, overdueDays: 1, dueSoon: false });
   });
 
   it('未超期但 ≤3 天 → dueSoon', () => {
     const now = Date.now();
-    expect(computeOverdue({ ...baseReq(), status: 'confirmed', planDueAt: now + 2 * DAY }, now)).toEqual({ overdue: false, overdueDays: 0, dueSoon: true });
-    expect(computeOverdue({ ...baseReq(), status: 'confirmed', planDueAt: now + 4 * DAY }, now)).toEqual({ overdue: false, overdueDays: 0, dueSoon: false });
+    expect(
+      computeOverdue({ ...baseReq(), status: 'confirmed', planDueAt: now + 2 * DAY }, now),
+    ).toEqual({ overdue: false, overdueDays: 0, dueSoon: true });
+    expect(
+      computeOverdue({ ...baseReq(), status: 'confirmed', planDueAt: now + 4 * DAY }, now),
+    ).toEqual({ overdue: false, overdueDays: 0, dueSoon: false });
   });
 
   it('done/archived 不参与;未设 planDueAt 不参与', () => {
     const now = Date.now();
-    expect(computeOverdue({ ...baseReq(), status: 'done', planDueAt: now - 10 * DAY }, now).overdue).toBe(false);
-    expect(computeOverdue({ ...baseReq(), status: 'confirmed', planDueAt: null }, now)).toEqual({ overdue: false, overdueDays: 0, dueSoon: false });
+    expect(
+      computeOverdue({ ...baseReq(), status: 'done', planDueAt: now - 10 * DAY }, now).overdue,
+    ).toBe(false);
+    expect(computeOverdue({ ...baseReq(), status: 'confirmed', planDueAt: null }, now)).toEqual({
+      overdue: false,
+      overdueDays: 0,
+      dueSoon: false,
+    });
   });
 });
 
@@ -1542,8 +1746,16 @@ describe('RequirementService', () => {
     await withDb(async (db) => {
       const svc = new RequirementService(db);
       const now = Date.now();
-      const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
-      const r = await svc.createRequirement({ projectId: p.id, title: '导出功能', priority: 'P0', planDueAt: Date.now() + 1000 }, 'human');
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
+      const r = await svc.createRequirement(
+        { projectId: p.id, title: '导出功能', priority: 'P0', planDueAt: Date.now() + 1000 },
+        'human',
+      );
       expect(r).toMatchObject({ status: 'draft', priority: 'P0', completedAt: null });
       try {
         await svc.createRequirement({ projectId: 'missing', title: 'x' }, 'human');
@@ -1558,11 +1770,18 @@ describe('RequirementService', () => {
     await withDb(async (db) => {
       const svc = new RequirementService(db);
       const now = Date.now();
-      const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
       const r = await svc.createRequirement({ projectId: p.id, title: 'A' }, 'human');
       const done = await svc.updateRequirement(r.id, { status: 'done' }, 'human');
       expect(done.completedAt).not.toBeNull();
-      expect(await db.select().from(changeLogs).where(eq(changeLogs.changeType, 'status_change'))).toHaveLength(1);
+      expect(
+        await db.select().from(changeLogs).where(eq(changeLogs.changeType, 'status_change')),
+      ).toHaveLength(1);
 
       const reopened = await svc.updateRequirement(r.id, { status: 'confirmed' }, 'human');
       expect(reopened.completedAt).toBeNull();
@@ -1573,7 +1792,12 @@ describe('RequirementService', () => {
     await withDb(async (db) => {
       const svc = new RequirementService(db);
       const now = Date.now();
-      const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
       const r = await svc.createRequirement({ projectId: p.id, title: '旧' }, 'human');
       await svc.updateRequirement(r.id, { title: '新' }, 'human');
       const logs = await db.select().from(changeLogs).where(eq(changeLogs.changeType, 'update'));
@@ -1586,10 +1810,24 @@ describe('RequirementService', () => {
     await withDb(async (db) => {
       const svc = new RequirementService(db);
       const now = Date.now();
-      const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
-      await svc.createRequirement({ projectId: p.id, title: '已超期', planDueAt: now - 5 * DAY }, 'human');
-      await svc.createRequirement({ projectId: p.id, title: '临期', planDueAt: now + 2 * DAY }, 'human');
-      await svc.createRequirement({ projectId: p.id, title: '远期', planDueAt: now + 30 * DAY }, 'human');
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
+      await svc.createRequirement(
+        { projectId: p.id, title: '已超期', planDueAt: now - 5 * DAY },
+        'human',
+      );
+      await svc.createRequirement(
+        { projectId: p.id, title: '临期', planDueAt: now + 2 * DAY },
+        'human',
+      );
+      await svc.createRequirement(
+        { projectId: p.id, title: '远期', planDueAt: now + 30 * DAY },
+        'human',
+      );
       await svc.createRequirement({ projectId: p.id, title: '无期限' }, 'human');
 
       const all = await svc.listRequirements(p.id);
@@ -1625,7 +1863,10 @@ import { writeChangeLog } from './change-log.js';
 const DAY_MS = 86_400_000;
 
 /** spec §4.3 超期判定:计算态,不落库 */
-export function computeOverdue(req: RequirementRow, now = Date.now()): { overdue: boolean; overdueDays: number; dueSoon: boolean } {
+export function computeOverdue(
+  req: RequirementRow,
+  now = Date.now(),
+): { overdue: boolean; overdueDays: number; dueSoon: boolean } {
   if (!req.planDueAt || (req.status !== 'draft' && req.status !== 'confirmed')) {
     return { overdue: false, overdueDays: 0, dueSoon: false };
   }
@@ -1652,7 +1893,11 @@ export interface UpdateRequirementInput {
   planDueAt?: number | null;
 }
 
-export type RequirementWithOverdue = RequirementRow & { overdue: boolean; overdueDays: number; dueSoon: boolean };
+export type RequirementWithOverdue = RequirementRow & {
+  overdue: boolean;
+  overdueDays: number;
+  dueSoon: boolean;
+};
 
 const PRIORITIES = ['P0', 'P1', 'P2', 'P3'] as const;
 
@@ -1686,12 +1931,22 @@ export class RequirementService {
         })
         .returning();
       const row = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'requirement', entityId: row.id, changeType: 'create', after: row, actor });
+      await writeChangeLog(tx, {
+        entityType: 'requirement',
+        entityId: row.id,
+        changeType: 'create',
+        after: row,
+        actor,
+      });
       return row;
     });
   }
 
-  async updateRequirement(id: string, input: UpdateRequirementInput, actor: Actor): Promise<RequirementRow> {
+  async updateRequirement(
+    id: string,
+    input: UpdateRequirementInput,
+    actor: Actor,
+  ): Promise<RequirementRow> {
     return this.db.transaction(async (tx) => {
       const before = (await tx.select().from(requirements).where(eq(requirements.id, id)))[0];
       if (!before) throw new DomainError('NOT_FOUND', `需求 ${id} 不存在`);
@@ -1710,7 +1965,8 @@ export class RequirementService {
         contentChanged = true;
       }
       if (input.priority !== undefined && input.priority !== before.priority) {
-        if (!PRIORITIES.includes(input.priority)) throw new DomainError('VALIDATION_ERROR', `非法优先级 ${input.priority}`);
+        if (!PRIORITIES.includes(input.priority))
+          throw new DomainError('VALIDATION_ERROR', `非法优先级 ${input.priority}`);
         patch.priority = input.priority;
         contentChanged = true;
       }
@@ -1731,21 +1987,42 @@ export class RequirementService {
 
       if (!contentChanged && !statusChanged) return before;
 
-      const after = (await tx.update(requirements).set(patch).where(eq(requirements.id, id)).returning())[0]!;
+      const after = (
+        await tx.update(requirements).set(patch).where(eq(requirements.id, id)).returning()
+      )[0]!;
       if (contentChanged) {
-        await writeChangeLog(tx, { entityType: 'requirement', entityId: id, changeType: 'update', before, after, actor });
+        await writeChangeLog(tx, {
+          entityType: 'requirement',
+          entityId: id,
+          changeType: 'update',
+          before,
+          after,
+          actor,
+        });
       }
       if (statusChanged) {
-        await writeChangeLog(tx, { entityType: 'requirement', entityId: id, changeType: 'status_change', before, after, actor });
+        await writeChangeLog(tx, {
+          entityType: 'requirement',
+          entityId: id,
+          changeType: 'status_change',
+          before,
+          after,
+          actor,
+        });
       }
       return after;
     });
   }
 
-  async listRequirements(projectId: string, filter?: { status?: string; priority?: string; overdue?: boolean }): Promise<RequirementWithOverdue[]> {
+  async listRequirements(
+    projectId: string,
+    filter?: { status?: string; priority?: string; overdue?: boolean },
+  ): Promise<RequirementWithOverdue[]> {
     const conds = [eq(requirements.projectId, projectId)];
-    if (filter?.status) conds.push(eq(requirements.status, filter.status as RequirementRow['status']));
-    if (filter?.priority) conds.push(eq(requirements.priority, filter.priority as RequirementRow['priority']));
+    if (filter?.status)
+      conds.push(eq(requirements.status, filter.status as RequirementRow['status']));
+    if (filter?.priority)
+      conds.push(eq(requirements.priority, filter.priority as RequirementRow['priority']));
     const rows = await this.db
       .select()
       .from(requirements)
@@ -1787,11 +2064,13 @@ git commit -m "feat(core): RequirementService 与超期/临期计算态"
 ### Task 8: TaskService(状态机 + 重估确认)
 
 **Files:**
+
 - Create: `packages/core/src/services/task.service.ts`
 - Test: `packages/core/src/services/task.service.test.ts`
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `writeChangeLog`、`DomainError`、`withDb`、`tasks/requirementPoints/requirements` 表、`newId`。
 - Produces:
   - `type TaskAction = 'start' | 'complete'`
@@ -1810,7 +2089,14 @@ git commit -m "feat(core): RequirementService 与超期/临期计算态"
 import { describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { withDb, type ShipmateDb } from '../db/database.js';
-import { changeLogs, projects, requirementPoints, requirements, tasks, type TaskRow } from '../db/schema.js';
+import {
+  changeLogs,
+  projects,
+  requirementPoints,
+  requirements,
+  tasks,
+  type TaskRow,
+} from '../db/schema.js';
 import { newId } from '../db/id.js';
 import { DomainError } from '../errors.js';
 import { TaskService } from './task.service.js';
@@ -1823,9 +2109,43 @@ async function forceTaskStatus(db: ShipmateDb, taskId: string, status: TaskRow['
 /** 测试辅助:建一条需求点链(project → requirement → point),返回 pointId */
 async function seedPoint(db: ShipmateDb): Promise<string> {
   const now = Date.now();
-  const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
-  const r = (await db.insert(requirements).values({ id: newId(), projectId: p.id, title: 'R', status: 'draft', priority: 'P2', createdAt: now, updatedAt: now }).returning())[0]!;
-  const pt = (await db.insert(requirementPoints).values({ id: newId(), requirementId: r.id, title: 'PT', status: 'draft', version: 1, sourceMaterialIds: [], evidences: [], origin: 'manual', createdAt: now, updatedAt: now }).returning())[0]!;
+  const p = (
+    await db
+      .insert(projects)
+      .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+      .returning()
+  )[0]!;
+  const r = (
+    await db
+      .insert(requirements)
+      .values({
+        id: newId(),
+        projectId: p.id,
+        title: 'R',
+        status: 'draft',
+        priority: 'P2',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+  )[0]!;
+  const pt = (
+    await db
+      .insert(requirementPoints)
+      .values({
+        id: newId(),
+        requirementId: r.id,
+        title: 'PT',
+        status: 'draft',
+        version: 1,
+        sourceMaterialIds: [],
+        evidences: [],
+        origin: 'manual',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+  )[0]!;
   return pt.id;
 }
 
@@ -1897,13 +2217,24 @@ describe('TaskService', () => {
       const pointId = await seedPoint(db);
       await svc.createTask({ requirementPointId: pointId, title: 'T1' }, 'human');
       await svc.createTask({ requirementPointId: pointId, title: 'T2', sortOrder: 1 }, 'human');
-      const t3 = await svc.createTask({ requirementPointId: pointId, title: 'T3', sortOrder: 2 }, 'human');
+      const t3 = await svc.createTask(
+        { requirementPointId: pointId, title: 'T3', sortOrder: 2 },
+        'human',
+      );
       await svc.setTaskStatus(t3.id, 'start', 'human');
 
       expect(await svc.listTasks({ requirementPointId: pointId })).toHaveLength(3);
-      expect((await svc.listTasks({ requirementPointId: pointId, status: 'in_progress' })).map((t) => t.title)).toEqual(['T3']);
-      const point = (await db.select().from(requirementPoints).where(eq(requirementPoints.id, pointId)))[0]!;
-      const req = (await db.select().from(requirements).where(eq(requirements.id, point.requirementId)))[0]!;
+      expect(
+        (await svc.listTasks({ requirementPointId: pointId, status: 'in_progress' })).map(
+          (t) => t.title,
+        ),
+      ).toEqual(['T3']);
+      const point = (
+        await db.select().from(requirementPoints).where(eq(requirementPoints.id, pointId))
+      )[0]!;
+      const req = (
+        await db.select().from(requirements).where(eq(requirements.id, point.requirementId))
+      )[0]!;
       expect(await svc.listTasks({ projectId: req.projectId })).toHaveLength(3);
     });
   });
@@ -1931,7 +2262,9 @@ import { writeChangeLog } from './change-log.js';
 export type TaskAction = 'start' | 'complete';
 
 /** spec §4.2:合法流转表;needs_reassessment 仅由联动写入与 confirmTaskReassessment 移出 */
-const TASK_TRANSITIONS: Partial<Record<TaskRow['status'], Partial<Record<TaskAction, TaskRow['status']>>>> = {
+const TASK_TRANSITIONS: Partial<
+  Record<TaskRow['status'], Partial<Record<TaskAction, TaskRow['status']>>>
+> = {
   pending: { start: 'in_progress' },
   in_progress: { complete: 'done' },
 };
@@ -1962,7 +2295,12 @@ export class TaskService {
     const title = input.title?.trim();
     if (!title) throw new DomainError('VALIDATION_ERROR', '任务标题不能为空');
     return this.db.transaction(async (tx) => {
-      if (!(await tx.select().from(requirementPoints).where(eq(requirementPoints.id, input.requirementPointId)))) {
+      if (
+        !(await tx
+          .select()
+          .from(requirementPoints)
+          .where(eq(requirementPoints.id, input.requirementPointId)))
+      ) {
         throw new DomainError('NOT_FOUND', `需求点 ${input.requirementPointId} 不存在`);
       }
       const now = Date.now();
@@ -1981,7 +2319,13 @@ export class TaskService {
         })
         .returning();
       const row = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'task', entityId: row.id, changeType: 'create', after: row, actor });
+      await writeChangeLog(tx, {
+        entityType: 'task',
+        entityId: row.id,
+        changeType: 'create',
+        after: row,
+        actor,
+      });
       return row;
     });
   }
@@ -2007,7 +2351,14 @@ export class TaskService {
       }
       if (!changed) return before;
       const after = (await tx.update(tasks).set(patch).where(eq(tasks.id, id)).returning())[0]!;
-      await writeChangeLog(tx, { entityType: 'task', entityId: id, changeType: 'update', before, after, actor });
+      await writeChangeLog(tx, {
+        entityType: 'task',
+        entityId: id,
+        changeType: 'update',
+        before,
+        after,
+        actor,
+      });
       return after;
     });
   }
@@ -2018,10 +2369,26 @@ export class TaskService {
       if (!before) throw new DomainError('NOT_FOUND', `任务 ${id} 不存在`);
       const next = TASK_TRANSITIONS[before.status]?.[action];
       if (!next) {
-        throw new DomainError('INVALID_STATUS_TRANSITION', `任务不允许从 ${before.status} 经 ${action} 流转`);
+        throw new DomainError(
+          'INVALID_STATUS_TRANSITION',
+          `任务不允许从 ${before.status} 经 ${action} 流转`,
+        );
       }
-      const after = (await tx.update(tasks).set({ status: next, updatedAt: Date.now() }).where(eq(tasks.id, id)).returning())[0]!;
-      await writeChangeLog(tx, { entityType: 'task', entityId: id, changeType: 'status_change', before, after, actor });
+      const after = (
+        await tx
+          .update(tasks)
+          .set({ status: next, updatedAt: Date.now() })
+          .where(eq(tasks.id, id))
+          .returning()
+      )[0]!;
+      await writeChangeLog(tx, {
+        entityType: 'task',
+        entityId: id,
+        changeType: 'status_change',
+        before,
+        after,
+        actor,
+      });
       return after;
     });
   }
@@ -2038,13 +2405,23 @@ export class TaskService {
       if (pointIds.length === 0) return [];
       const conds = [inArray(tasks.requirementPointId, pointIds)];
       if (filter.status) conds.push(eq(tasks.status, filter.status));
-      if (filter.requirementPointId) conds.push(eq(tasks.requirementPointId, filter.requirementPointId));
-      return this.db.select().from(tasks).where(and(...conds));
+      if (filter.requirementPointId)
+        conds.push(eq(tasks.requirementPointId, filter.requirementPointId));
+      return this.db
+        .select()
+        .from(tasks)
+        .where(and(...conds));
     }
     const conds = [];
-    if (filter.requirementPointId) conds.push(eq(tasks.requirementPointId, filter.requirementPointId));
+    if (filter.requirementPointId)
+      conds.push(eq(tasks.requirementPointId, filter.requirementPointId));
     if (filter.status) conds.push(eq(tasks.status, filter.status));
-    return conds.length ? this.db.select().from(tasks).where(and(...conds)) : this.db.select().from(tasks);
+    return conds.length
+      ? this.db
+          .select()
+          .from(tasks)
+          .where(and(...conds))
+      : this.db.select().from(tasks);
   }
 
   async confirmTaskReassessment(id: string, actor: Actor): Promise<TaskRow> {
@@ -2052,9 +2429,18 @@ export class TaskService {
       const before = (await tx.select().from(tasks).where(eq(tasks.id, id)))[0];
       if (!before) throw new DomainError('NOT_FOUND', `任务 ${id} 不存在`);
       if (before.status !== 'needs_reassessment') {
-        throw new DomainError('INVALID_STATUS_TRANSITION', `任务当前状态 ${before.status},仅 needs_reassessment 可确认重估`);
+        throw new DomainError(
+          'INVALID_STATUS_TRANSITION',
+          `任务当前状态 ${before.status},仅 needs_reassessment 可确认重估`,
+        );
       }
-      const after = (await tx.update(tasks).set({ status: 'pending', updatedAt: Date.now() }).where(eq(tasks.id, id)).returning())[0]!;
+      const after = (
+        await tx
+          .update(tasks)
+          .set({ status: 'pending', updatedAt: Date.now() })
+          .where(eq(tasks.id, id))
+          .returning()
+      )[0]!;
       await writeChangeLog(tx, {
         entityType: 'task',
         entityId: id,
@@ -2093,11 +2479,13 @@ git commit -m "feat(core): TaskService 任务状态机与重估确认"
 ### Task 9: RequirementPointService(实质修改联动事务,心脏)
 
 **Files:**
+
 - Create: `packages/core/src/services/requirement-point.service.ts`
 - Test: `packages/core/src/services/requirement-point.service.test.ts`
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `writeChangeLog`、`DomainError`、`withDb`、`requirementPoints/tasks/requirements` 表、`newId`。
 - Produces:
   - `type PointAction = 'confirm' | 'start' | 'complete'`
@@ -2126,16 +2514,51 @@ import { RequirementPointService } from './requirement-point.service.js';
 /** 测试辅助:建 project → requirement 链,返回 requirementId */
 async function seedRequirement(db: ShipmateDb): Promise<string> {
   const now = Date.now();
-  const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
-  const r = (await db.insert(requirements).values({ id: newId(), projectId: p.id, title: 'R', status: 'draft', priority: 'P2', createdAt: now, updatedAt: now }).returning())[0]!;
+  const p = (
+    await db
+      .insert(projects)
+      .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+      .returning()
+  )[0]!;
+  const r = (
+    await db
+      .insert(requirements)
+      .values({
+        id: newId(),
+        projectId: p.id,
+        title: 'R',
+        status: 'draft',
+        priority: 'P2',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+  )[0]!;
   return r.id;
 }
 
-async function seedPoint(db: ShipmateDb, reqId: string, status: 'draft' | 'confirmed' | 'developing' | 'done', version = 1): Promise<string> {
+async function seedPoint(
+  db: ShipmateDb,
+  reqId: string,
+  status: 'draft' | 'confirmed' | 'developing' | 'done',
+  version = 1,
+): Promise<string> {
   const now = Date.now();
   const rows = await db
     .insert(requirementPoints)
-    .values({ id: newId(), requirementId: reqId, title: '点', description: '描述', status, version, sourceMaterialIds: [], evidences: [], origin: 'manual', createdAt: now, updatedAt: now })
+    .values({
+      id: newId(),
+      requirementId: reqId,
+      title: '点',
+      description: '描述',
+      status,
+      version,
+      sourceMaterialIds: [],
+      evidences: [],
+      origin: 'manual',
+      createdAt: now,
+      updatedAt: now,
+    })
     .returning();
   return rows[0]!.id;
 }
@@ -2146,10 +2569,15 @@ describe('RequirementPointService 状态机', () => {
       const svc = new RequirementPointService(db);
       const reqId = await seedRequirement(db);
       const id = await seedPoint(db, reqId, 'draft');
-      expect((await svc.setRequirementPointStatus(id, 'confirm', 'human')).status).toBe('confirmed');
+      expect((await svc.setRequirementPointStatus(id, 'confirm', 'human')).status).toBe(
+        'confirmed',
+      );
       expect((await svc.setRequirementPointStatus(id, 'start', 'human')).status).toBe('developing');
       expect((await svc.setRequirementPointStatus(id, 'complete', 'human')).status).toBe('done');
-      const logs = await db.select().from(changeLogs).where(eq(changeLogs.changeType, 'status_change'));
+      const logs = await db
+        .select()
+        .from(changeLogs)
+        .where(eq(changeLogs.changeType, 'status_change'));
       expect(logs).toHaveLength(3);
     });
   });
@@ -2189,14 +2617,20 @@ describe('实质修改联动(spec §5.3)', () => {
       const t2 = await taskSvc.createTask({ requirementPointId: id, title: 'T2' }, 'human');
       await taskSvc.setTaskStatus(t2.id, 'start', 'human');
 
-      const result = await svc.updateRequirementPoint(id, { title: '改后的点', reason: '口径变化' }, 'human');
+      const result = await svc.updateRequirementPoint(
+        id,
+        { title: '改后的点', reason: '口径变化' },
+        'human',
+      );
       expect(result.affectedTaskCount).toBe(2);
       expect(result.point).toMatchObject({ status: 'confirmed', version: 4, title: '改后的点' });
 
       const allTasks = await taskSvc.listTasks({ requirementPointId: id });
       expect(allTasks.every((t) => t.status === 'needs_reassessment')).toBe(true);
 
-      const kinds = (await db.select().from(changeLogs).where(eq(changeLogs.entityId, id))).map((l) => l.changeType);
+      const kinds = (await db.select().from(changeLogs).where(eq(changeLogs.entityId, id))).map(
+        (l) => l.changeType,
+      );
       expect(kinds).toContain('update');
       expect(kinds).toContain('linkage_impact');
       const taskLogs = await db.select().from(changeLogs).where(eq(changeLogs.entityType, 'task'));
@@ -2234,7 +2668,10 @@ describe('实质修改联动(spec §5.3)', () => {
       const id = await seedPoint(db, reqId, 'confirmed', 7);
       const beforeLogs = (await db.select().from(changeLogs)).length;
       const result = await svc.updateRequirementPoint(id, { title: '点' }, 'human');
-      expect(result).toEqual({ point: expect.objectContaining({ version: 7 }), affectedTaskCount: 0 });
+      expect(result).toEqual({
+        point: expect.objectContaining({ version: 7 }),
+        affectedTaskCount: 0,
+      });
       expect(await db.select().from(changeLogs)).toHaveLength(beforeLogs);
     });
   });
@@ -2248,9 +2685,9 @@ describe('实质修改联动(spec §5.3)', () => {
       const t = await taskSvc.createTask({ requirementPointId: id, title: 'T' }, 'human');
       await svc.updateRequirementPoint(id, { title: '改一' }, 'human');
       await svc.updateRequirementPoint(id, { title: '改二' }, 'human');
-      const taskStatusLogs = (await db.select().from(changeLogs).where(eq(changeLogs.entityId, t.id))).filter(
-        (l) => l.changeType === 'status_change',
-      );
+      const taskStatusLogs = (
+        await db.select().from(changeLogs).where(eq(changeLogs.entityId, t.id))
+      ).filter((l) => l.changeType === 'status_change');
       expect(taskStatusLogs).toHaveLength(1); // 第二轮因已是 needs_reassessment 被跳过
     });
   });
@@ -2296,7 +2733,9 @@ describe('查询', () => {
       await seedPoint(db, reqId, 'draft');
       await seedPoint(db, reqId, 'done');
       expect(await svc.listRequirementPoints({ requirementId: reqId })).toHaveLength(2);
-      expect(await svc.listRequirementPoints({ requirementId: reqId, status: 'done' })).toHaveLength(1);
+      expect(
+        await svc.listRequirementPoints({ requirementId: reqId, status: 'done' }),
+      ).toHaveLength(1);
       const req = (await db.select().from(requirements).where(eq(requirements.id, reqId)))[0]!;
       expect(await svc.listRequirementPoints({ projectId: req.projectId })).toHaveLength(2);
     });
@@ -2333,7 +2772,9 @@ import { writeChangeLog } from './change-log.js';
 export type PointAction = 'confirm' | 'start' | 'complete';
 
 /** spec §4.1 显式流转表(实质修改的回退不在表内,由 updateRequirementPoint 单独处理) */
-const POINT_TRANSITIONS: Partial<Record<RequirementPointRow['status'], Partial<Record<PointAction, RequirementPointRow['status']>>>> = {
+const POINT_TRANSITIONS: Partial<
+  Record<RequirementPointRow['status'], Partial<Record<PointAction, RequirementPointRow['status']>>>
+> = {
   draft: { confirm: 'confirmed' },
   confirmed: { start: 'developing' },
   developing: { complete: 'done' },
@@ -2360,14 +2801,21 @@ export class RequirementPointService {
   constructor(private db: ShipmateDb) {}
 
   /** spec §5.3:实质修改单事务四件事,要么全成要么全不动 */
-  async updateRequirementPoint(id: string, input: UpdatePointInput, actor: Actor): Promise<UpdatePointResult> {
+  async updateRequirementPoint(
+    id: string,
+    input: UpdatePointInput,
+    actor: Actor,
+  ): Promise<UpdatePointResult> {
     return this.db.transaction(async (tx): Promise<UpdatePointResult> => {
-      const before = (await tx.select().from(requirementPoints).where(eq(requirementPoints.id, id)))[0];
+      const before = (
+        await tx.select().from(requirementPoints).where(eq(requirementPoints.id, id))
+      )[0];
       if (!before) throw new DomainError('NOT_FOUND', `需求点 ${id} 不存在`);
 
       const nextTitle = input.title !== undefined ? input.title.trim() : before.title;
       const nextDesc = input.description !== undefined ? input.description : before.description;
-      if (input.title !== undefined && !nextTitle) throw new DomainError('VALIDATION_ERROR', '需求点标题不能为空');
+      if (input.title !== undefined && !nextTitle)
+        throw new DomainError('VALIDATION_ERROR', '需求点标题不能为空');
 
       const substantive = nextTitle !== before.title || nextDesc !== before.description;
       if (!substantive) return { point: before, affectedTaskCount: 0 };
@@ -2379,7 +2827,13 @@ export class RequirementPointService {
       const after = (
         await tx
           .update(requirementPoints)
-          .set({ title: nextTitle, description: nextDesc, status: nextStatus, version: before.version + 1, updatedAt: Date.now() })
+          .set({
+            title: nextTitle,
+            description: nextDesc,
+            status: nextStatus,
+            version: before.version + 1,
+            updatedAt: Date.now(),
+          })
           .where(eq(requirementPoints.id, id))
           .returning()
       )[0]!;
@@ -2424,18 +2878,38 @@ export class RequirementPointService {
     });
   }
 
-  async setRequirementPointStatus(id: string, action: PointAction, actor: Actor): Promise<RequirementPointRow> {
+  async setRequirementPointStatus(
+    id: string,
+    action: PointAction,
+    actor: Actor,
+  ): Promise<RequirementPointRow> {
     return this.db.transaction(async (tx) => {
-      const before = (await tx.select().from(requirementPoints).where(eq(requirementPoints.id, id)))[0];
+      const before = (
+        await tx.select().from(requirementPoints).where(eq(requirementPoints.id, id))
+      )[0];
       if (!before) throw new DomainError('NOT_FOUND', `需求点 ${id} 不存在`);
       const next = POINT_TRANSITIONS[before.status]?.[action];
       if (!next) {
-        throw new DomainError('INVALID_STATUS_TRANSITION', `需求点不允许从 ${before.status} 经 ${action} 流转`);
+        throw new DomainError(
+          'INVALID_STATUS_TRANSITION',
+          `需求点不允许从 ${before.status} 经 ${action} 流转`,
+        );
       }
       const after = (
-        await tx.update(requirementPoints).set({ status: next, updatedAt: Date.now() }).where(eq(requirementPoints.id, id)).returning()
+        await tx
+          .update(requirementPoints)
+          .set({ status: next, updatedAt: Date.now() })
+          .where(eq(requirementPoints.id, id))
+          .returning()
       )[0]!;
-      await writeChangeLog(tx, { entityType: 'requirement_point', entityId: id, changeType: 'status_change', before, after, actor });
+      await writeChangeLog(tx, {
+        entityType: 'requirement_point',
+        entityId: id,
+        changeType: 'status_change',
+        before,
+        after,
+        actor,
+      });
       return after;
     });
   }
@@ -2445,7 +2919,9 @@ export class RequirementPointService {
   }
 
   async getRequirementPoint(id: string): Promise<RequirementPointDetail> {
-    const point = (await this.db.select().from(requirementPoints).where(eq(requirementPoints.id, id)))[0];
+    const point = (
+      await this.db.select().from(requirementPoints).where(eq(requirementPoints.id, id))
+    )[0];
     if (!point) throw new DomainError('NOT_FOUND', `需求点 ${id} 不存在`);
     const pointTasks = await this.db.select().from(tasks).where(eq(tasks.requirementPointId, id));
     const pointLogs = await this.db
@@ -2456,21 +2932,37 @@ export class RequirementPointService {
     return { point, tasks: pointTasks, changeLogs: pointLogs };
   }
 
-  async listRequirementPoints(filter: { requirementId?: string; projectId?: string; status?: RequirementPointRow['status'] }): Promise<RequirementPointRow[]> {
+  async listRequirementPoints(filter: {
+    requirementId?: string;
+    projectId?: string;
+    status?: RequirementPointRow['status'];
+  }): Promise<RequirementPointRow[]> {
     if (filter.projectId !== undefined) {
       const reqIds = (
-        await this.db.select({ id: requirements.id }).from(requirements).where(eq(requirements.projectId, filter.projectId))
+        await this.db
+          .select({ id: requirements.id })
+          .from(requirements)
+          .where(eq(requirements.projectId, filter.projectId))
       ).map((r) => r.id);
       if (reqIds.length === 0) return [];
       const conds = [inArray(requirementPoints.requirementId, reqIds)];
       if (filter.status) conds.push(eq(requirementPoints.status, filter.status));
-      if (filter.requirementId) conds.push(eq(requirementPoints.requirementId, filter.requirementId));
-      return this.db.select().from(requirementPoints).where(and(...conds));
+      if (filter.requirementId)
+        conds.push(eq(requirementPoints.requirementId, filter.requirementId));
+      return this.db
+        .select()
+        .from(requirementPoints)
+        .where(and(...conds));
     }
     const conds = [];
     if (filter.requirementId) conds.push(eq(requirementPoints.requirementId, filter.requirementId));
     if (filter.status) conds.push(eq(requirementPoints.status, filter.status));
-    return conds.length ? this.db.select().from(requirementPoints).where(and(...conds)) : this.db.select().from(requirementPoints);
+    return conds.length
+      ? this.db
+          .select()
+          .from(requirementPoints)
+          .where(and(...conds))
+      : this.db.select().from(requirementPoints);
   }
 }
 ```
@@ -2503,11 +2995,13 @@ git commit -m "feat(core): 需求点服务——实质修改联动事务(状态�
 ### Task 10: AuditService
 
 **Files:**
+
 - Create: `packages/core/src/services/audit.service.ts`
 - Test: `packages/core/src/services/audit.service.test.ts`
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `changeLogs/projects/requirements/requirementPoints/analysisRuns/materials` 表、`DomainError`、`withDb`。
 - Produces:
   - `type ActorKind = 'human' | 'ai' | 'mcp'`
@@ -2567,7 +3061,8 @@ describe('AuditService', () => {
       const audit = new AuditService(db);
       const projectsSvc = new ProjectService(db);
       const p = await projectsSvc.createProject({ name: 'P' }, 'human');
-      for (let i = 0; i < 5; i++) await projectsSvc.updateProject(p.id, { name: `名字${i}` }, 'human');
+      for (let i = 0; i < 5; i++)
+        await projectsSvc.updateProject(p.id, { name: `名字${i}` }, 'human');
 
       const rows = await audit.getChangeLog({ entityType: 'project', entityId: p.id, limit: 3 });
       expect(rows).toHaveLength(3);
@@ -2626,7 +3121,11 @@ function localDate(ts: number): string {
 export class AuditService {
   constructor(private db: ShipmateDb) {}
 
-  async getChangeLog(filter: { entityType: ChangeLogRow['entityType']; entityId: string; limit?: number }): Promise<ChangeLogRow[]> {
+  async getChangeLog(filter: {
+    entityType: ChangeLogRow['entityType'];
+    entityId: string;
+    limit?: number;
+  }): Promise<ChangeLogRow[]> {
     const rows = await this.db
       .select()
       .from(changeLogs)
@@ -2640,21 +3139,42 @@ export class AuditService {
     const project = (await this.db.select().from(projects).where(eq(projects.id, projectId)))[0];
     if (!project) throw new DomainError('NOT_FOUND', `项目 ${projectId} 不存在`);
 
-    const reqs = await this.db.select().from(requirements).where(eq(requirements.projectId, projectId));
+    const reqs = await this.db
+      .select()
+      .from(requirements)
+      .where(eq(requirements.projectId, projectId));
     const reqIds = reqs.map((r) => r.id);
     const points = reqIds.length
-      ? await this.db.select().from(requirementPoints).where(inArray(requirementPoints.requirementId, reqIds))
+      ? await this.db
+          .select()
+          .from(requirementPoints)
+          .where(inArray(requirementPoints.requirementId, reqIds))
       : [];
     const pointIds = points.map((p) => p.id);
     const pointTasks = pointIds.length
       ? await this.db.select().from(tasks).where(inArray(tasks.requirementPointId, pointIds))
       : [];
-    const runs = await this.db.select().from(analysisRuns).where(eq(analysisRuns.projectId, projectId));
+    const runs = await this.db
+      .select()
+      .from(analysisRuns)
+      .where(eq(analysisRuns.projectId, projectId));
     const mats = await this.db.select().from(materials).where(eq(materials.projectId, projectId));
 
-    const entityIds = [projectId, ...reqIds, ...pointIds, ...pointTasks.map((t) => t.id), ...runs.map((r) => r.id), ...mats.map((m) => m.id)];
+    const entityIds = [
+      projectId,
+      ...reqIds,
+      ...pointIds,
+      ...pointTasks.map((t) => t.id),
+      ...runs.map((r) => r.id),
+      ...mats.map((m) => m.id),
+    ];
     const timeline = entityIds.length
-      ? await this.db.select().from(changeLogs).where(inArray(changeLogs.entityId, entityIds)).orderBy(desc(changeLogs.createdAt)).limit(500)
+      ? await this.db
+          .select()
+          .from(changeLogs)
+          .where(inArray(changeLogs.entityId, entityIds))
+          .orderBy(desc(changeLogs.createdAt))
+          .limit(500)
       : [];
 
     const actorDistribution: Record<ActorKind, number> = { human: 0, ai: 0, mcp: 0 };
@@ -2666,7 +3186,9 @@ export class AuditService {
       const day = localDate(log.createdAt);
       daily.set(day, (daily.get(day) ?? 0) + 1);
     }
-    const dailyCounts = [...daily.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({ date, count }));
+    const dailyCounts = [...daily.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, count]) => ({ date, count }));
 
     return { timeline, actorDistribution, entityTypeDistribution, dailyCounts };
   }
@@ -2698,11 +3220,13 @@ git commit -m "feat(core): AuditService 审计查询与项目审计报告聚合"
 ### Task 11: SettingsService(含 env 首次种子化)
 
 **Files:**
+
 - Create: `packages/core/src/services/settings.service.ts`
 - Test: `packages/core/src/services/settings.service.test.ts`
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `settings` 表、`DomainError`、spec §10 环境变量名。
 - Produces:
   - `interface LlmConfig { baseUrl: string; apiKey: string; model: string; temperature?: number; timeoutMs?: number }`
@@ -2777,7 +3301,11 @@ describe('SettingsService', () => {
   it('ensureSeededFromEnv:仅首播种,settings 已有值不覆盖', async () => {
     await withDb(async (db) => {
       const svc = new SettingsService(db);
-      const env = { SHIPMATE_LLM_BASE_URL: 'https://env.example.com/v1', SHIPMATE_LLM_API_KEY: 'sk-env', SHIPMATE_LLM_MODEL: 'm1' };
+      const env = {
+        SHIPMATE_LLM_BASE_URL: 'https://env.example.com/v1',
+        SHIPMATE_LLM_API_KEY: 'sk-env',
+        SHIPMATE_LLM_MODEL: 'm1',
+      };
       await svc.ensureSeededFromEnv(env as NodeJS.ProcessEnv);
       expect(await svc.get('llm.base_url')).toBe('https://env.example.com/v1');
       // settings 已有值时 env 不覆盖
@@ -2817,7 +3345,8 @@ export class SettingsService {
 
   async getOrThrow<T = unknown>(key: string, message?: string): Promise<T> {
     const v = await this.get<T>(key);
-    if (v === undefined) throw new DomainError('VALIDATION_ERROR', message ?? `配置项 ${key} 未设置`);
+    if (v === undefined)
+      throw new DomainError('VALIDATION_ERROR', message ?? `配置项 ${key} 未设置`);
     return v;
   }
 
@@ -2825,7 +3354,10 @@ export class SettingsService {
     await this.db
       .insert(settings)
       .values({ key, value: value as never, updatedAt: Date.now() })
-      .onConflictDoUpdate({ target: settings.key, set: { value: value as never, updatedAt: Date.now() } });
+      .onConflictDoUpdate({
+        target: settings.key,
+        set: { value: value as never, updatedAt: Date.now() },
+      });
   }
 
   async setMany(entries: Record<string, unknown>): Promise<void> {
@@ -2843,7 +3375,10 @@ export class SettingsService {
     const apiKey = await this.get<string>('llm.api_key');
     const model = await this.get<string>('llm.model');
     if (!baseUrl || !apiKey || !model) {
-      throw new DomainError('VALIDATION_ERROR', '模型未配置:请在「设置 → 模型设置」完成 base_url / api_key / model');
+      throw new DomainError(
+        'VALIDATION_ERROR',
+        '模型未配置:请在「设置 → 模型设置」完成 base_url / api_key / model',
+      );
     }
     return {
       baseUrl,
@@ -2904,6 +3439,7 @@ git commit -m "feat(core): SettingsService 键值配置与 env 首次种子化"
 ### Task 12: LLM 客户端与分析 Prompt
 
 **Files:**
+
 - Modify: `packages/core/src/llm/client.ts`(补全 chatJson)
 - Create: `packages/core/src/llm/schema.ts`
 - Create: `packages/core/src/llm/prompt.ts`
@@ -2911,6 +3447,7 @@ git commit -m "feat(core): SettingsService 键值配置与 env 首次种子化"
 - Test: `packages/core/src/llm/client.test.ts`
 
 **Interfaces:**
+
 - Consumes: `LlmConfig`、`DomainError`、`zod`。
 - Produces:
   - `async function chatJson(cfg: LlmConfig, system: string, user: string): Promise<unknown>` —— POST `{baseUrl}/chat/completions`,`response_format: { type: 'json_object' }`;网络/HTTP 错误抛 `LLM_ERROR`;响应缺 content 或 content 非合法 JSON 抛 `LLM_SCHEMA_MISMATCH`;默认超时 120s(`AbortSignal.timeout`)。
@@ -2989,7 +3526,13 @@ describe('analysisResultSchema', () => {
       requirements: [
         {
           title: '导出',
-          points: [{ title: 'CSV', confidence: 0.9, evidences: [{ material_id: 'm1', quote: '要能导出' }] }],
+          points: [
+            {
+              title: 'CSV',
+              confidence: 0.9,
+              evidences: [{ material_id: 'm1', quote: '要能导出' }],
+            },
+          ],
         },
       ],
       supplements: [],
@@ -3000,15 +3543,33 @@ describe('analysisResultSchema', () => {
 
   it('拒绝缺 evidences 字段的点', () => {
     expect(() =>
-      analysisResultSchema.parse({ requirements: [{ title: 'x', points: [{ title: 'p', confidence: 1 }] }], supplements: [] }),
+      analysisResultSchema.parse({
+        requirements: [{ title: 'x', points: [{ title: 'p', confidence: 1 }] }],
+        supplements: [],
+      }),
     ).toThrow();
   });
 });
 
 describe('buildUserPrompt', () => {
   it('拼接素材与已有需求摘要', () => {
-    const mat = { id: 'm1', type: 'paste_text', title: '会议记录', rawContent: '要能导出 CSV' } as MaterialRow;
-    const text = buildUserPrompt([mat], [{ id: 'r1', title: '已有需求', summary: '摘要', points: [{ id: 'p1', title: '点A', status: 'done' }] }]);
+    const mat = {
+      id: 'm1',
+      type: 'paste_text',
+      title: '会议记录',
+      rawContent: '要能导出 CSV',
+    } as MaterialRow;
+    const text = buildUserPrompt(
+      [mat],
+      [
+        {
+          id: 'r1',
+          title: '已有需求',
+          summary: '摘要',
+          points: [{ id: 'p1', title: '点A', status: 'done' }],
+        },
+      ],
+    );
     expect(text).toContain('【素材 m1】');
     expect(text).toContain('要能导出 CSV');
     expect(text).toContain('已有需求');
@@ -3154,13 +3715,19 @@ export function buildSystemPrompt(): string {
 5. 只输出 JSON,不输出任何其他文字`;
 }
 
-export function buildUserPrompt(materials: MaterialRow[], existing: ExistingRequirementDigest[]): string {
+export function buildUserPrompt(
+  materials: MaterialRow[],
+  existing: ExistingRequirementDigest[],
+): string {
   const materialSection = materials
     .map((m) => `【素材 ${m.id}】(${m.type}${m.title ? `,${m.title}` : ''})\n${m.rawContent}`)
     .join('\n\n');
   const existingSection = existing.length
     ? existing
-        .map((r) => `- ${r.title}(${r.id}):${r.summary || '(无摘要)'} | 需求点:${r.points.map((p) => p.title).join('、') || '无'}`)
+        .map(
+          (r) =>
+            `- ${r.title}(${r.id}):${r.summary || '(无摘要)'} | 需求点:${r.points.map((p) => p.title).join('、') || '无'}`,
+        )
         .join('\n')
     : '(暂无已有需求)';
   return `## 已有需求(用于判断重复/相悖/补充)\n${existingSection}\n\n## 待分析素材\n${materialSection}`;
@@ -3184,11 +3751,13 @@ git commit -m "feat(core): OpenAI 兼容 LLM 客户端、分析产出 schema 与
 ### Task 13: AnalysisService —— 批次/素材 CRUD 与开始分析
 
 **Files:**
+
 - Create: `packages/core/src/services/analysis.service.ts`
 - Test: `packages/core/src/services/analysis.service.test.ts`
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `writeChangeLog`、`DomainError`、`withDb`、`analysisRuns/materials/requirements/requirementPoints/projects` 表、`chatJson`、`analysisResultSchema`、`buildSystemPrompt/buildUserPrompt`、`SettingsService`。
 - Produces:
   - `type LlmInvoker = (system: string, user: string) => Promise<unknown>`(测试注入 fake;生产由 `createAnalysisService` 组装)
@@ -3225,11 +3794,18 @@ describe('批次与素材', () => {
     await withDb(async (db) => {
       const svc = makeService(db, async () => ({}));
       const now = Date.now();
-      const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
       const run = await svc.createAnalysisRun({ projectId: p.id }, 'human');
       expect(run).toMatchObject({ projectId: p.id, status: 'pending' });
       expect(run.title).toMatch(/^素材分析 \d{2}-\d{2} \d{2}:\d{2}$/);
-      expect(await db.select().from(changeLogs).where(eq(changeLogs.entityId, run.id))).toHaveLength(1);
+      expect(
+        await db.select().from(changeLogs).where(eq(changeLogs.entityId, run.id)),
+      ).toHaveLength(1);
     });
   });
 
@@ -3237,9 +3813,17 @@ describe('批次与素材', () => {
     await withDb(async (db) => {
       const svc = makeService(db, async () => ({}));
       const now = Date.now();
-      const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
       const run = await svc.createAnalysisRun({ projectId: p.id }, 'human');
-      const m = await svc.addMaterial({ runId: run.id, type: 'paste_text', title: '会议记录', rawContent: '要能导出 CSV' }, 'human');
+      const m = await svc.addMaterial(
+        { runId: run.id, type: 'paste_text', title: '会议记录', rawContent: '要能导出 CSV' },
+        'human',
+      );
       expect(m).toMatchObject({ analysisRunId: run.id, projectId: p.id, type: 'paste_text' });
       try {
         await svc.addMaterial({ runId: 'missing', type: 'doc', rawContent: 'x' }, 'human');
@@ -3257,12 +3841,20 @@ describe('批次与素材', () => {
         supplements: [{ target_requirement_title: '旧需求', points: [] }],
       }));
       const now = Date.now();
-      const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
       const run = await svc.createAnalysisRun({ projectId: p.id }, 'human');
       await svc.addMaterial({ runId: run.id, type: 'paste_text', rawContent: '素材一' }, 'human');
       await svc.addMaterial({ runId: run.id, type: 'doc', rawContent: '素材二' }, 'human');
 
-      expect((await svc.listAnalysisRuns(p.id))[0]).toMatchObject({ materialCount: 2, draftRequirementCount: 0 });
+      expect((await svc.listAnalysisRuns(p.id))[0]).toMatchObject({
+        materialCount: 2,
+        draftRequirementCount: 0,
+      });
 
       await svc.startAnalysis(run.id, 'human');
       const summary = (await svc.listAnalysisRuns(p.id))[0]!;
@@ -3278,7 +3870,12 @@ describe('批次与素材', () => {
     await withDb(async (db) => {
       const svc = makeService(db, async () => ({ requirements: [], supplements: [] }));
       const now = Date.now();
-      const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
       const r1 = await svc.createAnalysisRun({ projectId: p.id }, 'human');
       await svc.createAnalysisRun({ projectId: p.id }, 'human');
       await svc.startAnalysis(r1.id, 'human');
@@ -3293,7 +3890,12 @@ describe('startAnalysis', () => {
     await withDb(async (db) => {
       const svc = makeService(db, async () => ({}));
       const now = Date.now();
-      const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
       const run = await svc.createAnalysisRun({ projectId: p.id }, 'human');
       try {
         await svc.startAnalysis(run.id, 'human');
@@ -3307,7 +3909,12 @@ describe('startAnalysis', () => {
   it('LLM 失败 → run 置 failed 并抛 LLM_ERROR;再次分析成功可恢复为 done 并覆盖草稿', async () => {
     await withDb(async (db) => {
       const now = Date.now();
-      const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
       const setup = makeService(db, async () => ({}));
       const run = await setup.createAnalysisRun({ projectId: p.id }, 'human');
       await setup.addMaterial({ runId: run.id, type: 'paste_text', rawContent: '素材' }, 'human');
@@ -3315,26 +3922,44 @@ describe('startAnalysis', () => {
       const fail = makeService(db, async () => {
         throw new DomainError('LLM_ERROR', '超时');
       });
-      await expect(fail.startAnalysis(run.id, 'human')).rejects.toMatchObject({ code: 'LLM_ERROR' });
-      expect((await db.select().from(analysisRuns).where(eq(analysisRuns.id, run.id)))[0]!.status).toBe('failed');
+      await expect(fail.startAnalysis(run.id, 'human')).rejects.toMatchObject({
+        code: 'LLM_ERROR',
+      });
+      expect(
+        (await db.select().from(analysisRuns).where(eq(analysisRuns.id, run.id)))[0]!.status,
+      ).toBe('failed');
 
-      const ok = makeService(db, async () => ({ requirements: [{ title: '新草稿', points: [] }], supplements: [] }));
+      const ok = makeService(db, async () => ({
+        requirements: [{ title: '新草稿', points: [] }],
+        supplements: [],
+      }));
       const done = await ok.startAnalysis(run.id, 'human');
       expect(done.status).toBe('done');
-      expect((done.draftResult as { requirements: { title: string }[] }).requirements[0]!.title).toBe('新草稿');
+      expect(
+        (done.draftResult as { requirements: { title: string }[] }).requirements[0]!.title,
+      ).toBe('新草稿');
     });
   });
 
   it('LLM 产出不合 schema → LLM_SCHEMA_MISMATCH 且 run failed', async () => {
     await withDb(async (db) => {
       const now = Date.now();
-      const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
       const setup = makeService(db, async () => ({}));
       const run = await setup.createAnalysisRun({ projectId: p.id }, 'human');
       await setup.addMaterial({ runId: run.id, type: 'paste_text', rawContent: '素材' }, 'human');
       const bad = makeService(db, async () => ({ wrong: 'shape' }));
-      await expect(bad.startAnalysis(run.id, 'human')).rejects.toMatchObject({ code: 'LLM_SCHEMA_MISMATCH' });
-      expect((await db.select().from(analysisRuns).where(eq(analysisRuns.id, run.id)))[0]!.status).toBe('failed');
+      await expect(bad.startAnalysis(run.id, 'human')).rejects.toMatchObject({
+        code: 'LLM_SCHEMA_MISMATCH',
+      });
+      expect(
+        (await db.select().from(analysisRuns).where(eq(analysisRuns.id, run.id)))[0]!.status,
+      ).toBe('failed');
     });
   });
 
@@ -3343,9 +3968,17 @@ describe('startAnalysis', () => {
       const llm = vi.fn(async () => ({ requirements: [], supplements: [] }));
       const svc = makeService(db, llm);
       const now = Date.now();
-      const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
       const run = await svc.createAnalysisRun({ projectId: p.id }, 'human');
-      await svc.addMaterial({ runId: run.id, type: 'paste_text', rawContent: '独有素材标记XYZ' }, 'human');
+      await svc.addMaterial(
+        { runId: run.id, type: 'paste_text', rawContent: '独有素材标记XYZ' },
+        'human',
+      );
       await svc.startAnalysis(run.id, 'ai:analysis');
       expect(llm).toHaveBeenCalledTimes(1);
       expect(String(llm.mock.calls[0]![1])).toContain('独有素材标记XYZ');
@@ -3360,7 +3993,9 @@ describe('startAnalysis', () => {
   it('run 不存在抛 NOT_FOUND', async () => {
     await withDb(async (db) => {
       const svc = makeService(db, async () => ({}));
-      await expect(svc.startAnalysis('missing', 'human')).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      await expect(svc.startAnalysis('missing', 'human')).rejects.toMatchObject({
+        code: 'NOT_FOUND',
+      });
     });
   });
 });
@@ -3432,7 +4067,10 @@ export class AnalysisService {
     private llm: LlmInvoker,
   ) {}
 
-  async createAnalysisRun(input: { projectId: string; title?: string }, actor: Actor): Promise<AnalysisRunRow> {
+  async createAnalysisRun(
+    input: { projectId: string; title?: string },
+    actor: Actor,
+  ): Promise<AnalysisRunRow> {
     return this.db.transaction(async (tx) => {
       if (!(await tx.select().from(projects).where(eq(projects.id, input.projectId)))) {
         throw new DomainError('NOT_FOUND', `项目 ${input.projectId} 不存在`);
@@ -3440,15 +4078,31 @@ export class AnalysisService {
       const now = Date.now();
       const rows = await tx
         .insert(analysisRuns)
-        .values({ id: newId(), projectId: input.projectId, title: input.title?.trim() || defaultRunTitle(), status: 'pending', actor, createdAt: now })
+        .values({
+          id: newId(),
+          projectId: input.projectId,
+          title: input.title?.trim() || defaultRunTitle(),
+          status: 'pending',
+          actor,
+          createdAt: now,
+        })
         .returning();
       const row = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'analysis_run', entityId: row.id, changeType: 'create', after: withoutDraft(row), actor });
+      await writeChangeLog(tx, {
+        entityType: 'analysis_run',
+        entityId: row.id,
+        changeType: 'create',
+        after: withoutDraft(row),
+        actor,
+      });
       return row;
     });
   }
 
-  async addMaterial(input: { runId: string; type: MaterialRow['type']; title?: string; rawContent: string }, actor: Actor): Promise<MaterialRow> {
+  async addMaterial(
+    input: { runId: string; type: MaterialRow['type']; title?: string; rawContent: string },
+    actor: Actor,
+  ): Promise<MaterialRow> {
     if (!input.rawContent?.trim()) throw new DomainError('VALIDATION_ERROR', '素材内容不能为空');
     return this.db.transaction(async (tx) => {
       const run = (await tx.select().from(analysisRuns).where(eq(analysisRuns.id, input.runId)))[0];
@@ -3467,7 +4121,13 @@ export class AnalysisService {
         })
         .returning();
       const row = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'material', entityId: row.id, changeType: 'create', after: row, actor });
+      await writeChangeLog(tx, {
+        entityType: 'material',
+        entityId: row.id,
+        changeType: 'create',
+        after: row,
+        actor,
+      });
       return row;
     });
   }
@@ -3506,7 +4166,10 @@ export class AnalysisService {
         return updated;
       });
     } catch (e) {
-      if (e instanceof DomainError && (e.code === 'LLM_ERROR' || e.code === 'LLM_SCHEMA_MISMATCH')) {
+      if (
+        e instanceof DomainError &&
+        (e.code === 'LLM_ERROR' || e.code === 'LLM_SCHEMA_MISMATCH')
+      ) {
         await this.markFailed(runId, actor, e.message);
         throw e;
       }
@@ -3519,7 +4182,10 @@ export class AnalysisService {
     }
   }
 
-  async listAnalysisRuns(projectId: string, filter?: { status?: AnalysisRunRow['status'] }): Promise<AnalysisRunSummary[]> {
+  async listAnalysisRuns(
+    projectId: string,
+    filter?: { status?: AnalysisRunRow['status'] },
+  ): Promise<AnalysisRunSummary[]> {
     const rows = await this.db
       .select()
       .from(analysisRuns)
@@ -3529,7 +4195,10 @@ export class AnalysisService {
           : eq(analysisRuns.projectId, projectId),
       )
       .orderBy(desc(analysisRuns.createdAt));
-    const allMats = await this.db.select().from(materials).where(eq(materials.projectId, projectId));
+    const allMats = await this.db
+      .select()
+      .from(materials)
+      .where(eq(materials.projectId, projectId));
     return rows.map((r) => ({
       ...r,
       materialCount: allMats.filter((m) => m.analysisRunId === r.id).length,
@@ -3578,10 +4247,16 @@ export class AnalysisService {
   }
 
   private async collectExistingDigest(projectId: string): Promise<ExistingRequirementDigest[]> {
-    const reqs = await this.db.select().from(requirements).where(eq(requirements.projectId, projectId));
+    const reqs = await this.db
+      .select()
+      .from(requirements)
+      .where(eq(requirements.projectId, projectId));
     return Promise.all(
       reqs.map(async (r) => {
-        const pts = await this.db.select().from(requirementPoints).where(eq(requirementPoints.requirementId, r.id));
+        const pts = await this.db
+          .select()
+          .from(requirementPoints)
+          .where(eq(requirementPoints.requirementId, r.id));
         return {
           id: r.id,
           title: r.title,
@@ -3632,10 +4307,12 @@ git commit -m "feat(core): 分析批次服务——素材录入与 AI 分析草�
 ### Task 14: AnalysisService.applyAnalysisRun(冲突三分类应用)
 
 **Files:**
+
 - Modify: `packages/core/src/services/analysis.service.ts`(追加 apply 相关)
 - Test: `packages/core/src/services/analysis.service.test.ts`(追加 describe 块)
 
 **Interfaces:**
+
 - Consumes: Task 13 全部、`DraftRequirement/DraftPoint`、`writeChangeLog`、`withDb`。
 - Produces:
   - `type ConflictResolution = 'merge' | 'create_anyway' | 'skip' | 'use_new' | 'use_old' | 'keep_both'`
@@ -3660,16 +4337,58 @@ import { TaskService } from './task.service.js';
 describe('applyAnalysisRun', () => {
   const goodDraft = {
     requirements: [
-      { title: '全新需求A', summary: 'A 摘要', points: [{ title: 'A1', description: '', confidence: 0.9, evidences: [{ material_id: 'm-ghost', quote: '原文' }] }] },
-      { title: '重复块B', summary: '', conflict: { type: 'duplicate', target_requirement_title: '已有需求X', reason: '同口径' }, points: [{ title: 'X1', description: '', confidence: 0.8, evidences: [{ material_id: 'm2', quote: '补充原文' }] }] },
-      { title: '相悖块C', summary: '', conflict: { type: 'contradiction', target_requirement_title: '已有需求X', reason: '结论相反' }, points: [{ title: 'C1', description: '', confidence: 0.7, evidences: [] }] },
+      {
+        title: '全新需求A',
+        summary: 'A 摘要',
+        points: [
+          {
+            title: 'A1',
+            description: '',
+            confidence: 0.9,
+            evidences: [{ material_id: 'm-ghost', quote: '原文' }],
+          },
+        ],
+      },
+      {
+        title: '重复块B',
+        summary: '',
+        conflict: { type: 'duplicate', target_requirement_title: '已有需求X', reason: '同口径' },
+        points: [
+          {
+            title: 'X1',
+            description: '',
+            confidence: 0.8,
+            evidences: [{ material_id: 'm2', quote: '补充原文' }],
+          },
+        ],
+      },
+      {
+        title: '相悖块C',
+        summary: '',
+        conflict: {
+          type: 'contradiction',
+          target_requirement_title: '已有需求X',
+          reason: '结论相反',
+        },
+        points: [{ title: 'C1', description: '', confidence: 0.7, evidences: [] }],
+      },
     ],
-    supplements: [{ target_requirement_title: '已有需求X', points: [{ title: '补充点S', description: '', confidence: 0.85, evidences: [] }] }],
+    supplements: [
+      {
+        target_requirement_title: '已有需求X',
+        points: [{ title: '补充点S', description: '', confidence: 0.85, evidences: [] }],
+      },
+    ],
   };
 
   async function seedProject(db: ShipmateDb): Promise<string> {
     const now = Date.now();
-    return (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!.id;
+    return (
+      await db
+        .insert(projects)
+        .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+        .returning()
+    )[0]!.id;
   }
 
   async function seedDraft(db: ShipmateDb, projectId: string, draft: unknown): Promise<string> {
@@ -3677,20 +4396,55 @@ describe('applyAnalysisRun', () => {
     return (
       await db
         .insert(analysisRuns)
-        .values({ id: newId(), projectId, title: '批次', status: 'done', actor: 'human', draftResult: draft as never, createdAt: now, completedAt: now })
+        .values({
+          id: newId(),
+          projectId,
+          title: '批次',
+          status: 'done',
+          actor: 'human',
+          draftResult: draft as never,
+          createdAt: now,
+          completedAt: now,
+        })
         .returning()
     )[0]!.id;
   }
 
-  async function seedExistingX(db: ShipmateDb, projectId: string, withTask = false): Promise<string> {
+  async function seedExistingX(
+    db: ShipmateDb,
+    projectId: string,
+    withTask = false,
+  ): Promise<string> {
     const now = Date.now();
     const req = (
-      await db.insert(requirements).values({ id: newId(), projectId, title: '已有需求X', status: 'confirmed', priority: 'P1', createdAt: now, updatedAt: now }).returning()
+      await db
+        .insert(requirements)
+        .values({
+          id: newId(),
+          projectId,
+          title: '已有需求X',
+          status: 'confirmed',
+          priority: 'P1',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
     )[0]!;
     const point = (
       await db
         .insert(requirementPoints)
-        .values({ id: newId(), requirementId: req.id, title: 'X1', status: 'confirmed', version: 1, sourceMaterialIds: ['m1'], evidences: [{ material_id: 'm1', quote: '旧原文' }], origin: 'manual', createdAt: now, updatedAt: now })
+        .values({
+          id: newId(),
+          requirementId: req.id,
+          title: 'X1',
+          status: 'confirmed',
+          version: 1,
+          sourceMaterialIds: ['m1'],
+          evidences: [{ material_id: 'm1', quote: '旧原文' }],
+          origin: 'manual',
+          createdAt: now,
+          updatedAt: now,
+        })
         .returning()
     )[0]!;
     if (withTask) {
@@ -3717,13 +4471,23 @@ describe('applyAnalysisRun', () => {
   it('普通块:落库 draft、溯源回填、create log', async () => {
     await withDb(async (db) => {
       const projectId = await seedProject(db);
-      const runId = await seedDraft(db, projectId, { requirements: [goodDraft.requirements[0]], supplements: [] });
+      const runId = await seedDraft(db, projectId, {
+        requirements: [goodDraft.requirements[0]],
+        supplements: [],
+      });
       const svc = makeService(db, async () => ({}));
       const created = await svc.applyAnalysisRun(runId, undefined, 'human');
       expect(created).toHaveLength(1);
       expect(created[0]).toMatchObject({ title: '全新需求A', status: 'draft', priority: 'P2' });
-      const points = await db.select().from(requirementPoints).where(eq(requirementPoints.requirementId, created[0]!.id));
-      expect(points[0]).toMatchObject({ status: 'draft', origin: 'analysis', sourceMaterialIds: ['m-ghost'] });
+      const points = await db
+        .select()
+        .from(requirementPoints)
+        .where(eq(requirementPoints.requirementId, created[0]!.id));
+      expect(points[0]).toMatchObject({
+        status: 'draft',
+        origin: 'analysis',
+        sourceMaterialIds: ['m-ghost'],
+      });
       expect(points[0]!.evidences).toEqual([{ material_id: 'm-ghost', quote: '原文' }]);
     });
   });
@@ -3733,10 +4497,17 @@ describe('applyAnalysisRun', () => {
       const projectId = await seedProject(db);
       const svc = makeService(db, async () => ({}));
       const runId = await seedDraft(db, projectId, {
-        requirements: [{ title: '块一', points: [] }, { title: '块二', points: [] }],
+        requirements: [
+          { title: '块一', points: [] },
+          { title: '块二', points: [] },
+        ],
         supplements: [],
       });
-      const created = await svc.applyAnalysisRun(runId, { selectedRequirements: ['块一'] }, 'human');
+      const created = await svc.applyAnalysisRun(
+        runId,
+        { selectedRequirements: ['块一'] },
+        'human',
+      );
       expect(created.map((r) => r.title)).toEqual(['块一']);
     });
   });
@@ -3747,10 +4518,20 @@ describe('applyAnalysisRun', () => {
       await seedExistingX(db, projectId);
       const runId = await seedDraft(db, projectId, {
         requirements: [
-          { title: '重复块B', summary: '', conflict: { type: 'duplicate', target_requirement_title: '已有需求X', reason: '' }, points: [
-            { title: 'X1', description: '', confidence: 0.8, evidences: [{ material_id: 'm2', quote: '补充原文' }] },
-            { title: '全新点Y', description: '', confidence: 0.8, evidences: [] },
-          ] },
+          {
+            title: '重复块B',
+            summary: '',
+            conflict: { type: 'duplicate', target_requirement_title: '已有需求X', reason: '' },
+            points: [
+              {
+                title: 'X1',
+                description: '',
+                confidence: 0.8,
+                evidences: [{ material_id: 'm2', quote: '补充原文' }],
+              },
+              { title: '全新点Y', description: '', confidence: 0.8, evidences: [] },
+            ],
+          },
         ],
         supplements: [],
       });
@@ -3758,7 +4539,10 @@ describe('applyAnalysisRun', () => {
       const created = await svc.applyAnalysisRun(runId, undefined, 'human');
       expect(created).toHaveLength(0); // merge 不新建需求
       const xReq = (await db.select().from(requirements)).find((r) => r.title === '已有需求X')!;
-      const points = await db.select().from(requirementPoints).where(eq(requirementPoints.requirementId, xReq.id));
+      const points = await db
+        .select()
+        .from(requirementPoints)
+        .where(eq(requirementPoints.requirementId, xReq.id));
       const merged = points.find((p) => p.title === 'X1')!;
       expect(merged.evidences).toHaveLength(2); // 旧 + 新
       expect(merged.sourceMaterialIds).toEqual(['m1', 'm2']);
@@ -3770,12 +4554,27 @@ describe('applyAnalysisRun', () => {
     await withDb(async (db) => {
       const projectId = await seedProject(db);
       const xId = await seedExistingX(db, projectId);
-      const runId = await seedDraft(db, projectId, { requirements: [goodDraft.requirements[1]!], supplements: [] });
+      const runId = await seedDraft(db, projectId, {
+        requirements: [goodDraft.requirements[1]!],
+        supplements: [],
+      });
       const svc = makeService(db, async () => ({}));
-      const created = await svc.applyAnalysisRun(runId, { decisions: [{ requirementTitle: '重复块B', resolution: 'create_anyway' }] }, 'human');
+      const created = await svc.applyAnalysisRun(
+        runId,
+        { decisions: [{ requirementTitle: '重复块B', resolution: 'create_anyway' }] },
+        'human',
+      );
       expect(created).toHaveLength(1);
-      const newPoint = (await db.select().from(requirementPoints).where(eq(requirementPoints.requirementId, created[0]!.id)))[0]!;
-      const oldPoints = await db.select().from(requirementPoints).where(eq(requirementPoints.requirementId, xId));
+      const newPoint = (
+        await db
+          .select()
+          .from(requirementPoints)
+          .where(eq(requirementPoints.requirementId, created[0]!.id))
+      )[0]!;
+      const oldPoints = await db
+        .select()
+        .from(requirementPoints)
+        .where(eq(requirementPoints.requirementId, xId));
       expect(newPoint.relations).toEqual([{ type: 'duplicate', point_id: oldPoints[0]!.id }]);
       expect(oldPoints[0]!.relations).toEqual([{ type: 'duplicate', point_id: newPoint.id }]);
     });
@@ -3805,13 +4604,29 @@ describe('applyAnalysisRun', () => {
       await seedExistingX(db, projectId, true);
       const svc = makeService(db, async () => ({}));
 
-      const run1 = await seedDraft(db, projectId, { requirements: [goodDraft.requirements[2]!], supplements: [] });
-      const created1 = await svc.applyAnalysisRun(run1, { decisions: [{ requirementTitle: '相悖块C', resolution: 'use_old' }] }, 'human');
+      const run1 = await seedDraft(db, projectId, {
+        requirements: [goodDraft.requirements[2]!],
+        supplements: [],
+      });
+      const created1 = await svc.applyAnalysisRun(
+        run1,
+        { decisions: [{ requirementTitle: '相悖块C', resolution: 'use_old' }] },
+        'human',
+      );
       expect(created1).toHaveLength(0);
-      expect(await db.select().from(changeLogs).where(eq(changeLogs.changeType, 'discard'))).toHaveLength(1);
+      expect(
+        await db.select().from(changeLogs).where(eq(changeLogs.changeType, 'discard')),
+      ).toHaveLength(1);
 
-      const run2 = await seedDraft(db, projectId, { requirements: [goodDraft.requirements[2]!], supplements: [] });
-      const created2 = await svc.applyAnalysisRun(run2, { decisions: [{ requirementTitle: '相悖块C', resolution: 'use_new' }] }, 'human');
+      const run2 = await seedDraft(db, projectId, {
+        requirements: [goodDraft.requirements[2]!],
+        supplements: [],
+      });
+      const created2 = await svc.applyAnalysisRun(
+        run2,
+        { decisions: [{ requirementTitle: '相悖块C', resolution: 'use_new' }] },
+        'human',
+      );
       expect(created2).toHaveLength(1);
       const allTasks = await new TaskService(db).listTasks({});
       expect(allTasks.every((t) => t.status === 'needs_reassessment')).toBe(true);
@@ -3822,12 +4637,26 @@ describe('applyAnalysisRun', () => {
     await withDb(async (db) => {
       const projectId = await seedProject(db);
       const xId = await seedExistingX(db, projectId);
-      const runId = await seedDraft(db, projectId, { requirements: [goodDraft.requirements[2]!], supplements: [] });
+      const runId = await seedDraft(db, projectId, {
+        requirements: [goodDraft.requirements[2]!],
+        supplements: [],
+      });
       const svc = makeService(db, async () => ({}));
-      const created = await svc.applyAnalysisRun(runId, { decisions: [{ requirementTitle: '相悖块C', resolution: 'keep_both' }] }, 'human');
+      const created = await svc.applyAnalysisRun(
+        runId,
+        { decisions: [{ requirementTitle: '相悖块C', resolution: 'keep_both' }] },
+        'human',
+      );
       expect(created).toHaveLength(1);
-      const newPoint = (await db.select().from(requirementPoints).where(eq(requirementPoints.requirementId, created[0]!.id)))[0]!;
-      const oldPoint = (await db.select().from(requirementPoints).where(eq(requirementPoints.requirementId, xId)))[0]!;
+      const newPoint = (
+        await db
+          .select()
+          .from(requirementPoints)
+          .where(eq(requirementPoints.requirementId, created[0]!.id))
+      )[0]!;
+      const oldPoint = (
+        await db.select().from(requirementPoints).where(eq(requirementPoints.requirementId, xId))
+      )[0]!;
       expect(newPoint.relations).toEqual([{ type: 'conflict', point_id: oldPoint!.id }]);
       expect(oldPoint!.relations).toEqual([{ type: 'conflict', point_id: newPoint.id }]);
     });
@@ -3837,14 +4666,26 @@ describe('applyAnalysisRun', () => {
     await withDb(async (db) => {
       const projectId = await seedProject(db);
       const xId = await seedExistingX(db, projectId);
-      const runId = await seedDraft(db, projectId, { requirements: [], supplements: goodDraft.supplements });
+      const runId = await seedDraft(db, projectId, {
+        requirements: [],
+        supplements: goodDraft.supplements,
+      });
       const svc = makeService(db, async () => ({}));
       const created = await svc.applyAnalysisRun(runId, undefined, 'human');
       expect(created).toHaveLength(0);
-      const points = await db.select().from(requirementPoints).where(eq(requirementPoints.requirementId, xId));
+      const points = await db
+        .select()
+        .from(requirementPoints)
+        .where(eq(requirementPoints.requirementId, xId));
       expect(points).toHaveLength(2);
-      expect(points.find((p) => p.title === '补充点S')).toMatchObject({ origin: 'supplement', status: 'draft' });
-      expect(points.find((p) => p.title === 'X1')).toMatchObject({ status: 'confirmed', evidences: [{ material_id: 'm1', quote: '旧原文' }] });
+      expect(points.find((p) => p.title === '补充点S')).toMatchObject({
+        origin: 'supplement',
+        status: 'draft',
+      });
+      expect(points.find((p) => p.title === 'X1')).toMatchObject({
+        status: 'confirmed',
+        evidences: [{ material_id: 'm1', quote: '旧原文' }],
+      });
     });
   });
 
@@ -3852,10 +4693,17 @@ describe('applyAnalysisRun', () => {
     await withDb(async (db) => {
       const projectId = await seedProject(db);
       await seedExistingX(db, projectId);
-      const runId = await seedDraft(db, projectId, { requirements: [goodDraft.requirements[2]!], supplements: [] });
+      const runId = await seedDraft(db, projectId, {
+        requirements: [goodDraft.requirements[2]!],
+        supplements: [],
+      });
       const svc = makeService(db, async () => ({}));
       try {
-        await svc.applyAnalysisRun(runId, { decisions: [{ requirementTitle: '相悖块C', resolution: 'merge' }] }, 'human');
+        await svc.applyAnalysisRun(
+          runId,
+          { decisions: [{ requirementTitle: '相悖块C', resolution: 'merge' }] },
+          'human',
+        );
         expect.unreachable('应当抛 VALIDATION_ERROR');
       } catch (e) {
         expect((e as DomainError).code).toBe('VALIDATION_ERROR');
@@ -4124,7 +4972,14 @@ Expected: 新增用例 FAIL(`applyAnalysisRun is not a function`),Task 13 用例
 
 ```ts
 import { and, desc, eq, inArray, ne } from 'drizzle-orm';
-import { analysisRuns, materials, projects, requirementPoints, requirements, tasks } from '../db/schema.js';
+import {
+  analysisRuns,
+  materials,
+  projects,
+  requirementPoints,
+  requirements,
+  tasks,
+} from '../db/schema.js';
 import type { ShipmateDb, ShipmateTx } from '../db/database.js';
 import type { DraftPoint, DraftRequirement } from '../llm/schema.js';
 ```
@@ -4132,7 +4987,8 @@ import type { DraftPoint, DraftRequirement } from '../llm/schema.js';
 并在类外追加类型导出:
 
 ```ts
-export type ConflictResolution = 'merge' | 'create_anyway' | 'skip' | 'use_new' | 'use_old' | 'keep_both';
+export type ConflictResolution =
+  'merge' | 'create_anyway' | 'skip' | 'use_new' | 'use_old' | 'keep_both';
 
 export type ConflictDecision = {
   requirementTitle: string;
@@ -4170,11 +5026,13 @@ git commit -m "feat(core): applyAnalysisRun 草稿应用——重复并入/相�
 ### Task 15: createCore 门面、README 与全量回归
 
 **Files:**
+
 - Modify: `packages/core/src/index.ts`(createCore + 全量导出)
 - Create: `packages/core/README.md`
 - Modify: `docs/design.md`(兜底核对 §3.2 `draft_result` 行、§3.7 `delete` 枚举、§8 apply 入参 title 定位注记——若前面任务尚未同步)
 
 **Interfaces:**
+
 - Consumes: 前面全部任务。
 - Produces:
   - `function createCore(db: ShipmateDb): { groups: GroupService; projects: ProjectService; requirements: RequirementService; points: RequirementPointService; tasks: TaskService; audit: AuditService; settings: SettingsService; analysis: AnalysisService }`
@@ -4202,13 +5060,34 @@ export const CORE_VERSION = '0.1.0' as const;
 export { DomainError, type DomainErrorCode } from './errors.js';
 export type { Actor } from './types.js';
 export { newId } from './db/id.js';
-export { createDatabase, withDb, loadDotEnv, schema, type ShipmateDb, type ShipmateTx } from './db/database.js';
+export {
+  createDatabase,
+  withDb,
+  loadDotEnv,
+  schema,
+  type ShipmateDb,
+  type ShipmateTx,
+} from './db/database.js';
 export * from './db/schema.js';
 
 // 服务
-export { GroupService, type CreateGroupInput, type GroupSummary, type GroupWithCount } from './services/group.service.js';
-export { ProjectService, type CreateProjectInput, type ProjectSummary } from './services/project.service.js';
-export { RequirementService, computeOverdue, type CreateRequirementInput, type RequirementWithOverdue } from './services/requirement.service.js';
+export {
+  GroupService,
+  type CreateGroupInput,
+  type GroupSummary,
+  type GroupWithCount,
+} from './services/group.service.js';
+export {
+  ProjectService,
+  type CreateProjectInput,
+  type ProjectSummary,
+} from './services/project.service.js';
+export {
+  RequirementService,
+  computeOverdue,
+  type CreateRequirementInput,
+  type RequirementWithOverdue,
+} from './services/requirement.service.js';
 export {
   RequirementPointService,
   type PointAction,
@@ -4252,7 +5131,7 @@ export type ShipmateCore = ReturnType<typeof createCore>;
 
 `packages/core/README.md`:
 
-```markdown
+````markdown
 # @shipmate/core
 
 ShipMate 领域核心:需求全生命周期模型、状态机、实质修改联动、变更审计、AI 素材分析编排。
@@ -4270,10 +5149,14 @@ const core = createCore(db);
 
 const project = await core.projects.createProject({ name: '示例项目' }, 'human');
 const run = await core.analysis.createAnalysisRun({ projectId: project.id }, 'human');
-await core.analysis.addMaterial({ runId: run.id, type: 'paste_text', rawContent: '素材...' }, 'human');
+await core.analysis.addMaterial(
+  { runId: run.id, type: 'paste_text', rawContent: '素材...' },
+  'human',
+);
 await core.analysis.startAnalysis(run.id, 'human');
 await core.analysis.applyAnalysisRun(run.id, undefined, 'human'); // 默认全选,冲突按默认处置
 ```
+````
 
 ## 约定
 
@@ -4289,7 +5172,8 @@ pnpm -C packages/core test          # 全量测试(远程测试库 + 事务回�
 pnpm -C packages/core typecheck
 pnpm -C packages/core db:generate   # schema 变更后重新生成 migrations
 ```
-```
+
+````
 
 - [ ] **Step 3: 全量回归**
 
@@ -4313,7 +5197,7 @@ Expected: 全部无错误(format 有告警就 `pnpm format` 后重查)。
 ```bash
 git add packages/core/src/index.ts packages/core/README.md docs/design.md
 git commit -m "feat(core): createCore 统一门面、README 与 spec 注记回写"
-```
+````
 
 ---
 
@@ -4323,4 +5207,3 @@ git commit -m "feat(core): createCore 统一门面、README 与 spec 注记回�
 - **D7 变更落实**:drizzle pg-core / bigint 时间戳 / jsonb / node-postgres 全异步 / 同库事务回滚测试(用户无 CREATEDB 权限,已用 DBX 实测确认)/ 凭据仅 `.env`(gitignore 已验证生效)。
 - **占位扫描**:全任务无 TBD/TODO;Task 3 `loadDotEnv` 为最终形态(readFileSync 顶部导入,ESM 兼容)。
 - **类型一致性**:`writeChangeLog(tx, input)` 全部调用点签名一致且 await;`ShipmateTx` 贯穿事务(嵌套自动 SAVEPOINT);`DraftPoint/DraftRequirement` Task 12 定义、Task 14 消费;`computeOverdue` Task 7 定义、Task 6 过渡函数随之删除;`withDb` Task 3 定义、Task 4-14 测试消费;`getLlmConfig` 为 async(Task 11 定义,Task 13 工厂 await)。
-
