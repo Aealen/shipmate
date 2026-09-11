@@ -63,12 +63,8 @@
           "name": "analysis_runs_project_id_projects_id_fk",
           "tableFrom": "analysis_runs",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -297,12 +293,8 @@
           "name": "materials_project_id_projects_id_fk",
           "tableFrom": "materials",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -310,12 +302,8 @@
           "name": "materials_analysis_run_id_analysis_runs_id_fk",
           "tableFrom": "materials",
           "tableTo": "analysis_runs",
-          "columnsFrom": [
-            "analysis_run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["analysis_run_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -379,12 +367,8 @@
           "name": "projects_group_id_groups_id_fk",
           "tableFrom": "projects",
           "tableTo": "groups",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["group_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -515,12 +499,8 @@
           "name": "requirement_points_requirement_id_requirements_id_fk",
           "tableFrom": "requirement_points",
           "tableTo": "requirements",
-          "columnsFrom": [
-            "requirement_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -608,12 +588,8 @@
           "name": "requirements_project_id_projects_id_fk",
           "tableFrom": "requirements",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -757,12 +733,8 @@
           "name": "tasks_requirement_point_id_requirement_points_id_fk",
           "tableFrom": "tasks",
           "tableTo": "requirement_points",
-          "columnsFrom": [
-            "requirement_point_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_point_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

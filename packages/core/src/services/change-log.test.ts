@@ -32,10 +32,22 @@ describe('writeChangeLog', () => {
   it('同一事务多次写入互相可见(供联动场景)', async () => {
     await withDb(async (db) => {
       await db.transaction(async (tx) => {
-        await writeChangeLog(tx, { entityType: 'task', entityId: 't1', changeType: 'status_change', after: {}, actor: 'mcp:claude-code' });
+        await writeChangeLog(tx, {
+          entityType: 'task',
+          entityId: 't1',
+          changeType: 'status_change',
+          after: {},
+          actor: 'mcp:claude-code',
+        });
         const seen = await tx.select().from(changeLogs);
         expect(seen).toHaveLength(1);
-        await writeChangeLog(tx, { entityType: 'task', entityId: 't1', changeType: 'linkage_impact', after: {}, actor: 'human' });
+        await writeChangeLog(tx, {
+          entityType: 'task',
+          entityId: 't1',
+          changeType: 'linkage_impact',
+          after: {},
+          actor: 'human',
+        });
       });
       expect(await db.select().from(changeLogs)).toHaveLength(2);
     });

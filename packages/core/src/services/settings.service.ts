@@ -14,7 +14,8 @@ export class SettingsService {
 
   async getOrThrow<T = unknown>(key: string, message?: string): Promise<T> {
     const v = await this.get<T>(key);
-    if (v === undefined) throw new DomainError('VALIDATION_ERROR', message ?? `配置项 ${key} 未设置`);
+    if (v === undefined)
+      throw new DomainError('VALIDATION_ERROR', message ?? `配置项 ${key} 未设置`);
     return v;
   }
 
@@ -22,7 +23,10 @@ export class SettingsService {
     await this.db
       .insert(settings)
       .values({ key, value: value as never, updatedAt: Date.now() })
-      .onConflictDoUpdate({ target: settings.key, set: { value: value as never, updatedAt: Date.now() } });
+      .onConflictDoUpdate({
+        target: settings.key,
+        set: { value: value as never, updatedAt: Date.now() },
+      });
   }
 
   async setMany(entries: Record<string, unknown>): Promise<void> {
@@ -40,7 +44,10 @@ export class SettingsService {
     const apiKey = await this.get<string>('llm.api_key');
     const model = await this.get<string>('llm.model');
     if (!baseUrl || !apiKey || !model) {
-      throw new DomainError('VALIDATION_ERROR', '模型未配置:请在「设置 → 模型设置」完成 base_url / api_key / model');
+      throw new DomainError(
+        'VALIDATION_ERROR',
+        '模型未配置:请在「设置 → 模型设置」完成 base_url / api_key / model',
+      );
     }
     return {
       baseUrl,

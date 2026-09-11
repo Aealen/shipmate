@@ -9,13 +9,17 @@ import { writeChangeLog } from './change-log.js';
 const DAY_MS = 86_400_000;
 
 /** spec §4.3 超期判定:计算态,不落库 */
-export function computeOverdue(req: RequirementRow, now = Date.now()): { overdue: boolean; overdueDays: number; dueSoon: boolean } {
+export function computeOverdue(
+  req: RequirementRow,
+  now = Date.now(),
+): { overdue: boolean; overdueDays: number; dueSoon: boolean } {
   if (!req.planDueAt || (req.status !== 'draft' && req.status !== 'confirmed')) {
     return { overdue: false, overdueDays: 0, dueSoon: false };
   }
   const diffMs = now - req.planDueAt;
   // 超期天数对正的已超期毫秒数向下取整(3.5 天 → 3 天),不能先对带符号值取整再取反
-  if (diffMs > 0) return { overdue: true, overdueDays: Math.floor(diffMs / DAY_MS), dueSoon: false };
+  if (diffMs > 0)
+    return { overdue: true, overdueDays: Math.floor(diffMs / DAY_MS), dueSoon: false };
   const daysLeft = Math.floor(-diffMs / DAY_MS);
   return { overdue: false, overdueDays: 0, dueSoon: daysLeft <= 3 };
 }
@@ -38,7 +42,11 @@ export interface UpdateRequirementInput {
   planDueAt?: number | null;
 }
 
-export type RequirementWithOverdue = RequirementRow & { overdue: boolean; overdueDays: number; dueSoon: boolean };
+export type RequirementWithOverdue = RequirementRow & {
+  overdue: boolean;
+  overdueDays: number;
+  dueSoon: boolean;
+};
 
 const PRIORITIES = ['P0', 'P1', 'P2', 'P3'] as const;
 
@@ -72,12 +80,22 @@ export class RequirementService {
         })
         .returning();
       const row = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'requirement', entityId: row.id, changeType: 'create', after: row, actor });
+      await writeChangeLog(tx, {
+        entityType: 'requirement',
+        entityId: row.id,
+        changeType: 'create',
+        after: row,
+        actor,
+      });
       return row;
     });
   }
 
-  async updateRequirement(id: string, input: UpdateRequirementInput, actor: Actor): Promise<RequirementRow> {
+  async updateRequirement(
+    id: string,
+    input: UpdateRequirementInput,
+    actor: Actor,
+  ): Promise<RequirementRow> {
     return this.db.transaction(async (tx) => {
       const before = (await tx.select().from(requirements).where(eq(requirements.id, id)))[0];
       if (!before) throw new DomainError('NOT_FOUND', `需求 ${id} 不存在`);
@@ -96,7 +114,8 @@ export class RequirementService {
         contentChanged = true;
       }
       if (input.priority !== undefined && input.priority !== before.priority) {
-        if (!PRIORITIES.includes(input.priority)) throw new DomainError('VALIDATION_ERROR', `非法优先级 ${input.priority}`);
+        if (!PRIORITIES.includes(input.priority))
+          throw new DomainError('VALIDATION_ERROR', `非法优先级 ${input.priority}`);
         patch.priority = input.priority;
         contentChanged = true;
       }
@@ -117,21 +136,42 @@ export class RequirementService {
 
       if (!contentChanged && !statusChanged) return before;
 
-      const after = (await tx.update(requirements).set(patch).where(eq(requirements.id, id)).returning())[0]!;
+      const after = (
+        await tx.update(requirements).set(patch).where(eq(requirements.id, id)).returning()
+      )[0]!;
       if (contentChanged) {
-        await writeChangeLog(tx, { entityType: 'requirement', entityId: id, changeType: 'update', before, after, actor });
+        await writeChangeLog(tx, {
+          entityType: 'requirement',
+          entityId: id,
+          changeType: 'update',
+          before,
+          after,
+          actor,
+        });
       }
       if (statusChanged) {
-        await writeChangeLog(tx, { entityType: 'requirement', entityId: id, changeType: 'status_change', before, after, actor });
+        await writeChangeLog(tx, {
+          entityType: 'requirement',
+          entityId: id,
+          changeType: 'status_change',
+          before,
+          after,
+          actor,
+        });
       }
       return after;
     });
   }
 
-  async listRequirements(projectId: string, filter?: { status?: string; priority?: string; overdue?: boolean }): Promise<RequirementWithOverdue[]> {
+  async listRequirements(
+    projectId: string,
+    filter?: { status?: string; priority?: string; overdue?: boolean },
+  ): Promise<RequirementWithOverdue[]> {
     const conds = [eq(requirements.projectId, projectId)];
-    if (filter?.status) conds.push(eq(requirements.status, filter.status as RequirementRow['status']));
-    if (filter?.priority) conds.push(eq(requirements.priority, filter.priority as RequirementRow['priority']));
+    if (filter?.status)
+      conds.push(eq(requirements.status, filter.status as RequirementRow['status']));
+    if (filter?.priority)
+      conds.push(eq(requirements.priority, filter.priority as RequirementRow['priority']));
     const rows = await this.db
       .select()
       .from(requirements)

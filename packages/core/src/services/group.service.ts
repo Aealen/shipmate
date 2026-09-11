@@ -40,10 +40,23 @@ export class GroupService {
       const now = Date.now();
       const rows = await tx
         .insert(groups)
-        .values({ id: newId(), name, description: input.description ?? null, sortOrder: 0, createdAt: now, updatedAt: now })
+        .values({
+          id: newId(),
+          name,
+          description: input.description ?? null,
+          sortOrder: 0,
+          createdAt: now,
+          updatedAt: now,
+        })
         .returning();
       const row = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'group', entityId: row.id, changeType: 'create', after: row, actor });
+      await writeChangeLog(tx, {
+        entityType: 'group',
+        entityId: row.id,
+        changeType: 'create',
+        after: row,
+        actor,
+      });
       return row;
     });
   }
@@ -63,7 +76,14 @@ export class GroupService {
         .where(eq(groups.id, id))
         .returning();
       const after = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'group', entityId: id, changeType: 'update', before, after, actor });
+      await writeChangeLog(tx, {
+        entityType: 'group',
+        entityId: id,
+        changeType: 'update',
+        before,
+        after,
+        actor,
+      });
       return after;
     });
   }
@@ -74,7 +94,10 @@ export class GroupService {
       if (!before) throw new DomainError('NOT_FOUND', `分组 ${id} 不存在`);
       const owned = await tx.select().from(projects).where(eq(projects.groupId, id));
       if (owned.length > 0) {
-        throw new DomainError('GROUP_NOT_EMPTY', `分组「${before.name}」下仍有 ${owned.length} 个项目,禁止删除`);
+        throw new DomainError(
+          'GROUP_NOT_EMPTY',
+          `分组「${before.name}」下仍有 ${owned.length} 个项目,禁止删除`,
+        );
       }
       await tx.delete(groups).where(eq(groups.id, id));
       await writeChangeLog(tx, {
@@ -94,7 +117,10 @@ export class GroupService {
     const projs = await this.db.select().from(projects).where(eq(projects.groupId, id));
     const projectSummaries = await Promise.all(
       projs.map(async (p) => {
-        const reqs = await this.db.select().from(requirements).where(eq(requirements.projectId, p.id));
+        const reqs = await this.db
+          .select()
+          .from(requirements)
+          .where(eq(requirements.projectId, p.id));
         return {
           project: p,
           requirementTotal: reqs.length,
@@ -108,6 +134,9 @@ export class GroupService {
   async listGroups(): Promise<GroupWithCount[]> {
     const rows = await this.db.select().from(groups);
     const allProjects = await this.db.select().from(projects);
-    return rows.map((g) => ({ ...g, projectCount: allProjects.filter((p) => p.groupId === g.id).length }));
+    return rows.map((g) => ({
+      ...g,
+      projectCount: allProjects.filter((p) => p.groupId === g.id).length,
+    }));
   }
 }

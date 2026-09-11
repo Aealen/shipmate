@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { withDb, type ShipmateDb } from '../db/database.js';
-import { changeLogs, projects, requirementPoints, requirements, tasks, type TaskRow } from '../db/schema.js';
+import {
+  changeLogs,
+  projects,
+  requirementPoints,
+  requirements,
+  type TaskRow,
+} from '../db/schema.js';
 import { newId } from '../db/id.js';
 import { DomainError } from '../errors.js';
 import { TaskService } from './task.service.js';
@@ -14,9 +20,43 @@ async function forceTaskStatus(db: ShipmateDb, taskId: string, status: TaskRow['
 /** 测试辅助:建一条需求点链(project → requirement → point),返回 pointId */
 async function seedPoint(db: ShipmateDb): Promise<string> {
   const now = Date.now();
-  const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
-  const r = (await db.insert(requirements).values({ id: newId(), projectId: p.id, title: 'R', status: 'draft', priority: 'P2', createdAt: now, updatedAt: now }).returning())[0]!;
-  const pt = (await db.insert(requirementPoints).values({ id: newId(), requirementId: r.id, title: 'PT', status: 'draft', version: 1, sourceMaterialIds: [], evidences: [], origin: 'manual', createdAt: now, updatedAt: now }).returning())[0]!;
+  const p = (
+    await db
+      .insert(projects)
+      .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+      .returning()
+  )[0]!;
+  const r = (
+    await db
+      .insert(requirements)
+      .values({
+        id: newId(),
+        projectId: p.id,
+        title: 'R',
+        status: 'draft',
+        priority: 'P2',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+  )[0]!;
+  const pt = (
+    await db
+      .insert(requirementPoints)
+      .values({
+        id: newId(),
+        requirementId: r.id,
+        title: 'PT',
+        status: 'draft',
+        version: 1,
+        sourceMaterialIds: [],
+        evidences: [],
+        origin: 'manual',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+  )[0]!;
   return pt.id;
 }
 
@@ -88,13 +128,24 @@ describe('TaskService', () => {
       const pointId = await seedPoint(db);
       await svc.createTask({ requirementPointId: pointId, title: 'T1' }, 'human');
       await svc.createTask({ requirementPointId: pointId, title: 'T2', sortOrder: 1 }, 'human');
-      const t3 = await svc.createTask({ requirementPointId: pointId, title: 'T3', sortOrder: 2 }, 'human');
+      const t3 = await svc.createTask(
+        { requirementPointId: pointId, title: 'T3', sortOrder: 2 },
+        'human',
+      );
       await svc.setTaskStatus(t3.id, 'start', 'human');
 
       expect(await svc.listTasks({ requirementPointId: pointId })).toHaveLength(3);
-      expect((await svc.listTasks({ requirementPointId: pointId, status: 'in_progress' })).map((t) => t.title)).toEqual(['T3']);
-      const point = (await db.select().from(requirementPoints).where(eq(requirementPoints.id, pointId)))[0]!;
-      const req = (await db.select().from(requirements).where(eq(requirements.id, point.requirementId)))[0]!;
+      expect(
+        (await svc.listTasks({ requirementPointId: pointId, status: 'in_progress' })).map(
+          (t) => t.title,
+        ),
+      ).toEqual(['T3']);
+      const point = (
+        await db.select().from(requirementPoints).where(eq(requirementPoints.id, pointId))
+      )[0]!;
+      const req = (
+        await db.select().from(requirements).where(eq(requirements.id, point.requirementId))
+      )[0]!;
       expect(await svc.listTasks({ projectId: req.projectId })).toHaveLength(3);
     });
   });

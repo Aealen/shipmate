@@ -9,7 +9,9 @@ import { writeChangeLog } from './change-log.js';
 export type TaskAction = 'start' | 'complete';
 
 /** spec §4.2:合法流转表;needs_reassessment 仅由联动写入与 confirmTaskReassessment 移出 */
-const TASK_TRANSITIONS: Partial<Record<TaskRow['status'], Partial<Record<TaskAction, TaskRow['status']>>>> = {
+const TASK_TRANSITIONS: Partial<
+  Record<TaskRow['status'], Partial<Record<TaskAction, TaskRow['status']>>>
+> = {
   pending: { start: 'in_progress' },
   in_progress: { complete: 'done' },
 };
@@ -40,7 +42,12 @@ export class TaskService {
     const title = input.title?.trim();
     if (!title) throw new DomainError('VALIDATION_ERROR', '任务标题不能为空');
     return this.db.transaction(async (tx) => {
-      const point = (await tx.select().from(requirementPoints).where(eq(requirementPoints.id, input.requirementPointId)))[0];
+      const point = (
+        await tx
+          .select()
+          .from(requirementPoints)
+          .where(eq(requirementPoints.id, input.requirementPointId))
+      )[0];
       if (!point) throw new DomainError('NOT_FOUND', `需求点 ${input.requirementPointId} 不存在`);
       const now = Date.now();
       const rows = await tx
@@ -58,7 +65,13 @@ export class TaskService {
         })
         .returning();
       const row = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'task', entityId: row.id, changeType: 'create', after: row, actor });
+      await writeChangeLog(tx, {
+        entityType: 'task',
+        entityId: row.id,
+        changeType: 'create',
+        after: row,
+        actor,
+      });
       return row;
     });
   }
@@ -84,7 +97,14 @@ export class TaskService {
       }
       if (!changed) return before;
       const after = (await tx.update(tasks).set(patch).where(eq(tasks.id, id)).returning())[0]!;
-      await writeChangeLog(tx, { entityType: 'task', entityId: id, changeType: 'update', before, after, actor });
+      await writeChangeLog(tx, {
+        entityType: 'task',
+        entityId: id,
+        changeType: 'update',
+        before,
+        after,
+        actor,
+      });
       return after;
     });
   }
@@ -95,10 +115,26 @@ export class TaskService {
       if (!before) throw new DomainError('NOT_FOUND', `任务 ${id} 不存在`);
       const next = TASK_TRANSITIONS[before.status]?.[action];
       if (!next) {
-        throw new DomainError('INVALID_STATUS_TRANSITION', `任务不允许从 ${before.status} 经 ${action} 流转`);
+        throw new DomainError(
+          'INVALID_STATUS_TRANSITION',
+          `任务不允许从 ${before.status} 经 ${action} 流转`,
+        );
       }
-      const after = (await tx.update(tasks).set({ status: next, updatedAt: Date.now() }).where(eq(tasks.id, id)).returning())[0]!;
-      await writeChangeLog(tx, { entityType: 'task', entityId: id, changeType: 'status_change', before, after, actor });
+      const after = (
+        await tx
+          .update(tasks)
+          .set({ status: next, updatedAt: Date.now() })
+          .where(eq(tasks.id, id))
+          .returning()
+      )[0]!;
+      await writeChangeLog(tx, {
+        entityType: 'task',
+        entityId: id,
+        changeType: 'status_change',
+        before,
+        after,
+        actor,
+      });
       return after;
     });
   }
@@ -115,13 +151,23 @@ export class TaskService {
       if (pointIds.length === 0) return [];
       const conds = [inArray(tasks.requirementPointId, pointIds)];
       if (filter.status) conds.push(eq(tasks.status, filter.status));
-      if (filter.requirementPointId) conds.push(eq(tasks.requirementPointId, filter.requirementPointId));
-      return this.db.select().from(tasks).where(and(...conds));
+      if (filter.requirementPointId)
+        conds.push(eq(tasks.requirementPointId, filter.requirementPointId));
+      return this.db
+        .select()
+        .from(tasks)
+        .where(and(...conds));
     }
     const conds = [];
-    if (filter.requirementPointId) conds.push(eq(tasks.requirementPointId, filter.requirementPointId));
+    if (filter.requirementPointId)
+      conds.push(eq(tasks.requirementPointId, filter.requirementPointId));
     if (filter.status) conds.push(eq(tasks.status, filter.status));
-    return conds.length ? this.db.select().from(tasks).where(and(...conds)) : this.db.select().from(tasks);
+    return conds.length
+      ? this.db
+          .select()
+          .from(tasks)
+          .where(and(...conds))
+      : this.db.select().from(tasks);
   }
 
   async confirmTaskReassessment(id: string, actor: Actor): Promise<TaskRow> {
@@ -129,9 +175,18 @@ export class TaskService {
       const before = (await tx.select().from(tasks).where(eq(tasks.id, id)))[0];
       if (!before) throw new DomainError('NOT_FOUND', `任务 ${id} 不存在`);
       if (before.status !== 'needs_reassessment') {
-        throw new DomainError('INVALID_STATUS_TRANSITION', `任务当前状态 ${before.status},仅 needs_reassessment 可确认重估`);
+        throw new DomainError(
+          'INVALID_STATUS_TRANSITION',
+          `任务当前状态 ${before.status},仅 needs_reassessment 可确认重估`,
+        );
       }
-      const after = (await tx.update(tasks).set({ status: 'pending', updatedAt: Date.now() }).where(eq(tasks.id, id)).returning())[0]!;
+      const after = (
+        await tx
+          .update(tasks)
+          .set({ status: 'pending', updatedAt: Date.now() })
+          .where(eq(tasks.id, id))
+          .returning()
+      )[0]!;
       await writeChangeLog(tx, {
         entityType: 'task',
         entityId: id,

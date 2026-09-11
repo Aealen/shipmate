@@ -8,7 +8,10 @@ import { ProjectService } from './project.service.js';
 
 async function seedGroup(db: ShipmateDb): Promise<string> {
   const now = Date.now();
-  const rows = await db.insert(groups).values({ id: newId(), name: 'G', sortOrder: 0, createdAt: now, updatedAt: now }).returning();
+  const rows = await db
+    .insert(groups)
+    .values({ id: newId(), name: 'G', sortOrder: 0, createdAt: now, updatedAt: now })
+    .returning();
   return rows[0]!.id;
 }
 
@@ -51,16 +54,48 @@ describe('ProjectService', () => {
       const now = Date.now();
       const day = 86_400_000;
       const mkReq = (status: 'draft' | 'confirmed' | 'done', planDueAt?: number) =>
-        db.insert(requirements)
-          .values({ id: newId(), projectId: p.id, title: `R-${Math.random()}`, status, priority: 'P2', planDueAt: planDueAt ?? null, createdAt: now, updatedAt: now })
+        db
+          .insert(requirements)
+          .values({
+            id: newId(),
+            projectId: p.id,
+            title: `R-${Math.random()}`,
+            status,
+            priority: 'P2',
+            planDueAt: planDueAt ?? null,
+            createdAt: now,
+            updatedAt: now,
+          })
           .returning();
       const doneReq = await mkReq('done');
       await mkReq('confirmed', now - 10 * day); // 超期
       await mkReq('draft');
       const now2 = Date.now();
       await db.insert(requirementPoints).values([
-        { id: newId(), requirementId: doneReq[0]!.id, title: 't1', status: 'done', version: 1, sourceMaterialIds: [], evidences: [], origin: 'manual', createdAt: now2, updatedAt: now2 },
-        { id: newId(), requirementId: doneReq[0]!.id, title: 't2', status: 'developing', version: 1, sourceMaterialIds: [], evidences: [], origin: 'manual', createdAt: now2, updatedAt: now2 },
+        {
+          id: newId(),
+          requirementId: doneReq[0]!.id,
+          title: 't1',
+          status: 'done',
+          version: 1,
+          sourceMaterialIds: [],
+          evidences: [],
+          origin: 'manual',
+          createdAt: now2,
+          updatedAt: now2,
+        },
+        {
+          id: newId(),
+          requirementId: doneReq[0]!.id,
+          title: 't2',
+          status: 'developing',
+          version: 1,
+          sourceMaterialIds: [],
+          evidences: [],
+          origin: 'manual',
+          createdAt: now2,
+          updatedAt: now2,
+        },
       ]);
 
       const s = await svc.getProject(p.id);

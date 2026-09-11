@@ -23,13 +23,19 @@ export function buildSystemPrompt(): string {
 5. 只输出 JSON,不输出任何其他文字`;
 }
 
-export function buildUserPrompt(materials: MaterialRow[], existing: ExistingRequirementDigest[]): string {
+export function buildUserPrompt(
+  materials: MaterialRow[],
+  existing: ExistingRequirementDigest[],
+): string {
   const materialSection = materials
     .map((m) => `【素材 ${m.id}】(${m.type}${m.title ? `,${m.title}` : ''})\n${m.rawContent}`)
     .join('\n\n');
   const existingSection = existing.length
     ? existing
-        .map((r) => `- ${r.title}(${r.id}):${r.summary || '(无摘要)'} | 需求点:${r.points.map((p) => p.title).join('、') || '无'}`)
+        .map(
+          (r) =>
+            `- ${r.title}(${r.id}):${r.summary || '(无摘要)'} | 需求点:${r.points.map((p) => p.title).join('、') || '无'}`,
+        )
         .join('\n')
     : '(暂无已有需求)';
   return `## 已有需求(用于判断重复/相悖/补充)\n${existingSection}\n\n## 待分析素材\n${materialSection}`;

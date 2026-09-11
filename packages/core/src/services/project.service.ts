@@ -53,10 +53,24 @@ export class ProjectService {
       const now = Date.now();
       const rows = await tx
         .insert(projects)
-        .values({ id: newId(), groupId: input.groupId ?? null, name, description: input.description ?? null, status: 'active', createdAt: now, updatedAt: now })
+        .values({
+          id: newId(),
+          groupId: input.groupId ?? null,
+          name,
+          description: input.description ?? null,
+          status: 'active',
+          createdAt: now,
+          updatedAt: now,
+        })
         .returning();
       const row = rows[0]!;
-      await writeChangeLog(tx, { entityType: 'project', entityId: row.id, changeType: 'create', after: row, actor });
+      await writeChangeLog(tx, {
+        entityType: 'project',
+        entityId: row.id,
+        changeType: 'create',
+        after: row,
+        actor,
+      });
       return row;
     });
   }
@@ -81,12 +95,28 @@ export class ProjectService {
         patch.status = input.status;
         statusChanged = true;
       }
-      const after = (await tx.update(projects).set(patch).where(eq(projects.id, id)).returning())[0]!;
+      const after = (
+        await tx.update(projects).set(patch).where(eq(projects.id, id)).returning()
+      )[0]!;
       if (nameChanged) {
-        await writeChangeLog(tx, { entityType: 'project', entityId: id, changeType: 'update', before, after, actor });
+        await writeChangeLog(tx, {
+          entityType: 'project',
+          entityId: id,
+          changeType: 'update',
+          before,
+          after,
+          actor,
+        });
       }
       if (statusChanged) {
-        await writeChangeLog(tx, { entityType: 'project', entityId: id, changeType: 'status_change', before, after, actor });
+        await writeChangeLog(tx, {
+          entityType: 'project',
+          entityId: id,
+          changeType: 'status_change',
+          before,
+          after,
+          actor,
+        });
       }
       return after;
     });
@@ -99,10 +129,18 @@ export class ProjectService {
     const reqs = await this.db.select().from(requirements).where(eq(requirements.projectId, id));
     const reqIds = reqs.map((r) => r.id);
     const points = reqIds.length
-      ? await this.db.select().from(requirementPoints).where(inArray(requirementPoints.requirementId, reqIds))
+      ? await this.db
+          .select()
+          .from(requirementPoints)
+          .where(inArray(requirementPoints.requirementId, reqIds))
       : [];
 
-    const pointStatusCounts: Record<PointStatusKey, number> = { draft: 0, confirmed: 0, developing: 0, done: 0 };
+    const pointStatusCounts: Record<PointStatusKey, number> = {
+      draft: 0,
+      confirmed: 0,
+      developing: 0,
+      done: 0,
+    };
     for (const pt of points) pointStatusCounts[pt.status] += 1;
 
     const entityIds = [id, ...reqIds, ...points.map((pt) => pt.id)];

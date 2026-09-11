@@ -24,7 +24,12 @@ describe('GroupService', () => {
       expect(g.sortOrder).toBe(0);
       const log = await db.select().from(changeLogs).where(eq(changeLogs.entityId, g.id));
       expect(log).toHaveLength(1);
-      expect(log[0]).toMatchObject({ entityType: 'group', changeType: 'create', actor: 'human', beforeSnapshot: null });
+      expect(log[0]).toMatchObject({
+        entityType: 'group',
+        changeType: 'create',
+        actor: 'human',
+        beforeSnapshot: null,
+      });
     });
   });
 

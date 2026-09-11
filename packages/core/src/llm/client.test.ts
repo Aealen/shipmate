@@ -64,7 +64,13 @@ describe('analysisResultSchema', () => {
       requirements: [
         {
           title: '导出',
-          points: [{ title: 'CSV', confidence: 0.9, evidences: [{ material_id: 'm1', quote: '要能导出' }] }],
+          points: [
+            {
+              title: 'CSV',
+              confidence: 0.9,
+              evidences: [{ material_id: 'm1', quote: '要能导出' }],
+            },
+          ],
         },
       ],
       supplements: [],
@@ -75,15 +81,33 @@ describe('analysisResultSchema', () => {
 
   it('拒绝缺 evidences 字段的点', () => {
     expect(() =>
-      analysisResultSchema.parse({ requirements: [{ title: 'x', points: [{ title: 'p', confidence: 1 }] }], supplements: [] }),
+      analysisResultSchema.parse({
+        requirements: [{ title: 'x', points: [{ title: 'p', confidence: 1 }] }],
+        supplements: [],
+      }),
     ).toThrow();
   });
 });
 
 describe('buildUserPrompt', () => {
   it('拼接素材与已有需求摘要', () => {
-    const mat = { id: 'm1', type: 'paste_text', title: '会议记录', rawContent: '要能导出 CSV' } as MaterialRow;
-    const text = buildUserPrompt([mat], [{ id: 'r1', title: '已有需求', summary: '摘要', points: [{ id: 'p1', title: '点A', status: 'done' }] }]);
+    const mat = {
+      id: 'm1',
+      type: 'paste_text',
+      title: '会议记录',
+      rawContent: '要能导出 CSV',
+    } as MaterialRow;
+    const text = buildUserPrompt(
+      [mat],
+      [
+        {
+          id: 'r1',
+          title: '已有需求',
+          summary: '摘要',
+          points: [{ id: 'p1', title: '点A', status: 'done' }],
+        },
+      ],
+    );
     expect(text).toContain('【素材 m1】');
     expect(text).toContain('要能导出 CSV');
     expect(text).toContain('已有需求');

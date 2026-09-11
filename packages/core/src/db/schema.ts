@@ -100,7 +100,10 @@ export const requirementPoints = pgTable(
     createdAt: bigint('created_at', { mode: 'number' }).notNull(),
     updatedAt: bigint('updated_at', { mode: 'number' }).notNull(),
   },
-  (t) => [index('idx_points_req').on(t.requirementId), index('idx_points_req_status').on(t.requirementId, t.status)],
+  (t) => [
+    index('idx_points_req').on(t.requirementId),
+    index('idx_points_req_status').on(t.requirementId, t.status),
+  ],
 );
 
 // §3.6 tasks
@@ -113,7 +116,9 @@ export const tasks = pgTable(
       .references(() => requirementPoints.id),
     title: text('title').notNull(),
     description: text('description'),
-    status: text('status', { enum: ['pending', 'in_progress', 'done', 'needs_reassessment'] }).notNull(),
+    status: text('status', {
+      enum: ['pending', 'in_progress', 'done', 'needs_reassessment'],
+    }).notNull(),
     sortOrder: integer('sort_order').notNull(),
     commitRefs: jsonb('commit_refs').$type<string[]>(),
     createdAt: bigint('created_at', { mode: 'number' }).notNull(),
@@ -131,7 +136,15 @@ export const changeLogs = pgTable(
   {
     id: text('id').primaryKey(),
     entityType: text('entity_type', {
-      enum: ['group', 'project', 'analysis_run', 'material', 'requirement', 'requirement_point', 'task'],
+      enum: [
+        'group',
+        'project',
+        'analysis_run',
+        'material',
+        'requirement',
+        'requirement_point',
+        'task',
+      ],
     }).notNull(),
     entityId: text('entity_id').notNull(),
     changeType: text('change_type', {

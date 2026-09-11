@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { withDb } from '../db/database.js';
-import { projects } from '../db/schema.js';
-import { newId } from '../db/id.js';
 import { DomainError } from '../errors.js';
 import { GroupService } from './group.service.js';
 import { ProjectService } from './project.service.js';
@@ -44,7 +42,8 @@ describe('AuditService', () => {
       const audit = new AuditService(db);
       const projectsSvc = new ProjectService(db);
       const p = await projectsSvc.createProject({ name: 'P' }, 'human');
-      for (let i = 0; i < 5; i++) await projectsSvc.updateProject(p.id, { name: `名字${i}` }, 'human');
+      for (let i = 0; i < 5; i++)
+        await projectsSvc.updateProject(p.id, { name: `名字${i}` }, 'human');
 
       const rows = await audit.getChangeLog({ entityType: 'project', entityId: p.id, limit: 3 });
       expect(rows).toHaveLength(3);

@@ -58,7 +58,11 @@ describe('SettingsService', () => {
   it('ensureSeededFromEnv:仅首播种,settings 已有值不覆盖', async () => {
     await withDb(async (db) => {
       const svc = new SettingsService(db);
-      const env = { SHIPMATE_LLM_BASE_URL: 'https://env.example.com/v1', SHIPMATE_LLM_API_KEY: 'sk-env', SHIPMATE_LLM_MODEL: 'm1' };
+      const env = {
+        SHIPMATE_LLM_BASE_URL: 'https://env.example.com/v1',
+        SHIPMATE_LLM_API_KEY: 'sk-env',
+        SHIPMATE_LLM_MODEL: 'm1',
+      };
       await svc.ensureSeededFromEnv(env as NodeJS.ProcessEnv);
       expect(await svc.get('llm.base_url')).toBe('https://env.example.com/v1');
       // settings 已有值时 env 不覆盖

@@ -10,16 +10,51 @@ import { RequirementPointService } from './requirement-point.service.js';
 /** 测试辅助:建 project → requirement 链,返回 requirementId */
 async function seedRequirement(db: ShipmateDb): Promise<string> {
   const now = Date.now();
-  const p = (await db.insert(projects).values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now }).returning())[0]!;
-  const r = (await db.insert(requirements).values({ id: newId(), projectId: p.id, title: 'R', status: 'draft', priority: 'P2', createdAt: now, updatedAt: now }).returning())[0]!;
+  const p = (
+    await db
+      .insert(projects)
+      .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+      .returning()
+  )[0]!;
+  const r = (
+    await db
+      .insert(requirements)
+      .values({
+        id: newId(),
+        projectId: p.id,
+        title: 'R',
+        status: 'draft',
+        priority: 'P2',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+  )[0]!;
   return r.id;
 }
 
-async function seedPoint(db: ShipmateDb, reqId: string, status: 'draft' | 'confirmed' | 'developing' | 'done', version = 1): Promise<string> {
+async function seedPoint(
+  db: ShipmateDb,
+  reqId: string,
+  status: 'draft' | 'confirmed' | 'developing' | 'done',
+  version = 1,
+): Promise<string> {
   const now = Date.now();
   const rows = await db
     .insert(requirementPoints)
-    .values({ id: newId(), requirementId: reqId, title: '点', description: '描述', status, version, sourceMaterialIds: [], evidences: [], origin: 'manual', createdAt: now, updatedAt: now })
+    .values({
+      id: newId(),
+      requirementId: reqId,
+      title: '点',
+      description: '描述',
+      status,
+      version,
+      sourceMaterialIds: [],
+      evidences: [],
+      origin: 'manual',
+      createdAt: now,
+      updatedAt: now,
+    })
     .returning();
   return rows[0]!.id;
 }
@@ -30,10 +65,15 @@ describe('RequirementPointService 状态机', () => {
       const svc = new RequirementPointService(db);
       const reqId = await seedRequirement(db);
       const id = await seedPoint(db, reqId, 'draft');
-      expect((await svc.setRequirementPointStatus(id, 'confirm', 'human')).status).toBe('confirmed');
+      expect((await svc.setRequirementPointStatus(id, 'confirm', 'human')).status).toBe(
+        'confirmed',
+      );
       expect((await svc.setRequirementPointStatus(id, 'start', 'human')).status).toBe('developing');
       expect((await svc.setRequirementPointStatus(id, 'complete', 'human')).status).toBe('done');
-      const logs = await db.select().from(changeLogs).where(eq(changeLogs.changeType, 'status_change'));
+      const logs = await db
+        .select()
+        .from(changeLogs)
+        .where(eq(changeLogs.changeType, 'status_change'));
       expect(logs).toHaveLength(3);
     });
   });
@@ -73,14 +113,20 @@ describe('实质修改联动(spec §5.3)', () => {
       const t2 = await taskSvc.createTask({ requirementPointId: id, title: 'T2' }, 'human');
       await taskSvc.setTaskStatus(t2.id, 'start', 'human');
 
-      const result = await svc.updateRequirementPoint(id, { title: '改后的点', reason: '口径变化' }, 'human');
+      const result = await svc.updateRequirementPoint(
+        id,
+        { title: '改后的点', reason: '口径变化' },
+        'human',
+      );
       expect(result.affectedTaskCount).toBe(2);
       expect(result.point).toMatchObject({ status: 'confirmed', version: 4, title: '改后的点' });
 
       const allTasks = await taskSvc.listTasks({ requirementPointId: id });
       expect(allTasks.every((t) => t.status === 'needs_reassessment')).toBe(true);
 
-      const kinds = (await db.select().from(changeLogs).where(eq(changeLogs.entityId, id))).map((l) => l.changeType);
+      const kinds = (await db.select().from(changeLogs).where(eq(changeLogs.entityId, id))).map(
+        (l) => l.changeType,
+      );
       expect(kinds).toContain('update');
       expect(kinds).toContain('linkage_impact');
       const taskLogs = await db.select().from(changeLogs).where(eq(changeLogs.entityType, 'task'));
@@ -119,7 +165,10 @@ describe('实质修改联动(spec §5.3)', () => {
       const id = await seedPoint(db, reqId, 'confirmed', 7);
       const beforeLogs = (await db.select().from(changeLogs)).length;
       const result = await svc.updateRequirementPoint(id, { title: '点' }, 'human');
-      expect(result).toEqual({ point: expect.objectContaining({ version: 7 }), affectedTaskCount: 0 });
+      expect(result).toEqual({
+        point: expect.objectContaining({ version: 7 }),
+        affectedTaskCount: 0,
+      });
       expect(await db.select().from(changeLogs)).toHaveLength(beforeLogs);
     });
   });
@@ -133,9 +182,9 @@ describe('实质修改联动(spec §5.3)', () => {
       const t = await taskSvc.createTask({ requirementPointId: id, title: 'T' }, 'human');
       await svc.updateRequirementPoint(id, { title: '改一' }, 'human');
       await svc.updateRequirementPoint(id, { title: '改二' }, 'human');
-      const taskStatusLogs = (await db.select().from(changeLogs).where(eq(changeLogs.entityId, t.id))).filter(
-        (l) => l.changeType === 'status_change',
-      );
+      const taskStatusLogs = (
+        await db.select().from(changeLogs).where(eq(changeLogs.entityId, t.id))
+      ).filter((l) => l.changeType === 'status_change');
       expect(taskStatusLogs).toHaveLength(1); // 第二轮因已是 needs_reassessment 被跳过
     });
   });
@@ -182,7 +231,9 @@ describe('查询', () => {
       await seedPoint(db, reqId, 'draft');
       await seedPoint(db, reqId, 'done');
       expect(await svc.listRequirementPoints({ requirementId: reqId })).toHaveLength(2);
-      expect(await svc.listRequirementPoints({ requirementId: reqId, status: 'done' })).toHaveLength(1);
+      expect(
+        await svc.listRequirementPoints({ requirementId: reqId, status: 'done' }),
+      ).toHaveLength(1);
       const req = (await db.select().from(requirements).where(eq(requirements.id, reqId)))[0]!;
       expect(await svc.listRequirementPoints({ projectId: req.projectId })).toHaveLength(2);
     });
