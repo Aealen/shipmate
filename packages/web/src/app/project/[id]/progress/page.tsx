@@ -103,8 +103,15 @@ export default async function ProgressPage({ params }: { params: Promise<{ id: s
             </div>
             <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1">
               {POINT_DIST.map(({ key, color }) => (
-                <span key={key} className="inline-flex items-center gap-1.5 text-xs text-text-secondary">
-                  <span className="h-2 w-2 rounded-full" style={{ background: color }} aria-hidden />
+                <span
+                  key={key}
+                  className="inline-flex items-center gap-1.5 text-xs text-text-secondary"
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: color }}
+                    aria-hidden
+                  />
                   {t(`pointStatus.${key}`)}
                   <span className="tabular-nums text-text-muted">{dist[key] ?? 0}</span>
                 </span>
@@ -135,10 +142,15 @@ export default async function ProgressPage({ params }: { params: Promise<{ id: s
                   className="rounded-xl border border-border bg-surface p-4 transition-colors duration-[120ms] hover:border-accent"
                 >
                   <div className="flex items-center gap-2">
-                    <span className={`shrink-0 text-xs font-semibold ${PRIORITY_COLORS[req.priority] ?? ''}`}>
+                    <span
+                      className={`shrink-0 text-xs font-semibold ${PRIORITY_COLORS[req.priority] ?? ''}`}
+                    >
                       {req.priority}
                     </span>
-                    <h3 className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary" title={req.title}>
+                    <h3
+                      className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary"
+                      title={req.title}
+                    >
                       {req.title}
                     </h3>
                     <StatusBadge status={req.status} size="sm" />
@@ -165,7 +177,9 @@ export default async function ProgressPage({ params }: { params: Promise<{ id: s
                   </div>
                   {(start || due) && (
                     <p className="mt-1.5 text-[11px] text-text-muted">
-                      {start && due ? t('planPeriod', { start, end: due }) : t('planDueOnly', { end: due ?? start ?? '' })}
+                      {start && due
+                        ? t('planPeriod', { start, end: due })
+                        : t('planDueOnly', { end: due ?? start ?? '' })}
                     </p>
                   )}
                 </article>
@@ -192,7 +206,10 @@ export default async function ProgressPage({ params }: { params: Promise<{ id: s
                   key={req.id}
                   className="flex items-center gap-2 rounded-lg bg-[color-mix(in_srgb,var(--danger)_8%,transparent)] px-3 py-2"
                 >
-                  <span className="min-w-0 flex-1 truncate text-sm text-text-primary" title={req.title}>
+                  <span
+                    className="min-w-0 flex-1 truncate text-sm text-text-primary"
+                    title={req.title}
+                  >
                     {req.title}
                   </span>
                   <span className="shrink-0 text-xs tabular-nums text-text-muted">
@@ -220,7 +237,10 @@ export default async function ProgressPage({ params }: { params: Promise<{ id: s
                   key={req.id}
                   className="flex items-center gap-2 rounded-lg bg-[color-mix(in_srgb,var(--warning)_10%,transparent)] px-3 py-2"
                 >
-                  <span className="min-w-0 flex-1 truncate text-sm text-text-primary" title={req.title}>
+                  <span
+                    className="min-w-0 flex-1 truncate text-sm text-text-primary"
+                    title={req.title}
+                  >
                     {req.title}
                   </span>
                   <span className="shrink-0 text-xs tabular-nums text-text-muted">

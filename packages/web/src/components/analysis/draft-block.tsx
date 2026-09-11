@@ -109,7 +109,11 @@ export function newBlockState(defaultTitle: string, defaultPointTitle: string): 
 // ---------- 小控件 ----------
 
 /** 勾选角标:圆形,选中 accent 底白勾 */
-function CheckBadge({ checked, onToggle, label }: {
+function CheckBadge({
+  checked,
+  onToggle,
+  label,
+}: {
   checked: boolean;
   onToggle: () => void;
   label: string;
@@ -144,7 +148,11 @@ function CheckBadge({ checked, onToggle, label }: {
 }
 
 /** 裁决选项 pill:选中 accent 实底 */
-function Pill({ active, onClick, children }: {
+function Pill({
+  active,
+  onClick,
+  children,
+}: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
@@ -216,7 +224,12 @@ const POINT_INPUT =
 
 // ---------- 需求点行(只读 / 内联编辑) ----------
 
-function PointRow({ point, onChange, onDelete, deleteLabel }: {
+function PointRow({
+  point,
+  onChange,
+  onDelete,
+  deleteLabel,
+}: {
   point: DraftPointState;
   onChange: (patch: Partial<DraftPointState>) => void;
   onDelete: () => void;
@@ -281,10 +294,22 @@ function PointRow({ point, onChange, onDelete, deleteLabel }: {
         )}
       </div>
       <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity duration-[120ms] group-hover:opacity-100">
-        <button type="button" onClick={() => setEditing(true)} aria-label={t('block.edit')} title={t('block.edit')} className={ICON_BTN}>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          aria-label={t('block.edit')}
+          title={t('block.edit')}
+          className={ICON_BTN}
+        >
           <PencilIcon />
         </button>
-        <button type="button" onClick={onDelete} aria-label={deleteLabel} title={deleteLabel} className={ICON_BTN}>
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label={deleteLabel}
+          title={deleteLabel}
+          className={ICON_BTN}
+        >
           <TrashIcon />
         </button>
       </div>
@@ -294,7 +319,11 @@ function PointRow({ point, onChange, onDelete, deleteLabel }: {
 
 // ---------- 草稿需求块(新 / duplicate / contradiction 共用) ----------
 
-export function DraftBlock({ block, onChange, onDelete }: {
+export function DraftBlock({
+  block,
+  onChange,
+  onDelete,
+}: {
   block: DraftBlockState;
   onChange: (patch: Partial<DraftBlockState>) => void;
   onDelete: () => void;
@@ -328,7 +357,13 @@ export function DraftBlock({ block, onChange, onDelete }: {
             className="w-full rounded-md bg-transparent text-xs text-text-secondary outline-none transition-colors placeholder:text-text-muted hover:bg-surface-2/60 focus:bg-surface-2/60"
           />
         </div>
-        <button type="button" onClick={onDelete} aria-label={t('block.delete')} title={t('block.delete')} className={ICON_BTN}>
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label={t('block.delete')}
+          title={t('block.delete')}
+          className={ICON_BTN}
+        >
           <TrashIcon />
         </button>
       </div>
@@ -345,10 +380,16 @@ export function DraftBlock({ block, onChange, onDelete }: {
             </p>
           )}
           <div className="mt-2 flex gap-1.5">
-            <Pill active={block.resolution !== 'create_anyway'} onClick={() => onChange({ resolution: 'merge' })}>
+            <Pill
+              active={block.resolution !== 'create_anyway'}
+              onClick={() => onChange({ resolution: 'merge' })}
+            >
               {t('resolution.merge')}
             </Pill>
-            <Pill active={block.resolution === 'create_anyway'} onClick={() => onChange({ resolution: 'create_anyway' })}>
+            <Pill
+              active={block.resolution === 'create_anyway'}
+              onClick={() => onChange({ resolution: 'create_anyway' })}
+            >
               {t('resolution.createAnyway')}
             </Pill>
           </div>
@@ -359,7 +400,9 @@ export function DraftBlock({ block, onChange, onDelete }: {
         <div className="mt-3 rounded-lg bg-[color-mix(in_srgb,var(--danger)_8%,transparent)] p-2.5">
           <div className="flex items-center gap-1.5 text-xs font-medium text-danger">
             <BoltIcon />
-            <span className="min-w-0 truncate">{t('conflict.contradiction', { target: c.targetTitle })}</span>
+            <span className="min-w-0 truncate">
+              {t('conflict.contradiction', { target: c.targetTitle })}
+            </span>
           </div>
           {c.reason && (
             <p className="mt-1 text-[11px] text-text-muted">
@@ -368,7 +411,11 @@ export function DraftBlock({ block, onChange, onDelete }: {
           )}
           <div className="mt-2 flex gap-1.5">
             {(['use_new', 'use_old', 'keep_both'] as const).map((r) => (
-              <Pill key={r} active={block.resolution === r} onClick={() => onChange({ resolution: r })}>
+              <Pill
+                key={r}
+                active={block.resolution === r}
+                onClick={() => onChange({ resolution: r })}
+              >
                 {t(`resolution.${r}`)}
               </Pill>
             ))}
@@ -387,7 +434,9 @@ export function DraftBlock({ block, onChange, onDelete }: {
               point={p}
               deleteLabel={t('block.delete')}
               onChange={(patch) =>
-                onChange({ points: block.points.map((q) => (q.key === p.key ? { ...q, ...patch } : q)) })
+                onChange({
+                  points: block.points.map((q) => (q.key === p.key ? { ...q, ...patch } : q)),
+                })
               }
               onDelete={() => onChange({ points: block.points.filter((q) => q.key !== p.key) })}
             />
@@ -396,7 +445,9 @@ export function DraftBlock({ block, onChange, onDelete }: {
         <button
           type="button"
           onClick={() =>
-            onChange({ points: [...block.points, toPointState({ title: t('block.newPointDefaultTitle') })] })
+            onChange({
+              points: [...block.points, toPointState({ title: t('block.newPointDefaultTitle') })],
+            })
           }
           className="mt-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-accent transition-colors hover:bg-accent-dim"
         >
@@ -409,7 +460,12 @@ export function DraftBlock({ block, onChange, onDelete }: {
 
 // ---------- 补充块(带出完整已有需求) ----------
 
-export function SupplementBlock({ supp, existing, onChange, onDelete }: {
+export function SupplementBlock({
+  supp,
+  existing,
+  onChange,
+  onDelete,
+}: {
   supp: SupplementBlockState;
   existing?: ExistingRequirementView;
   onChange: (patch: Partial<SupplementBlockState>) => void;
@@ -447,7 +503,13 @@ export function SupplementBlock({ supp, existing, onChange, onDelete }: {
             <p className="mt-1 text-[11px] text-warning">{t('conflict.supplementNewTarget')}</p>
           )}
         </div>
-        <button type="button" onClick={onDelete} aria-label={t('block.delete')} title={t('block.delete')} className={ICON_BTN}>
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label={t('block.delete')}
+          title={t('block.delete')}
+          className={ICON_BTN}
+        >
           <TrashIcon />
         </button>
       </div>
@@ -463,7 +525,9 @@ export function SupplementBlock({ supp, existing, onChange, onDelete }: {
                 key={p.id}
                 className="flex items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 hover:border-border"
               >
-                <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{p.title}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">
+                  {p.title}
+                </span>
                 <StatusBadge status={p.status} size="sm" />
               </li>
             ))}
@@ -482,7 +546,9 @@ export function SupplementBlock({ supp, existing, onChange, onDelete }: {
               point={p}
               deleteLabel={t('block.delete')}
               onChange={(patch) =>
-                onChange({ points: supp.points.map((q) => (q.key === p.key ? { ...q, ...patch } : q)) })
+                onChange({
+                  points: supp.points.map((q) => (q.key === p.key ? { ...q, ...patch } : q)),
+                })
               }
               onDelete={() => onChange({ points: supp.points.filter((q) => q.key !== p.key) })}
             />
@@ -491,7 +557,9 @@ export function SupplementBlock({ supp, existing, onChange, onDelete }: {
         <button
           type="button"
           onClick={() =>
-            onChange({ points: [...supp.points, toPointState({ title: t('block.newPointDefaultTitle') })] })
+            onChange({
+              points: [...supp.points, toPointState({ title: t('block.newPointDefaultTitle') })],
+            })
           }
           className="mt-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-accent transition-colors hover:bg-accent-dim"
         >

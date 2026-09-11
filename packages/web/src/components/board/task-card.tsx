@@ -47,13 +47,20 @@ export function TaskCard({
       draggable
       onDragStart={handleDragStart}
       onDragEnd={onDragEnd}
-      onClick={needsReassess ? () => router.push(`/project/${projectId}/points/${task.requirementPointId}`) : undefined}
+      onClick={
+        needsReassess
+          ? () => router.push(`/project/${projectId}/points/${task.requirementPointId}`)
+          : undefined
+      }
       className={`relative flex cursor-grab flex-col gap-1.5 rounded-lg border border-border bg-surface p-3 shadow-sm transition-all duration-[120ms] active:cursor-grabbing ${
         dragging ? 'scale-[1.02] opacity-60 shadow-xl' : 'hover:border-accent'
       } ${needsReassess ? 'cursor-pointer' : ''}`}
     >
       {needsReassess && (
-        <div className="absolute inset-x-0 top-0 h-[3px] rounded-t-[inherit] bg-danger" aria-hidden />
+        <div
+          className="absolute inset-x-0 top-0 h-[3px] rounded-t-[inherit] bg-danger"
+          aria-hidden
+        />
       )}
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-text-primary">

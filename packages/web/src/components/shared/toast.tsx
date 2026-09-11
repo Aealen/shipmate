@@ -55,13 +55,7 @@ export function ToastHost() {
 }
 
 /** 单条 toast:挂载后顶部滑入(下移复位 + 淡入),到期或点击关闭后移除 */
-function Toast({
-  item,
-  onDismiss,
-}: {
-  item: ToastItem;
-  onDismiss: (id: number) => void;
-}) {
+function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) => void }) {
   const t = useTranslations('shared');
   const [shown, setShown] = useState(false);
 

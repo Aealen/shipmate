@@ -22,7 +22,8 @@ const CHANGE_TYPE_STYLES: Record<ChangeType, string> = {
   create: 'bg-[color-mix(in_srgb,var(--success)_12%,transparent)] text-success',
   update: 'bg-accent-dim text-accent',
   status_change: 'bg-[color-mix(in_srgb,var(--warning)_14%,transparent)] text-warning',
-  linkage_impact: 'bg-[color-mix(in_srgb,var(--ai)_12%,transparent)] text-ai shadow-[0_0_8px_var(--ai)]',
+  linkage_impact:
+    'bg-[color-mix(in_srgb,var(--ai)_12%,transparent)] text-ai shadow-[0_0_8px_var(--ai)]',
   discard: 'bg-[color-mix(in_srgb,var(--draft-gray)_12%,transparent)] text-draft-gray',
   delete: 'bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] text-danger',
 };

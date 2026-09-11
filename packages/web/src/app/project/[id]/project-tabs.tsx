@@ -15,8 +15,16 @@ export function ProjectTabs({ id }: { id: string }) {
 
   const tabs = [
     { key: 'tabOverview', href: base, active: pathname === base },
-    { key: 'tabAnalysis', href: `${base}/analysis`, active: pathname.startsWith(`${base}/analysis`) },
-    { key: 'tabProgress', href: `${base}/progress`, active: pathname.startsWith(`${base}/progress`) },
+    {
+      key: 'tabAnalysis',
+      href: `${base}/analysis`,
+      active: pathname.startsWith(`${base}/analysis`),
+    },
+    {
+      key: 'tabProgress',
+      href: `${base}/progress`,
+      active: pathname.startsWith(`${base}/progress`),
+    },
     { key: 'tabBoard', href: `${base}/board`, active: pathname.startsWith(`${base}/board`) },
     { key: 'tabAudit', href: `${base}/audit`, active: pathname.startsWith(`${base}/audit`) },
   ] as const;

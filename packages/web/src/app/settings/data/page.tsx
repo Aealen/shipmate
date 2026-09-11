@@ -2,9 +2,9 @@ import { getTranslations } from 'next-intl/server';
 import { CopyButton } from '@/components/shared/copy-button';
 
 /** 备份/恢复参考命令(connstring 经环境变量传入,避免明文落配置) */
-const BACKUP_COMMAND = 'pg_dump "$SHIPMATE_DATABASE_URL" --format=custom --file=shipmate-backup.dump';
-const RESTORE_COMMAND =
-  'pg_restore --clean --dbname "$SHIPMATE_DATABASE_URL" shipmate-backup.dump';
+const BACKUP_COMMAND =
+  'pg_dump "$SHIPMATE_DATABASE_URL" --format=custom --file=shipmate-backup.dump';
+const RESTORE_COMMAND = 'pg_restore --clean --dbname "$SHIPMATE_DATABASE_URL" shipmate-backup.dump';
 
 /**
  * P8 数据管理页:备份(pg_dump 参考)/ 导出(MCP 工具)说明 + 危险区置灰占位。

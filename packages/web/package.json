@@ -6,11 +6,12 @@
     "dev": "next dev -p 47610",
     "build": "next build",
     "start": "next start -p 47610",
-    "test": "echo \"(web) 暂无测试,i18n 键比对脚本于 Task 12 加入\" && exit 0",
+    "test": "node scripts/check-i18n.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@shipmate/core": "workspace:*",
+    "@shipmate/mcp": "workspace:^",
     "drizzle-orm": "^0.36.3",
     "next": "^15.3.9",
     "next-intl": "^4.14.3",

@@ -17,7 +17,18 @@ import {
  * 三态:无草稿占位 → 分析中骨架屏(渐变呼吸)→ 草稿块列表(stagger 40ms 淡入)。
  * 顶部工具条:草稿统计 + 已选数 + 「应用」(相悖未裁决或无勾选时禁用)。
  */
-export function DraftPanel({ blocks, supps, existingByTitle, analyzing, applying, applyDisabled, unresolvedCount, onBlocksChange, onSuppsChange, onApply }: {
+export function DraftPanel({
+  blocks,
+  supps,
+  existingByTitle,
+  analyzing,
+  applying,
+  applyDisabled,
+  unresolvedCount,
+  onBlocksChange,
+  onSuppsChange,
+  onApply,
+}: {
   blocks: DraftBlockState[];
   supps: SupplementBlockState[];
   existingByTitle: Map<string, ExistingRequirementView>;
@@ -47,7 +58,9 @@ export function DraftPanel({ blocks, supps, existingByTitle, analyzing, applying
         </div>
         {hasDraft && (
           <div className="flex shrink-0 items-center gap-2.5">
-            <span className="text-xs text-text-muted">{t('selectedCount', { count: selectedCount })}</span>
+            <span className="text-xs text-text-muted">
+              {t('selectedCount', { count: selectedCount })}
+            </span>
             <button
               type="button"
               onClick={onApply}
@@ -74,7 +87,10 @@ export function DraftPanel({ blocks, supps, existingByTitle, analyzing, applying
             <Skeleton lines={4} />
           </div>
         ) : !hasDraft ? (
-          <EmptyState title={t('resultPlaceholderTitle')} description={t('resultPlaceholderDesc')} />
+          <EmptyState
+            title={t('resultPlaceholderTitle')}
+            description={t('resultPlaceholderDesc')}
+          />
         ) : (
           <div className="space-y-3">
             {blocks.map((b, i) => (
@@ -107,7 +123,10 @@ export function DraftPanel({ blocks, supps, existingByTitle, analyzing, applying
             <button
               type="button"
               onClick={() =>
-                onBlocksChange([...blocks, newBlockState(t('block.newDefaultTitle'), t('block.newPointDefaultTitle'))])
+                onBlocksChange([
+                  ...blocks,
+                  newBlockState(t('block.newDefaultTitle'), t('block.newPointDefaultTitle')),
+                ])
               }
               className="flex h-11 w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border text-sm text-text-secondary transition-colors duration-[120ms] hover:border-accent hover:text-accent"
             >

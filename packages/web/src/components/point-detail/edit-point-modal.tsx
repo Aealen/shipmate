@@ -48,8 +48,7 @@ export function EditPointModal({
 
   // 联动预览:与 core 的 substantive 判定同构(trim 标题、描述原文比较)
   const trimmedTitle = title.trim();
-  const substantive =
-    trimmedTitle !== point.title || description !== (point.description ?? '');
+  const substantive = trimmedTitle !== point.title || description !== (point.description ?? '');
   const willRollback = substantive && (point.status === 'developing' || point.status === 'done');
   const affectedTaskCount = substantive
     ? tasks.filter((task) => task.status !== 'needs_reassessment').length
@@ -118,9 +117,7 @@ export function EditPointModal({
             rows={2}
             maxLength={500}
             placeholder={t('reasonPlaceholder')}
-            className={`mt-1 resize-none ${inputClass} ${
-              reason.trim() ? '' : 'border-danger/50'
-            }`}
+            className={`mt-1 resize-none ${inputClass} ${reason.trim() ? '' : 'border-danger/50'}`}
           />
         </div>
 
@@ -183,11 +180,7 @@ function PreviewLine({
   tone?: 'warning' | 'danger';
 }) {
   const color =
-    tone === 'warning'
-      ? 'text-warning'
-      : tone === 'danger'
-        ? 'text-danger'
-        : 'text-text-secondary';
+    tone === 'warning' ? 'text-warning' : tone === 'danger' ? 'text-danger' : 'text-text-secondary';
   return (
     <li className={`flex items-start gap-1.5 ${color}`}>
       <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-current" />

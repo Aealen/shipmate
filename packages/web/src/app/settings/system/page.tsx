@@ -34,7 +34,10 @@ export default async function SystemSettingsPage() {
       <section className="rounded-xl border border-border bg-surface p-5 transition-colors duration-[120ms] hover:border-accent">
         <dl className="divide-y divide-border">
           {rows.map((row) => (
-            <div key={row.label} className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0">
+            <div
+              key={row.label}
+              className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
+            >
               <dt className="shrink-0 text-xs text-text-muted">{row.label}</dt>
               <dd className="min-w-0 truncate font-mono text-xs text-text-primary">{row.value}</dd>
             </div>

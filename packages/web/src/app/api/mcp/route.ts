@@ -1,28 +1,48 @@
-import { NextResponse } from 'next/server';
+import { createMcpHttpHandler } from '@shipmate/mcp';
+import { getShipmate } from '@/lib/core';
 
 /**
- * MCP HTTP 端点(spec §10::47610/api/mcp)—— 占位实现。
+ * MCP HTTP 端点(spec §10 :47610/api/mcp)—— 挂载 @shipmate/mcp 的 streamable handler。
  *
- * 待 packages/mcp(Plan 2,另一工程师并行实现中)发布 `createMcpHttpHandler(db)` 导出后接通:
- *   import { createMcpHttpHandler } from '@shipmate/mcp';
- *   import { getShipmate } from '@/lib/core';
- *   const shipmate = await getShipmate();
- *   export const POST  = createMcpHttpHandler(shipmate.db);
- *   export const GET   = createMcpHttpHandler(shipmate.db);
- *   export const DELETE = createMcpHttpHandler(shipmate.db);
- *
- * 在那之前,本路由返回 503,不阻塞 web 基建。
+ * - 会话状态(sessions Map)保存在 handler 闭包内,与 Next.js route module 同生命周期;
+ *   故 handler 仅构造一次,经 Promise 缓存。
+ * - force-dynamic:禁止 build 时静态求值 GET(DB 未起时 build 会失败)。
+ * - DB/env 未就绪时 getShipmate() 抛错,这里转 JSON-RPC 500(失败不缓存,可重试)。
  */
-const NOT_READY = { error: 'MCP 服务尚未接入:等待 @shipmate/mcp 包就绪' };
+export const dynamic = 'force-dynamic';
 
-export async function POST() {
-  return NextResponse.json(NOT_READY, { status: 503 });
+let handlerPromise: Promise<(request: Request) => Promise<Response>> | undefined;
+
+function getHandler() {
+  handlerPromise ??= getShipmate()
+    .then((shipmate) => createMcpHttpHandler(shipmate.db))
+    .catch((e) => {
+      handlerPromise = undefined;
+      throw e;
+    });
+  return handlerPromise;
 }
 
-export async function GET() {
-  return NextResponse.json(NOT_READY, { status: 503 });
+async function dispatch(request: Request): Promise<Response> {
+  try {
+    return await (
+      await getHandler()
+    )(request);
+  } catch (e) {
+    return Response.json(
+      {
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: `MCP 服务不可用:${e instanceof Error ? e.message : String(e)}`,
+        },
+        id: null,
+      },
+      { status: 500 },
+    );
+  }
 }
 
-export async function DELETE() {
-  return NextResponse.json(NOT_READY, { status: 503 });
-}
+export const POST = dispatch;
+export const GET = dispatch;
+export const DELETE = dispatch;

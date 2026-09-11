@@ -31,7 +31,6 @@ const CHANGE_STYLE: Record<ChangeType, { dot: string; badge: string }> = {
   },
 };
 
-
 /** Unix 毫秒 → 'YYYY-MM-DD HH:mm'(本地时区;手工 pad 避免 SSR/浏览器 locale 差异) */
 function formatTime(ms: number): string {
   const d = new Date(ms);
@@ -78,12 +77,16 @@ export function HistoryTimeline({ changeLogs }: { changeLogs: ChangeLogRow[] }) 
             <span
               aria-hidden
               style={
-                isLinkage ? { boxShadow: '0 0 6px 1px color-mix(in srgb, var(--ai) 55%, transparent)' } : undefined
+                isLinkage
+                  ? { boxShadow: '0 0 6px 1px color-mix(in srgb, var(--ai) 55%, transparent)' }
+                  : undefined
               }
               className={`absolute -left-[26px] top-1 h-2.5 w-2.5 rounded-full ring-4 ring-surface ${style.dot}`}
             />
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${style.badge}`}>
+              <span
+                className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${style.badge}`}
+              >
                 {t(`changeType.${log.changeType}`)}
               </span>
               {title && <span className="text-sm text-text-primary">{title}</span>}

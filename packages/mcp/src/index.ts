@@ -7,6 +7,7 @@ import { registerPointTools } from './tools/points.js';
 import { registerTaskTools } from './tools/tasks.js';
 import { registerAnalysisTools } from './tools/analysis.js';
 import { registerAuditTools } from './tools/audit.js';
+export { createMcpHttpHandler } from './http.js';
 
 /** actor 由服务器构造时确定:stdio 固定 mcp:claude-code;HTTP 按 clientInfo.name 推导 */
 export function createMcpServer(db: ShipmateDb, actor: Actor): McpServer {

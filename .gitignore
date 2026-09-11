@@ -6,3 +6,6 @@ dist/
 .env.local
 *.tsbuildinfo
 .codegraph/
+
+# Playwright MCP 会话截图(调试遗留,不入库)
+.playwright-mcp/

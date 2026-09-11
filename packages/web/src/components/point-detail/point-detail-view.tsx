@@ -17,7 +17,10 @@ import { TasksPanel } from './tasks-panel';
  * developing 可完工;done 无可流转动作(core 侧兜底 INVALID_STATUS_TRANSITION)。
  */
 const NEXT_TRANSITION: Partial<
-  Record<BadgeStatus, { action: 'confirm' | 'start' | 'complete'; labelKey: string; next: BadgeStatus }>
+  Record<
+    BadgeStatus,
+    { action: 'confirm' | 'start' | 'complete'; labelKey: string; next: BadgeStatus }
+  >
 > = {
   draft: { action: 'confirm', labelKey: 'confirm', next: 'confirmed' },
   confirmed: { action: 'start', labelKey: 'start', next: 'developing' },

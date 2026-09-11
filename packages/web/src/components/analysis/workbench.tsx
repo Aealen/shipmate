@@ -4,11 +4,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCallback, useMemo, useState } from 'react';
-import type {
-  AnalysisResult,
-  AnalysisRunDetail,
-  MaterialRow,
-} from '@shipmate/core';
+import type { AnalysisResult, AnalysisRunDetail, MaterialRow } from '@shipmate/core';
 import {
   addMaterialAction,
   applyAnalysisRunAction,
@@ -72,7 +68,12 @@ function blocksFromDraft(draft: AnalysisResult): DraftBlockState[] {
       : null,
     resolution: r.conflict?.type === 'duplicate' ? ('merge' as const) : null,
     points: r.points.map((p) =>
-      toPointState({ title: p.title, description: p.description, confidence: p.confidence, evidences: p.evidences }),
+      toPointState({
+        title: p.title,
+        description: p.description,
+        confidence: p.confidence,
+        evidences: p.evidences,
+      }),
     ),
   }));
 }
@@ -83,7 +84,12 @@ function suppsFromDraft(draft: AnalysisResult): SupplementBlockState[] {
     selected: true,
     targetTitle: s.target_requirement_title,
     points: s.points.map((p) =>
-      toPointState({ title: p.title, description: p.description, confidence: p.confidence, evidences: p.evidences }),
+      toPointState({
+        title: p.title,
+        description: p.description,
+        confidence: p.confidence,
+        evidences: p.evidences,
+      }),
     ),
   }));
 }
@@ -98,7 +104,9 @@ function RunStatusBadge({ status }: { status: RunStatus }) {
         ? 'bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] text-danger'
         : 'bg-[color-mix(in_srgb,var(--text-muted)_12%,transparent)] text-text-muted';
   return (
-    <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
+    <span
+      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}
+    >
       {t(`batch.${status}`)}
     </span>
   );
@@ -110,7 +118,11 @@ function RunStatusBadge({ status }: { status: RunStatus }) {
  * 避免空批次垃圾数据);「应用」前把编辑后的完整草稿写回 Run,再走 core
  * applyAnalysisRun(勾选 + duplicate/contradiction 裁决)落库。
  */
-export function AnalysisWorkbench({ projectId, run, existingRequirements }: {
+export function AnalysisWorkbench({
+  projectId,
+  run,
+  existingRequirements,
+}: {
   projectId: string;
   run: AnalysisRunDetail | null;
   existingRequirements: ExistingRequirementView[];
@@ -165,7 +177,11 @@ export function AnalysisWorkbench({ projectId, run, existingRequirements }: {
   }, [runId, projectId]);
 
   const handleAddMaterial = useCallback(
-    async (input: { type: MaterialRow['type']; title: string; rawContent: string }): Promise<boolean> => {
+    async (input: {
+      type: MaterialRow['type'];
+      title: string;
+      rawContent: string;
+    }): Promise<boolean> => {
       const id = await ensureRun();
       if (!id) return false;
       const res = await addMaterialAction({
@@ -338,10 +354,17 @@ export function AnalysisWorkbench({ projectId, run, existingRequirements }: {
         />
       </div>
 
-      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title={t('applyConfirmTitle')}>
+      <Modal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title={t('applyConfirmTitle')}
+      >
         <p className="text-sm text-text-secondary">{t('applyConfirmBody')}</p>
         <p className="mt-2 text-xs text-text-muted">
-          {t('applyConfirmStat', { requirements: selectedBlocks.length, supplements: selectedSupps.length })}
+          {t('applyConfirmStat', {
+            requirements: selectedBlocks.length,
+            supplements: selectedSupps.length,
+          })}
         </p>
         <div className="mt-4 flex justify-end gap-2">
           <button

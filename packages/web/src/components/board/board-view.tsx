@@ -135,7 +135,9 @@ export function BoardView({
               <div className="mb-1.5 h-[3px] shrink-0 rounded-full bg-danger" aria-hidden />
             )}
             <header className="flex items-center justify-between px-1.5 pb-2 pt-1">
-              <span className="text-xs font-medium text-text-secondary">{t(`column.${status}`)}</span>
+              <span className="text-xs font-medium text-text-secondary">
+                {t(`column.${status}`)}
+              </span>
               <span className="text-xs tabular-nums text-text-muted">{cards.length}</span>
             </header>
             <div
@@ -179,9 +181,7 @@ export function BoardView({
         taskId={reassessTask?.id ?? null}
         taskTitle={reassessTask?.title ?? ''}
         pointId={reassessTask?.requirementPointId ?? null}
-        pointTitle={
-          reassessTask ? pointTitles[reassessTask.requirementPointId] : undefined
-        }
+        pointTitle={reassessTask ? pointTitles[reassessTask.requirementPointId] : undefined}
         projectId={projectId}
         onClose={() => setReassessTask(null)}
       />

@@ -28,12 +28,22 @@ const FIELD_INPUT =
  * P3c 左栏:本批素材列表 + 底部「新增素材」边框区 + 最底「开始分析」。
  * 写操作经 workbench 下发的回调(onAdd/onStart),本组件只管表单与展示。
  */
-export function MaterialPanel({ materials, runStatus, analyzing, onStart, onAdd }: {
+export function MaterialPanel({
+  materials,
+  runStatus,
+  analyzing,
+  onStart,
+  onAdd,
+}: {
   materials: MaterialRow[];
   runStatus: 'pending' | 'done' | 'failed' | null;
   analyzing: boolean;
   onStart: () => void;
-  onAdd: (input: { type: MaterialRow['type']; title: string; rawContent: string }) => Promise<boolean>;
+  onAdd: (input: {
+    type: MaterialRow['type'];
+    title: string;
+    rawContent: string;
+  }) => Promise<boolean>;
 }) {
   const t = useTranslations('analysis');
   const [type, setType] = useState<MaterialRow['type']>('paste_text');
@@ -57,7 +67,9 @@ export function MaterialPanel({ materials, runStatus, analyzing, onStart, onAdd 
     <section className="flex min-h-0 w-[380px] shrink-0 flex-col rounded-xl border border-border bg-surface">
       <header className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold text-text-primary">{t('materialSection')}</h2>
-        <span className="text-xs text-text-muted">{t('materialCount', { count: materials.length })}</span>
+        <span className="text-xs text-text-muted">
+          {t('materialCount', { count: materials.length })}
+        </span>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -66,7 +78,10 @@ export function MaterialPanel({ materials, runStatus, analyzing, onStart, onAdd 
         ) : (
           <ul className="space-y-2">
             {materials.map((m) => (
-              <li key={m.id} className="rounded-lg border border-border p-3 transition-colors duration-[120ms] hover:border-accent">
+              <li
+                key={m.id}
+                className="rounded-lg border border-border p-3 transition-colors duration-[120ms] hover:border-accent"
+              >
                 <div className="flex items-center gap-2">
                   <span className="inline-flex shrink-0 items-center rounded-full bg-accent-dim px-2 py-0.5 text-[11px] font-medium text-accent">
                     {t(`materialType.${m.type}`)}

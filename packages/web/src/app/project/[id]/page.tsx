@@ -9,11 +9,7 @@ import { StatCard } from '@/components/shared/stat-card';
  * P2 概览:统计卡(需求完成度/超期数)+ 需求点状态分布 + 最近变更时间线。
  * 时间线:linkage_impact 徽章微光警示;条目顶部滑入 180ms(spec §14)。
  */
-export default async function ProjectOverviewPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function ProjectOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const t = await getTranslations('project');
   const locale = await getLocale();
@@ -21,8 +17,13 @@ export default async function ProjectOverviewPage({
   const summary = await getProject(id).catch(() => null);
   if (!summary) notFound();
 
-  const { requirementTotal, requirementDone, overdueRequirementCount, pointStatusCounts, recentChanges } =
-    summary;
+  const {
+    requirementTotal,
+    requirementDone,
+    overdueRequirementCount,
+    pointStatusCounts,
+    recentChanges,
+  } = summary;
   const pointTotal = Object.values(pointStatusCounts).reduce((a, b) => a + b, 0);
 
   const fmt = new Intl.DateTimeFormat(locale, {
@@ -49,7 +50,11 @@ export default async function ProjectOverviewPage({
       <div className="grid gap-4 sm:grid-cols-2">
         <StatCard
           label={t('statRequirementProgress')}
-          value={requirementTotal > 0 ? `${Math.round((requirementDone / requirementTotal) * 100)}%` : '—'}
+          value={
+            requirementTotal > 0
+              ? `${Math.round((requirementDone / requirementTotal) * 100)}%`
+              : '—'
+          }
           hint={
             requirementTotal > 0
               ? t('statRequirementProgressHint', { done: requirementDone, total: requirementTotal })

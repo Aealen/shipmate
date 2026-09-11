@@ -25,10 +25,13 @@ export function TasksPanel({ tasks }: { tasks: TaskRow[] }) {
   if (tasks.length === 0) {
     return <p className="text-sm text-text-muted">{t('tasksEmpty')}</p>;
   }
-  return <ul className="divide-y divide-border">{tasks.map((task) => (
-      <TaskRowItem key={task.id} task={task} />
-    ))}
-  </ul>;
+  return (
+    <ul className="divide-y divide-border">
+      {tasks.map((task) => (
+        <TaskRowItem key={task.id} task={task} />
+      ))}
+    </ul>
+  );
 }
 
 function TaskRowItem({ task }: { task: TaskRow }) {
@@ -86,11 +89,7 @@ function TaskRowItem({ task }: { task: TaskRow }) {
         )}
       </li>
 
-      <Modal
-        open={target !== null}
-        onClose={() => setTarget(null)}
-        title={t('reassessTitle')}
-      >
+      <Modal open={target !== null} onClose={() => setTarget(null)} title={t('reassessTitle')}>
         {target && (
           <div className="space-y-3">
             <p className="text-sm text-text-secondary">{t('reassessDesc')}</p>

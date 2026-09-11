@@ -76,21 +76,15 @@ const SIZE_STYLES: Record<BadgeSize, string> = {
  * 通用状态徽章:圆点 + 状态名,颜色按计划配色表映射。
  * 状态文案走 shared.badge.* 翻译键。
  */
-export function StatusBadge({
-  status,
-  size = 'md',
-}: {
-  status: BadgeStatus;
-  size?: BadgeSize;
-}) {
+export function StatusBadge({ status, size = 'md' }: { status: BadgeStatus; size?: BadgeSize }) {
   const t = useTranslations('shared');
   const s = STATUS_STYLES[status];
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-full py-0.5 font-medium ${SIZE_STYLES[size]} ${s.badge}`}
+      className={`inline-flex shrink-0 items-center rounded-full py-0.5 font-medium transition-colors duration-[150ms] ${SIZE_STYLES[size]} ${s.badge}`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+      <span className={`h-1.5 w-1.5 rounded-full transition-colors duration-[150ms] ${s.dot}`} />
       {t(`badge.${status}`)}
     </span>
   );
