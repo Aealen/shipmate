@@ -11,7 +11,8 @@ async function main(): Promise<void> {
   const shortIds = [...counts.keys()].filter((k) => k.length < 30);
   console.log(`change_logs 总 ${logs.length} 条;短 id:${JSON.stringify(shortIds)}`);
 
-  for (const id of shortIds) await db.delete(schema.changeLogs).where(eq(schema.changeLogs.entityId, id));
+  for (const id of shortIds)
+    await db.delete(schema.changeLogs).where(eq(schema.changeLogs.entityId, id));
 
   const tables = [
     ['projects', schema.projects],

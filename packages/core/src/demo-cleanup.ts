@@ -45,10 +45,16 @@ async function main(): Promise<void> {
     const allEntityIds = [projectIds, reqIds, pointIds, pointTasks.map((t) => t.id)].flat();
     // 补充:分组、分析批次、素材的 create log entityId 不在上述实体链里
     const runIds = (
-      await db.select().from(schema.analysisRuns).where(inArray(schema.analysisRuns.projectId, projectIds))
+      await db
+        .select()
+        .from(schema.analysisRuns)
+        .where(inArray(schema.analysisRuns.projectId, projectIds))
     ).map((r) => r.id);
     const matIds = (
-      await db.select().from(schema.materials).where(inArray(schema.materials.projectId, projectIds))
+      await db
+        .select()
+        .from(schema.materials)
+        .where(inArray(schema.materials.projectId, projectIds))
     ).map((r) => r.id);
     allEntityIds.push(...groupIds, ...runIds, ...matIds);
 
