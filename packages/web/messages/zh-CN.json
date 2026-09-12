@@ -4,9 +4,8 @@
     "loading": "加载中…"
   },
   "home": {
-    "title": "项目",
-    "subtitle": "按分组管理项目,点击卡片进入项目空间",
-    "createProject": "创建项目",
+    "title": "全部项目",
+    "createProject": "新建项目",
     "enterProject": "进入项目",
     "ungrouped": "未分组",
     "groupEmpty": "该分组暂无项目",
@@ -24,7 +23,11 @@
     "submit": "创建",
     "cancel": "取消",
     "submitting": "创建中…",
-    "created": "项目「{name}」已创建"
+    "created": "项目「{name}」已创建",
+    "subtitleStats": "{projects} 个项目 · {groups} 个分组",
+    "projectCount": "{count} 个项目",
+    "groupCreated": "分组「{name}」已创建",
+    "requirementsDonePercent": "{pct}% 需求点完成"
   },
   "project": {
     "tabOverview": "概览",
@@ -36,12 +39,12 @@
     "statRequirementProgress": "需求完成度",
     "statRequirementProgressHint": "{done}/{total} 项需求已完成",
     "statRequirementProgressNone": "暂无需求",
-    "statOverdue": "超期需求数",
+    "statOverdue": "已超期需求",
     "statOverdueHint": "超出计划完成时间的需求数量",
     "pointStatusDistribution": "需求点状态分布",
     "pointStatusTotal": "共 {count} 个需求点",
     "pointStatusEmpty": "还没有需求点,去「需求分析」页开始素材分析",
-    "recentChanges": "最近变更",
+    "recentChanges": "最近动态",
     "recentChangesHint": "展示最近 {count} 条",
     "timelineEmpty": "暂无变更记录",
     "changeType": {
@@ -61,11 +64,22 @@
       "requirement_point": "需求点",
       "task": "任务"
     },
-    "reasonPrefix": "原因:"
+    "reasonPrefix": "原因:",
+    "mcpHint": "⌥ agent 可经 MCP 读写此项目",
+    "overviewLink": "项目概览 ›",
+    "statRequirements": "需求",
+    "statPoints": "需求点",
+    "statConfirmed": "已确认",
+    "statDeveloping": "开发中",
+    "auditLink": "审计 Tab 查看全部 ›"
   },
   "nav": {
     "toggleSidebar": "切换侧栏",
-    "home": "首页",
+    "groups": "分组",
+    "allProjects": "全部项目",
+    "newGroup": "新建分组",
+    "groupNamePlaceholder": "输入分组名称",
+    "create": "创建",
     "ungrouped": "未分组",
     "settings": "设置",
     "mcp": "MCP 接入"
@@ -137,7 +151,11 @@
     "statsActor": "操作者分布",
     "statsEntity": "实体类型分布",
     "statsDaily": "每日变更趋势",
-    "statsEmpty": "暂无数据"
+    "statsEmpty": "暂无数据",
+    "statTotalChanges": "变更总数",
+    "statAiShare": "AI 产出占比",
+    "statLinkages": "联动影响次数",
+    "statAgentOps": "agent 操作数"
   },
   "settings": {
     "nav": {
@@ -181,7 +199,8 @@
       "cliDesc": "在仓库根目录执行:",
       "httpTitle": "HTTP Streamable(远程 / 其他 agent)",
       "httpDesc": "Web 服务运行时在以下端点提供 streamable HTTP 传输:",
-      "actorHint": "审计提示:经该端点的写操作会以 mcp:<clientInfo.name> 记入变更历史;stdio 固定为 mcp:claude-code。"
+      "actorHint": "审计提示:经该端点的写操作会以 mcp:<clientInfo.name> 记入变更历史;stdio 固定为 mcp:claude-code。",
+      "httpRecommended": "推荐"
     },
     "system": {
       "title": "系统信息",
@@ -277,7 +296,7 @@
       "needs_reassessment": "待重估"
     },
     "emptyColumn": "暂无任务,可拖动任务到此列",
-    "confirmReassess": "确认重估",
+    "confirmReassess": "确认重估 · 回到待办",
     "reassessTitle": "重估确认",
     "reassessReasonLabel": "进入重估原因",
     "reassessReasonLoading": "加载中…",
@@ -403,7 +422,7 @@
     "runDrafts": "产出 {count} 项草稿",
     "runsEmptyTitle": "还没有素材分析记录",
     "runsEmptyDesc": "添加素材,让 AI 帮你从原始信息中梳理出需求草稿",
-    "requirementsTitle": "需求列表",
+    "requirementsTitle": "需求产出",
     "requirementCount": "{count} 项需求",
     "reqsEmptyTitle": "还没有需求",
     "reqsEmptyDesc": "完成一次素材分析并应用草稿后,需求会出现在这里",
@@ -422,6 +441,20 @@
     "conflictReasonLabel": "冲突原因",
     "draftSide": "草稿需求点",
     "existingSide": "已有需求点",
-    "noDescription": "无描述"
+    "noDescription": "无描述",
+    "runsSubtitle": "一次分析 = N 条素材 → 产出需求 · 点击记录查看素材与重新分析",
+    "reqsSubtitle": "AI 产出为 draft,确认后进入开发",
+    "runStatusDone": "已分析",
+    "runStatusPending": "待分析",
+    "runStatusFailed": "分析失败",
+    "runMetaDone": "产出 {req} 需求 · {time}",
+    "runMetaPending": "待分析 · {time}",
+    "runMetaFailed": "分析失败 · 可重新分析,不影响其他批次",
+    "viewDetail": "查看详情 ›",
+    "reanalyze": "重新分析",
+    "continueAnalysis": "继续分析",
+    "retryAnalysis": "↻ 重试分析",
+    "pointsReady": "{done}/{total} 需求点就绪",
+    "originAi": "AI 产出"
   }
 }

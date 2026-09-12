@@ -21,92 +21,61 @@ export type BadgeSize = 'sm' | 'md';
  * 计划配色表(Global Constraints):draft=draft-gray、confirmed=accent、
  * developing=warning、done=success、needs_reassessment=danger、failed=danger、
  * pending=text-muted、archived=muted;active 不在表内(分组/项目启用态),
- * 取 success 表示正常活跃。底色用 color-mix 取 token 的 12% 透明度,随主题联动。
+ * 取 success 表示正常活跃。
+ * 形态对齐原型 P2/P3 帧:统一浅灰底(bg-surface-2 ≈ #EEF0F3)小方徽 + 彩色文字,
+ * 不带圆点、不做透明色底。
  */
-const STATUS_STYLES: Record<BadgeStatus, { badge: string; dot: string }> = {
-  draft: {
-    badge: 'bg-[color-mix(in_srgb,var(--draft-gray)_12%,transparent)] text-draft-gray',
-    dot: 'bg-draft-gray',
-  },
-  confirmed: {
-    badge: 'bg-accent-dim text-accent',
-    dot: 'bg-accent',
-  },
-  developing: {
-    badge: 'bg-[color-mix(in_srgb,var(--warning)_14%,transparent)] text-warning',
-    dot: 'bg-warning',
-  },
-  done: {
-    badge: 'bg-[color-mix(in_srgb,var(--success)_12%,transparent)] text-success',
-    dot: 'bg-success',
-  },
-  needs_reassessment: {
-    badge: 'bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] text-danger',
-    dot: 'bg-danger',
-  },
-  failed: {
-    badge: 'bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] text-danger',
-    dot: 'bg-danger',
-  },
-  pending: {
-    badge: 'bg-[color-mix(in_srgb,var(--text-muted)_12%,transparent)] text-text-muted',
-    dot: 'bg-text-muted',
-  },
-  in_progress: {
-    // 任务进行中:计划表无此值,按 developing(开发中)同色系取 warning
-    badge: 'bg-[color-mix(in_srgb,var(--warning)_14%,transparent)] text-warning',
-    dot: 'bg-warning',
-  },
-  archived: {
-    badge: 'bg-[color-mix(in_srgb,var(--text-muted)_12%,transparent)] text-text-muted',
-    dot: 'bg-text-muted',
-  },
-  active: {
-    badge: 'bg-[color-mix(in_srgb,var(--success)_12%,transparent)] text-success',
-    dot: 'bg-success',
-  },
+const STATUS_STYLES: Record<BadgeStatus, string> = {
+  draft: 'text-draft-gray',
+  confirmed: 'text-accent',
+  developing: 'text-warning',
+  done: 'text-success',
+  needs_reassessment: 'text-danger',
+  failed: 'text-danger',
+  pending: 'text-text-muted',
+  in_progress: 'text-warning',
+  archived: 'text-text-muted',
+  active: 'text-success',
 };
 
 const SIZE_STYLES: Record<BadgeSize, string> = {
-  sm: 'gap-1 px-1.5 text-[11px]',
-  md: 'gap-1.5 px-2 text-xs',
+  sm: 'px-[5px] py-[2px] text-[9px]',
+  md: 'px-[6px] py-[2px] text-[10px]',
 };
 
 /**
- * 通用状态徽章:圆点 + 状态名,颜色按计划配色表映射。
+ * 通用状态徽章:浅灰底小方徽 + 状态名,颜色按计划配色表映射。
  * 状态文案走 shared.badge.* 翻译键。
  */
 export function StatusBadge({ status, size = 'md' }: { status: BadgeStatus; size?: BadgeSize }) {
   const t = useTranslations('shared');
-  const s = STATUS_STYLES[status];
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-full py-0.5 font-medium transition-colors duration-[150ms] ${SIZE_STYLES[size]} ${s.badge}`}
+      className={`inline-flex shrink-0 items-center rounded-[4px] bg-surface-2 font-medium leading-none ${SIZE_STYLES[size]} ${STATUS_STYLES[status]}`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full transition-colors duration-[150ms] ${s.dot}`} />
       {t(`badge.${status}`)}
     </span>
   );
 }
 
-/** 超期专属徽章:红底「已超期 N 天」(P3/P5b 超期清单用) */
+/** 超期专属徽章:红底白字「已超期 N 天」(P3/P5b 超期清单用,原型 P3 帧) */
 export function OverdueBadge({ days }: { days: number }) {
   const t = useTranslations('shared');
 
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full bg-danger px-2 py-0.5 text-xs font-medium text-white">
+    <span className="inline-flex shrink-0 items-center rounded-[5px] bg-danger px-2 py-[3px] text-[10px] font-bold leading-none text-white">
       {t('overdueDays', { days })}
     </span>
   );
 }
 
-/** 临期徽章:黄底「即将到期」 */
+/** 临期徽章:黄底白字「即将到期」 */
 export function DueSoonBadge() {
   const t = useTranslations('shared');
 
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full bg-warning px-2 py-0.5 text-xs font-medium text-white">
+    <span className="inline-flex shrink-0 items-center rounded-[5px] bg-warning px-2 py-[3px] text-[10px] font-bold leading-none text-white">
       {t('dueSoon')}
     </span>
   );

@@ -19,28 +19,35 @@ import { setUserLocale } from '@/i18n/locale';
 import { useSidebarMode } from './sidebar-state';
 
 /**
- * 顶栏:常态仅右侧头像;点开下拉(120ms 淡入 + 4px 下移复位):
+ * 顶栏(对齐原型 P1-P7 帧):高 56px,左侧 ⚓ ShipMate Logo(回首页),
+ * 常态右侧仅头像;点开下拉(120ms 淡入 + 4px 下移复位):
  * 用户信息、深色模式开关、中/EN 切换、设置、MCP 接入、退出登录(占位)。
- * 侧栏 hidden 态时左侧出现展开按钮。
+ * 侧栏 hidden 态时 Logo 左侧出现展开按钮。
  */
 export function Topbar() {
   const t = useTranslations('topbar');
   const { mode, setMode } = useSidebarMode();
 
   return (
-    <header className="relative z-40 flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-3">
-      {mode === 'hidden' ? (
-        <button
-          type="button"
-          onClick={() => setMode('expanded')}
-          title={t('expandSidebar')}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-text-secondary hover:bg-surface-2 hover:text-text-primary"
+    <header className="relative z-40 flex h-14 shrink-0 items-center justify-between border-b border-border bg-surface px-6">
+      <div className="flex min-w-0 items-center gap-2">
+        {mode === 'hidden' && (
+          <button
+            type="button"
+            onClick={() => setMode('expanded')}
+            title={t('expandSidebar')}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-surface-2 hover:text-text-primary"
+          >
+            <IconPanelLeft className="h-4.5 w-4.5" />
+          </button>
+        )}
+        <Link
+          href="/"
+          className="truncate text-[16px] font-bold text-text-primary transition-opacity hover:opacity-80"
         >
-          <IconPanelLeft className="h-4.5 w-4.5" />
-        </button>
-      ) : (
-        <span />
-      )}
+          ⚓ ShipMate
+        </Link>
+      </div>
 
       <AvatarMenu />
     </header>
@@ -83,7 +90,7 @@ function AvatarMenu() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white transition-transform hover:opacity-90 active:scale-95"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-xs font-bold text-white transition-transform hover:opacity-90 active:scale-95"
       >
         M
       </button>

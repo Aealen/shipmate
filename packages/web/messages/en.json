@@ -4,8 +4,7 @@
     "loading": "Loading…"
   },
   "home": {
-    "title": "Projects",
-    "subtitle": "Manage projects by group; click a card to enter its workspace",
+    "title": "All Projects",
     "createProject": "New Project",
     "enterProject": "Open project",
     "ungrouped": "Ungrouped",
@@ -24,7 +23,11 @@
     "submit": "Create",
     "cancel": "Cancel",
     "submitting": "Creating…",
-    "created": "Project \"{name}\" created"
+    "created": "Project \"{name}\" created",
+    "subtitleStats": "{projects} projects · {groups} groups",
+    "projectCount": "{count} projects",
+    "groupCreated": "Group \"{name}\" created",
+    "requirementsDonePercent": "{pct}% points done"
   },
   "project": {
     "tabOverview": "Overview",
@@ -41,7 +44,7 @@
     "pointStatusDistribution": "Point status distribution",
     "pointStatusTotal": "{count} points in total",
     "pointStatusEmpty": "No requirement points yet — start a material analysis on the Analysis tab",
-    "recentChanges": "Recent changes",
+    "recentChanges": "Recent activity",
     "recentChangesHint": "Showing latest {count}",
     "timelineEmpty": "No changes yet",
     "changeType": {
@@ -61,11 +64,22 @@
       "requirement_point": "Point",
       "task": "Task"
     },
-    "reasonPrefix": "Reason:"
+    "reasonPrefix": "Reason:",
+    "mcpHint": "⌥ agents can read/write this project via MCP",
+    "overviewLink": "Project overview ›",
+    "statRequirements": "Requirements",
+    "statPoints": "Points",
+    "statConfirmed": "Confirmed",
+    "statDeveloping": "In development",
+    "auditLink": "View all in Audit ›"
   },
   "nav": {
     "toggleSidebar": "Toggle sidebar",
-    "home": "Home",
+    "groups": "Groups",
+    "allProjects": "All Projects",
+    "newGroup": "New Group",
+    "groupNamePlaceholder": "Group name",
+    "create": "Create",
     "ungrouped": "Ungrouped",
     "settings": "Settings",
     "mcp": "MCP Access"
@@ -137,7 +151,11 @@
     "statsActor": "Actor distribution",
     "statsEntity": "Entity type distribution",
     "statsDaily": "Daily change trend",
-    "statsEmpty": "No data"
+    "statsEmpty": "No data",
+    "statTotalChanges": "Total changes",
+    "statAiShare": "AI share",
+    "statLinkages": "Linkage impacts",
+    "statAgentOps": "Agent operations"
   },
   "settings": {
     "nav": {
@@ -181,7 +199,8 @@
       "cliDesc": "Run at the repo root:",
       "httpTitle": "HTTP Streamable (remote / other agents)",
       "httpDesc": "While the web service is running, a streamable HTTP transport is served at:",
-      "actorHint": "Audit note: writes through this endpoint are logged as mcp:<clientInfo.name>; stdio always logs as mcp:claude-code."
+      "actorHint": "Audit note: writes through this endpoint are logged as mcp:<clientInfo.name>; stdio always logs as mcp:claude-code.",
+      "httpRecommended": "Recommended"
     },
     "system": {
       "title": "System Info",
@@ -277,7 +296,7 @@
       "needs_reassessment": "Needs Reassessment"
     },
     "emptyColumn": "No tasks yet; drag tasks here",
-    "confirmReassess": "Confirm Reassessment",
+    "confirmReassess": "Confirm reassess · back to pending",
     "reassessTitle": "Confirm Reassessment",
     "reassessReasonLabel": "Reason for reassessment",
     "reassessReasonLoading": "Loading…",
@@ -422,6 +441,20 @@
     "conflictReasonLabel": "Reason",
     "draftSide": "Draft point",
     "existingSide": "Existing point",
-    "noDescription": "No description"
+    "noDescription": "No description",
+    "runsSubtitle": "One run = N materials → requirements · click a card to view & re-run",
+    "reqsSubtitle": "AI output starts as draft; enter development after confirming",
+    "runStatusDone": "Analyzed",
+    "runStatusPending": "Pending",
+    "runStatusFailed": "Failed",
+    "runMetaDone": "{req} requirements · {time}",
+    "runMetaPending": "Pending · {time}",
+    "runMetaFailed": "Failed · retry anytime, other runs unaffected",
+    "viewDetail": "View ›",
+    "reanalyze": "Re-analyze",
+    "continueAnalysis": "Continue",
+    "retryAnalysis": "↻ Retry",
+    "pointsReady": "{done}/{total} points ready",
+    "originAi": "AI"
   }
 }

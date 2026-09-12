@@ -34,11 +34,12 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <NextIntlClientProvider messages={messages}>
             <SidebarModeProvider>
-              <div className="flex h-screen overflow-hidden">
-                <Sidebar overview={overview} />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <Topbar />
-                  <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+              {/* 壳对齐原型:顶栏全宽横跨(Logo 最左),侧栏在顶栏下方 */}
+              <div className="flex h-screen flex-col overflow-hidden">
+                <Topbar />
+                <div className="flex min-h-0 flex-1">
+                  <Sidebar overview={overview} />
+                  <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
                 </div>
               </div>
               <ToastHost />

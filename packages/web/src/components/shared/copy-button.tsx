@@ -51,15 +51,15 @@ export function CopyButton({ text }: { text: string }) {
       type="button"
       onClick={handleCopy}
       disabled={isPending}
-      className={`inline-flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-xs transition-colors duration-[120ms] disabled:opacity-60 ${
+      className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-[6px] px-2.5 text-[11px] leading-none transition-colors duration-[120ms] disabled:opacity-60 ${
         status === 'copied'
-          ? 'border-success/40 bg-success/10 text-success'
+          ? 'bg-success/15 text-success'
           : status === 'failed'
-            ? 'border-danger/40 bg-danger/10 text-danger'
-            : 'border-border text-text-secondary hover:border-accent hover:text-accent'
+            ? 'bg-danger/15 text-danger'
+            : 'bg-surface-2 text-text-secondary hover:text-accent'
       }`}
     >
-      <IconCopy className="h-3.5 w-3.5" />
+      <IconCopy className="h-3 w-3" />
       {label}
     </button>
   );

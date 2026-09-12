@@ -2,23 +2,35 @@
 
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useRef, useState, type ReactNode } from 'react';
-import type { getHomeOverview } from '@/actions/projects';
-import { IconHome, IconPlug, IconSettings, IconShip } from '@/components/icons';
+import { createGroupAction } from '@/actions/projects';
+import { IconPlug, IconSettings } from '@/components/icons';
+import { Modal } from '@/components/shared/modal';
+import { showToast } from '@/components/shared/toast';
 import { useSidebarMode, type SidebarMode } from './sidebar-state';
 
-type Overview = Awaited<ReturnType<typeof getHomeOverview>>;
+type Overview = {
+  groups: Array<{ id: string; name: string; projectCount: number }>;
+  grouped: Array<{ id: string; groupId: string | null }>;
+  ungrouped: Array<{ id: string }>;
+};
 
 /**
- * 侧栏三态壳:expanded(240px)→ collapsed(64px)→ hidden(0)循环,
- * 点击左上角 ShipMate 图标切换。宽度过渡 240ms cubic-bezier(0.2,0,0,1),
- * 文字交叉淡入 150ms(spec §14);collapsed 态 hover 300ms 延迟 tooltip。
+ * 侧栏三态壳(expanded 240px → collapsed 64px → hidden 0 循环,240ms
+ * cubic-bezier(0.2,0,0,1),spec §14)。内容对齐原型 P1 帧:「分组」小标题 +
+ * 全部项目/分组行(右侧纯文字计数)+ 新建分组入口 + 底部设置/MCP;
+ * 点击分组行回首页按分组过滤(/?group=)。
  */
 export function Sidebar({ overview }: { overview: Overview }) {
   const { mode, cycle } = useSidebarMode();
   const t = useTranslations('nav');
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentGroup = pathname === '/' ? (searchParams.get('group') ?? '') : null;
+
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
 
   const widths: Record<SidebarMode, string> = {
     expanded: 'w-60',
@@ -29,74 +41,84 @@ export function Sidebar({ overview }: { overview: Overview }) {
   return (
     <aside
       data-mode={mode}
-      className={`group/sidebar relative flex ${widths[mode]} shrink-0 flex-col overflow-hidden border-r border-border bg-surface transition-[width] duration-[240ms] ease-[cubic-bezier(0.2,0,0,1)]`}
+      className={`group/sidebar relative flex ${widths[mode]} shrink-0 overflow-hidden border-r border-border bg-surface transition-[width] duration-[240ms] ease-[cubic-bezier(0.2,0,0,1)]`}
     >
       {/* 内容固定宽 240px,收缩时由 aside 裁切,避免文字换行 */}
       <div className="flex h-full w-60 flex-col">
-        <button
-          type="button"
-          onClick={cycle}
-          title={t('toggleSidebar')}
-          className="flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-4 text-left hover:bg-surface-2"
-        >
-          <IconShip className="h-6 w-6 shrink-0 text-accent" />
-          <span className="text-[15px] font-semibold tracking-wide text-text-primary transition-opacity duration-150 group-data-[mode=collapsed]/sidebar:opacity-0">
-            ShipMate
-          </span>
-        </button>
+        <div className="flex h-12 shrink-0 items-center border-b border-border px-3">
+          <button
+            type="button"
+            onClick={cycle}
+            title={t('toggleSidebar')}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4.5 w-4.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="M9 4v16" />
+            </svg>
+          </button>
+        </div>
 
         <nav className="min-h-0 flex-1 overflow-y-auto p-2">
-          <SidebarLink
+          <p className="px-2.5 pb-1 pt-1.5 text-xs font-bold text-text-muted">{t('groups')}</p>
+
+          <NavRow
             href="/"
-            label={t('home')}
-            active={pathname === '/'}
+            label={t('allProjects')}
+            active={pathname === '/' && !currentGroup}
             showTooltip={mode === 'collapsed'}
-            icon={<IconHome className="h-4.5 w-4.5 shrink-0" />}
+            count={
+              overview.groups.reduce((a, g) => a + g.projectCount, 0) + overview.ungrouped.length
+            }
           />
 
           {overview.groups.map((g) => (
-            <div key={g.id} className="pt-2">
-              {mode === 'expanded' && (
-                <div className="flex h-7 items-center justify-between px-3 text-xs text-text-muted">
-                  <span className="truncate">{g.name}</span>
-                  <span className="rounded bg-surface-2 px-1.5 py-0.5 tabular-nums">
-                    {g.projectCount}
-                  </span>
-                </div>
-              )}
-              {overview.grouped
-                .filter((p) => p.groupId === g.id)
-                .map((p) => (
-                  <ProjectLink
-                    key={p.id}
-                    id={p.id}
-                    name={p.name}
-                    showTooltip={mode === 'collapsed'}
-                  />
-                ))}
-            </div>
+            <NavRow
+              key={g.id}
+              href={`/?group=${g.id}`}
+              label={g.name}
+              active={currentGroup === g.id}
+              showTooltip={mode === 'collapsed'}
+              count={g.projectCount}
+            />
           ))}
 
           {overview.ungrouped.length > 0 && (
-            <div className="pt-2">
-              {mode === 'expanded' && (
-                <div className="flex h-7 items-center justify-between px-3 text-xs text-text-muted">
-                  <span className="truncate">{t('ungrouped')}</span>
-                  <span className="rounded bg-surface-2 px-1.5 py-0.5 tabular-nums">
-                    {overview.ungrouped.length}
-                  </span>
-                </div>
-              )}
-              {overview.ungrouped.map((p) => (
-                <ProjectLink
-                  key={p.id}
-                  id={p.id}
-                  name={p.name}
-                  showTooltip={mode === 'collapsed'}
-                />
-              ))}
-            </div>
+            <NavRow
+              href="/?group=none"
+              label={t('ungrouped')}
+              active={currentGroup === 'none'}
+              showTooltip={mode === 'collapsed'}
+              count={overview.ungrouped.length}
+            />
           )}
+
+          <button
+            type="button"
+            onClick={() => setGroupModalOpen(true)}
+            className="flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-[13px] text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary"
+          >
+            <svg
+              viewBox="0 0 14 14"
+              className="h-3.5 w-3.5 shrink-0"
+              fill="currentColor"
+              aria-hidden
+            >
+              <path d="M6.7 7.3H3.8a.3.3 0 0 1 0-.6h2.9V3.8a.3.3 0 0 1 .6 0v2.9h2.9a.3.3 0 0 1 0 .6H7.3v2.9a.3.3 0 0 1-.6 0V7.3Z" />
+            </svg>
+            <span className="min-w-0 flex-1 truncate text-left transition-opacity duration-150 group-data-[mode=collapsed]/sidebar:opacity-0">
+              {t('newGroup')}
+            </span>
+          </button>
         </nav>
 
         <div className="shrink-0 space-y-0.5 border-t border-border p-2">
@@ -116,14 +138,53 @@ export function Sidebar({ overview }: { overview: Overview }) {
           />
         </div>
       </div>
+
+      <NewGroupModal open={groupModalOpen} onClose={() => setGroupModalOpen(false)} />
     </aside>
   );
 }
 
 /**
- * 通用导航行:图标 + 文字。
- * collapsed 态 300ms 延迟 tooltip(fixed 定位,不受 aside overflow 裁切)。
+ * 分组导航行:文字 + 右侧纯文字计数(对齐原型:计数无底色,12px 灰)。
+ * collapsed 态 300ms 延迟 tooltip。
  */
+function NavRow({
+  href,
+  label,
+  count,
+  active,
+  showTooltip,
+}: {
+  href: string;
+  label: string;
+  count: number;
+  active: boolean;
+  showTooltip: boolean;
+}) {
+  const tip = useDelayedTooltip(showTooltip);
+
+  return (
+    <Link
+      href={href}
+      {...tip.handlers}
+      className={`flex h-9 items-center gap-2 rounded-md px-2.5 text-[13px] transition-colors ${
+        active
+          ? 'bg-accent-dim text-text-primary'
+          : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary'
+      }`}
+    >
+      <span className="min-w-0 flex-1 truncate transition-opacity duration-150 group-data-[mode=collapsed]/sidebar:opacity-0">
+        {label}
+      </span>
+      <span className="shrink-0 text-xs tabular-nums text-text-muted transition-opacity duration-150 group-data-[mode=collapsed]/sidebar:opacity-0">
+        {count}
+      </span>
+      {tip.render(label)}
+    </Link>
+  );
+}
+
+/** 通用导航行:图标 + 文字(底部设置/MCP)。 */
 function SidebarLink({
   href,
   label,
@@ -158,32 +219,63 @@ function SidebarLink({
   );
 }
 
-/** 项目行:图标位显示项目名首字符;tooltip 为全名;href 走 /project/[id] */
-function ProjectLink({
-  id,
-  name,
-  showTooltip,
-}: {
-  id: string;
-  name: string;
-  showTooltip: boolean;
-}) {
-  const tip = useDelayedTooltip(showTooltip);
+/** 新建分组弹窗:名称必填,走既有 createGroupAction,成功后刷新侧栏数据 */
+function NewGroupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useTranslations('nav');
+  const tHome = useTranslations('home');
+  const router = useRouter();
+  const [name, setName] = useState('');
+  const [pending, setPending] = useState(false);
+
+  const submit = () => {
+    const trimmed = name.trim();
+    if (!trimmed || pending) return;
+    setPending(true);
+    void createGroupAction({ name: trimmed }).then((res) => {
+      setPending(false);
+      if (res.ok) {
+        showToast(tHome('groupCreated', { name: trimmed }));
+        setName('');
+        onClose();
+        router.refresh();
+      } else {
+        showToast(res.message, 'error');
+      }
+    });
+  };
 
   return (
-    <Link
-      href={`/project/${id}`}
-      {...tip.handlers}
-      className="flex h-9 items-center gap-2.5 rounded-md px-3 text-sm text-text-secondary hover:bg-surface-2 hover:text-text-primary"
-    >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-accent-dim text-[11px] text-accent">
-        {name.slice(0, 1).toUpperCase()}
-      </span>
-      <span className="min-w-0 flex-1 truncate transition-opacity duration-150 group-data-[mode=collapsed]/sidebar:opacity-0">
-        {name}
-      </span>
-      {tip.render(name)}
-    </Link>
+    <Modal open={open} onClose={onClose} title={t('newGroup')}>
+      <div className="space-y-3">
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') submit();
+          }}
+          placeholder={t('groupNamePlaceholder')}
+          className="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm text-text-primary outline-none transition-colors focus:border-accent"
+        />
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-8 rounded-md border border-border px-3 text-sm text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+          >
+            {tHome('cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!name.trim() || pending}
+            className="h-8 rounded-md bg-accent px-3 text-sm font-medium text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
+          >
+            {t('create')}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
