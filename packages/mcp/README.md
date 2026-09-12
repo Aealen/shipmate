@@ -1,6 +1,6 @@
 # @shipmate/mcp
 
-ShipMate 的 MCP(Model Context Protocol)工具面:把 core 的 33 个领域能力以 MCP 工具暴露,供 Claude Code 等 agent 直接读写需求库。零业务逻辑薄壳——handler 只做「zod 校验后调 core → 结果 JSON 序列化 / DomainError → isError」。
+ShipMate 的 MCP(Model Context Protocol)工具面:把 core 的 34 个领域能力以 MCP 工具暴露,供 Claude Code 等 agent 直接读写需求库。零业务逻辑薄壳——handler 只做「zod 校验后调 core → 结果 JSON 序列化 / DomainError → isError」。
 
 - **actor 审计**:stdio 服务器固定 `mcp:claude-code`;HTTP streamable 从 initialize 的 `clientInfo.name` 推导为 `mcp:<name>`(缺省 `mcp:unknown`),全部写操作自动落 change_logs。
 - **错误映射**:`DomainError` → `isError: true` + 文本 `"CODE: message"`;未知错误 → `"INTERNAL: <message>"`。
@@ -34,7 +34,7 @@ ShipMate 的 MCP(Model Context Protocol)工具面:把 core 的 33 个领域能�
 
 由 web 包(Plan 3)将 `createMcpHttpHandler(db)` 挂载到 `/api/mcp`(POST/GET/DELETE)。客户端流程:`initialize`(携带 `clientInfo.name` 决定审计 actor)→ `notifications/initialized` → 正常调用;响应为 JSON 模式,会话由 `mcp-session-id` 头管理,`DELETE` 关闭会话。
 
-## 工具清单(33 个)
+## 工具清单(34 个)
 
 ### 分组(5)
 
@@ -83,7 +83,7 @@ ShipMate 的 MCP(Model Context Protocol)工具面:把 core 的 33 个领域能�
 | `list_tasks`                | requirementPointId?/projectId?/status?              | 任务数组                              |
 | `confirm_task_reassessment` | id                                                  | 重估确认:needs_reassessment → pending |
 
-### 素材与分析(8)
+### 素材与分析(9)
 
 | 工具                  | 入参                                                              | 说明                                                                                                  |
 | --------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -93,6 +93,7 @@ ShipMate 的 MCP(Model Context Protocol)工具面:把 core 的 33 个领域能�
 | `get_material`        | runId, id                                                         | 单个素材                                                                                              |
 | `start_analysis`      | runId                                                             | 汇集素材调 LLM 产出草稿暂存批次;**同步执行,耗时取决于模型**                                           |
 | `apply_analysis_run`  | runId, selectedRequirements?, selectedSupplements?, decisions?    | 草稿事务落库(默认全选);相悖块必须裁决(use_new/use_old/keep_both),重复块处置(merge/create_anyway/skip) |
+| `revise_draft`        | runId, blockIndex, pointIndex?, annotation, keepEvidences?        | 按批注让 AI 重写草稿块/点,返回修订后内容;修订前快照自动入审计,**同步执行,耗时取决于模型**             |
 | `list_analysis_runs`  | projectId, status?                                                | 批次数组,含素材数与草稿统计                                                                           |
 | `get_analysis_run`    | id                                                                | 批次 + 全部素材 + 草稿产出                                                                            |
 

@@ -1,6 +1,29 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { analysisRuns, createCore, newId, withDb, type ShipmateDb } from '@shipmate/core';
 import { callTool, setupServer } from '../test-helpers.js';
+
+/**
+ * revise_draft 会真调 LLM,而 createMcpServer 内部自建 core、无注入点:
+ * 这里覆盖 createCore,把 analysis 服务替换为带可插拔 llm 的实例(测试内经 llmSlot 配置)。
+ */
+const llmSlot = vi.hoisted(() => ({
+  current: undefined as ((system: string, user: string) => Promise<unknown>) | undefined,
+}));
+
+vi.mock('@shipmate/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shipmate/core')>();
+  return {
+    ...actual,
+    createCore: (db: ShipmateDb) => {
+      const core = actual.createCore(db);
+      core.analysis = new actual.AnalysisService(db, async (system, user) => {
+        if (!llmSlot.current) throw new Error('测试未配置 llmSlot.current');
+        return llmSlot.current(system, user);
+      });
+      return core;
+    },
+  };
+});
 
 /** 仿 core T14 seedDraft:直接落一条带草稿的 done 批次,绕开 LLM 真调用 */
 async function seedDraft(db: ShipmateDb, projectId: string, draft: unknown): Promise<string> {
@@ -65,6 +88,7 @@ describe('素材与分析工具', () => {
         'get_material',
         'start_analysis',
         'apply_analysis_run',
+        'revise_draft',
         'list_analysis_runs',
         'get_analysis_run',
       ]) {
@@ -223,6 +247,84 @@ describe('素材与分析工具', () => {
       expect(JSON.parse(useNew.text)).toHaveLength(1);
       const reqs = await core.requirements.listRequirements(project.id);
       expect(reqs.map((r) => r.title)).toContain('相悖块');
+    });
+  });
+
+  it('revise_draft 点级修订:返回修订后内容,draft_result 更新,revisions 追加', async () => {
+    await withDb(async (db) => {
+      llmSlot.current = vi.fn(async () => ({
+        title: '点A1(修订)',
+        description: '修订后的点描述',
+        confidence: 0.9,
+        evidences: [],
+      }));
+      const core = createCore(db);
+      const project = await core.projects.createProject({ name: '项目' }, 'human');
+      const runId = await seedDraft(db, project.id, goodDraft);
+      const { client } = await setupServer(db);
+
+      const { isError, text } = await callTool(client, 'revise_draft', {
+        runId,
+        blockIndex: 0,
+        pointIndex: 0,
+        annotation: '改成支持自定义表头',
+      });
+      expect(isError).toBe(false);
+      expect(JSON.parse(text)).toMatchObject({ title: '点A1(修订)', confidence: 0.9 });
+
+      // run.draft_result 已更新,且 revisions 追加了审计摘要(actor 为注入的 mcp:test)
+      const detail = await core.analysis.getAnalysisRun(runId);
+      const draft = detail.run.draftResult as {
+        requirements: {
+          points: { title: string }[];
+          revisions: { actor: string; annotation: string; scope: string; pointTitle: string }[];
+        }[];
+      };
+      expect(draft.requirements[0]!.points[0]).toMatchObject({ title: '点A1(修订)' });
+      expect(draft.requirements[0]!.revisions).toEqual([
+        {
+          at: expect.any(Number),
+          actor: 'mcp:test',
+          annotation: '改成支持自定义表头',
+          scope: 'point',
+          pointTitle: '点A1(修订)',
+        },
+      ]);
+    });
+  });
+
+  it('revise_draft 越界 blockIndex 返回 isError 含 VALIDATION_ERROR', async () => {
+    await withDb(async (db) => {
+      const core = createCore(db);
+      const project = await core.projects.createProject({ name: '项目' }, 'human');
+      const runId = await seedDraft(db, project.id, goodDraft);
+      const { client } = await setupServer(db);
+
+      const { isError, text } = await callTool(client, 'revise_draft', {
+        runId,
+        blockIndex: 9,
+        annotation: '改一下',
+      });
+      expect(isError).toBe(true);
+      expect(text).toContain('VALIDATION_ERROR');
+    });
+  });
+
+  it('revise_draft 空批注返回 isError 含 VALIDATION_ERROR', async () => {
+    await withDb(async (db) => {
+      const core = createCore(db);
+      const project = await core.projects.createProject({ name: '项目' }, 'human');
+      const runId = await seedDraft(db, project.id, goodDraft);
+      const { client } = await setupServer(db);
+
+      // 空白串过得了 zod min(1),由 core trim 后拒
+      const { isError, text } = await callTool(client, 'revise_draft', {
+        runId,
+        blockIndex: 0,
+        annotation: '   ',
+      });
+      expect(isError).toBe(true);
+      expect(text).toContain('VALIDATION_ERROR');
     });
   });
 

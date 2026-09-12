@@ -118,6 +118,35 @@ export function registerAnalysisTools(server: McpServer, core: ShipmateCore, act
   );
 
   server.registerTool(
+    'revise_draft',
+    {
+      title: 'AI 修订草稿',
+      description: '按批注让 AI 重写草稿中的某个需求块或需求点(修订前快照自动入审计)',
+      inputSchema: {
+        runId: z.string().describe('分析批次 id'),
+        blockIndex: z.number().int().min(0).describe('草稿需求块下标(从 0 起)'),
+        pointIndex: z.number().int().min(0).optional().describe('需求点下标;缺省修订整块'),
+        annotation: z.string().min(1).describe('修订批注,告诉 AI 怎么改'),
+        keepEvidences: z.boolean().optional().describe('默认 true,保留原文依据'),
+      },
+    },
+    withCore(
+      core,
+      actor,
+      async (c, { runId, blockIndex, pointIndex, annotation, keepEvidences }) => {
+        const { revised } = await c.analysis.reviseDraft(
+          runId,
+          { blockIndex, pointIndex },
+          annotation,
+          { keepEvidences },
+          actor,
+        );
+        return revised;
+      },
+    ),
+  );
+
+  server.registerTool(
     'list_analysis_runs',
     {
       title: '列出分析批次',
