@@ -28,6 +28,7 @@ export function DraftPanel({
   onBlocksChange,
   onSuppsChange,
   onApply,
+  onRevise,
 }: {
   blocks: DraftBlockState[];
   supps: SupplementBlockState[];
@@ -39,6 +40,8 @@ export function DraftPanel({
   onBlocksChange: (next: DraftBlockState[]) => void;
   onSuppsChange: (next: SupplementBlockState[]) => void;
   onApply: () => void;
+  /** 打开 AI 修订弹窗(块下标 + 点下标,null = 整块);补充块不参与(core 仅支持 requirements) */
+  onRevise: (blockIndex: number, pointIndex: number | null) => void;
 }) {
   const t = useTranslations('analysis');
   const hasDraft = blocks.length > 0 || supps.length > 0;
@@ -53,6 +56,8 @@ export function DraftPanel({
           {hasDraft && !analyzing && (
             <p className="mt-0.5 text-xs text-text-muted">
               {t('draftSummary', { requirements: blocks.length, supplements: supps.length })}
+              <span aria-hidden> · </span>
+              {t('reviseHint')}
             </p>
           )}
         </div>
@@ -101,6 +106,7 @@ export function DraftPanel({
                     onBlocksChange(blocks.map((q) => (q.key === b.key ? { ...q, ...patch } : q)))
                   }
                   onDelete={() => onBlocksChange(blocks.filter((q) => q.key !== b.key))}
+                  onRevise={(pointIndex) => onRevise(i, pointIndex)}
                 />
               </div>
             ))}

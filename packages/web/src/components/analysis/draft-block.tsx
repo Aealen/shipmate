@@ -34,6 +34,19 @@ export interface DraftPointState {
   evidences: { material_id: string; quote: string }[];
 }
 
+/**
+ * 块级修订记录(spec §9 规则 9:每次 AI 修订在块上追加一条)。
+ * 与 core draftRevisionSchema(core DraftRevision,未从包顶层导出)同构,
+ * 随草稿整体读写,应用落库后随需求点保留完整修订链。
+ */
+export interface DraftRevisionView {
+  at: number;
+  actor: string;
+  annotation: string;
+  scope: 'block' | 'point';
+  pointTitle?: string;
+}
+
 export interface DraftBlockState {
   key: string;
   /** 左上角勾选角标(默认全选) */
@@ -44,6 +57,8 @@ export interface DraftBlockState {
   /** duplicate 默认 merge;contradiction 为 null 表示未裁决(应用禁用) */
   resolution: BlockResolution | null;
   points: DraftPointState[];
+  /** AI 修订记录(时间倒序展示于修订弹窗;写回草稿时原样保留) */
+  revisions: DraftRevisionView[];
 }
 
 export interface SupplementBlockState {
@@ -103,6 +118,7 @@ export function newBlockState(defaultTitle: string, defaultPointTitle: string): 
     conflict: null,
     resolution: null,
     points: [toPointState({ title: defaultPointTitle })],
+    revisions: [],
   };
 }
 
@@ -219,6 +235,15 @@ function BoltIcon() {
   );
 }
 
+/** ✦ 四角星(AI 修订入口标识,与素材面板「开始分析」同形) */
+export function SparkleIcon({ className = 'h-3 w-3' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" />
+    </svg>
+  );
+}
+
 const POINT_INPUT =
   'w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-text-primary outline-none transition-colors focus:border-accent';
 
@@ -229,11 +254,14 @@ function PointRow({
   onChange,
   onDelete,
   deleteLabel,
+  onRevise,
 }: {
   point: DraftPointState;
   onChange: (patch: Partial<DraftPointState>) => void;
   onDelete: () => void;
   deleteLabel: string;
+  /** 打开 AI 修订弹窗(单点作用域);补充块的点不参与修订(core 仅支持 requirements),不传则不渲染入口 */
+  onRevise?: () => void;
 }) {
   const t = useTranslations('analysis');
   const [editing, setEditing] = useState(false);
@@ -294,6 +322,17 @@ function PointRow({
         )}
       </div>
       <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity duration-[120ms] group-hover:opacity-100">
+        {onRevise && (
+          <button
+            type="button"
+            onClick={onRevise}
+            aria-label={t('revise.action')}
+            title={t('revise.action')}
+            className="flex h-6 w-6 items-center justify-center rounded-md text-accent transition-colors hover:bg-accent-dim"
+          >
+            <SparkleIcon className="h-3.5 w-3.5" />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setEditing(true)}
@@ -323,17 +362,20 @@ export function DraftBlock({
   block,
   onChange,
   onDelete,
+  onRevise,
 }: {
   block: DraftBlockState;
   onChange: (patch: Partial<DraftBlockState>) => void;
   onDelete: () => void;
+  /** 打开 AI 修订弹窗:pointIndex 为 null = 整块作用域,否则为点下标 */
+  onRevise: (pointIndex: number | null) => void;
 }) {
   const t = useTranslations('analysis');
   const c = block.conflict;
 
   return (
     <div
-      className={`rounded-xl border bg-surface p-4 transition-all duration-[120ms] hover:border-accent ${
+      className={`group rounded-xl border bg-surface p-4 transition-all duration-[120ms] hover:border-accent ${
         block.selected ? 'border-border' : 'border-dashed border-border opacity-55'
       }`}
     >
@@ -357,15 +399,27 @@ export function DraftBlock({
             className="w-full rounded-md bg-transparent text-xs text-text-secondary outline-none transition-colors placeholder:text-text-muted hover:bg-surface-2/60 focus:bg-surface-2/60"
           />
         </div>
-        <button
-          type="button"
-          onClick={onDelete}
-          aria-label={t('block.delete')}
-          title={t('block.delete')}
-          className={ICON_BTN}
-        >
-          <TrashIcon />
-        </button>
+        <div className="flex shrink-0 items-start gap-0.5">
+          <button
+            type="button"
+            onClick={() => onRevise(null)}
+            aria-label={t('revise.action')}
+            title={t('revise.action')}
+            className="flex h-6 items-center gap-1 rounded-md px-1.5 text-xs text-accent opacity-0 transition-all duration-[120ms] hover:bg-accent-dim focus-visible:opacity-100 group-hover:opacity-100"
+          >
+            <SparkleIcon />
+            {t('revise.action')}
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label={t('block.delete')}
+            title={t('block.delete')}
+            className={ICON_BTN}
+          >
+            <TrashIcon />
+          </button>
+        </div>
       </div>
 
       {c?.type === 'duplicate' && (
@@ -428,11 +482,12 @@ export function DraftBlock({
           {t('block.pointsTitle')} ({block.points.length})
         </p>
         <div className="mt-1 space-y-0.5">
-          {block.points.map((p) => (
+          {block.points.map((p, pi) => (
             <PointRow
               key={p.key}
               point={p}
               deleteLabel={t('block.delete')}
+              onRevise={() => onRevise(pi)}
               onChange={(patch) =>
                 onChange({
                   points: block.points.map((q) => (q.key === p.key ? { ...q, ...patch } : q)),

@@ -22,6 +22,7 @@ import {
 } from '@/components/analysis/draft-block';
 import { MaterialPanel } from '@/components/analysis/material-panel';
 import { DraftPanel } from '@/components/analysis/draft-panel';
+import { ReviseModal, type ReviseTarget } from '@/components/analysis/revise-modal';
 
 type RunStatus = 'pending' | 'done' | 'failed';
 
@@ -41,6 +42,18 @@ const WORKBENCH_CSS = `
   animation: analysis-enter 180ms cubic-bezier(0.2, 0, 0, 1) backwards;
 }
 `;
+
+/** 修订弹窗关闭期间的占位块(ReviseModal 常驻挂载以播退出动画,open=false 不渲染内容) */
+const CLOSED_BLOCK: DraftBlockState = {
+  key: 'revise-closed',
+  selected: true,
+  title: '',
+  summary: '',
+  conflict: null,
+  resolution: null,
+  points: [],
+  revisions: [],
+};
 
 /**
  * Run 暂存草稿(unknown jsonb)→ AnalysisResult。
@@ -75,6 +88,8 @@ function blocksFromDraft(draft: AnalysisResult): DraftBlockState[] {
         evidences: p.evidences,
       }),
     ),
+    // 块级修订记录(spec §9 规则 9)随草稿带出,写回时原样保留
+    revisions: r.revisions ?? [],
   }));
 }
 
@@ -113,6 +128,46 @@ function RunStatusBadge({ status }: { status: RunStatus }) {
 }
 
 /**
+ * UI 编辑后的完整草稿(「应用」/「AI 修订应用」前整体写回 Run 暂存,apply 按 title 定位)。
+ * 纯函数:AI 修订应用需要基于「下一帧」的 blocks 先落库再 setState,避免读到旧状态。
+ * 块级 revisions 原样带回,保证修订链(spec §9 规则 9)不因草稿写回而丢失。
+ */
+function buildDraftPayload(
+  blocks: DraftBlockState[],
+  supps: SupplementBlockState[],
+): AnalysisResult {
+  return {
+    requirements: blocks.map((b) => ({
+      title: b.title.trim(),
+      summary: b.summary.trim(),
+      conflict: b.conflict
+        ? {
+            type: b.conflict.type,
+            target_requirement_title: b.conflict.targetTitle,
+            reason: b.conflict.reason,
+          }
+        : undefined,
+      points: b.points.map((p) => ({
+        title: p.title.trim(),
+        description: p.description,
+        confidence: p.confidence,
+        evidences: p.evidences,
+      })),
+      ...(b.revisions.length > 0 ? { revisions: b.revisions } : {}),
+    })),
+    supplements: supps.map((s) => ({
+      target_requirement_title: s.targetTitle,
+      points: s.points.map((p) => ({
+        title: p.title.trim(),
+        description: p.description,
+        confidence: p.confidence,
+        evidences: p.evidences,
+      })),
+    })),
+  };
+}
+
+/**
  * P3c 素材分析工作台状态中枢。
  * 页面加载时可带已有批次(run),也可从零开始(首次添加素材时才创建批次,
  * 避免空批次垃圾数据);「应用」前把编辑后的完整草稿写回 Run,再走 core
@@ -144,6 +199,8 @@ export function AnalysisWorkbench({
   const [analyzing, setAnalyzing] = useState(false);
   const [applying, setApplying] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  /** AI 修订弹窗目标(null = 关闭);blockIndex 定位本地块,pointIndex null = 整块 */
+  const [reviseTarget, setReviseTarget] = useState<ReviseTarget | null>(null);
 
   const existingByTitle = useMemo(
     () => new Map(existingRequirements.map((r) => [r.title, r])),
@@ -225,39 +282,6 @@ export function AnalysisWorkbench({
     }
   }, [analyzing, materials.length, ensureRun]);
 
-  /** UI 编辑后的完整草稿(「应用」前整体写回 Run 暂存,apply 按 title 定位) */
-  const buildDraftPayload = useCallback(
-    (): AnalysisResult => ({
-      requirements: blocks.map((b) => ({
-        title: b.title.trim(),
-        summary: b.summary.trim(),
-        conflict: b.conflict
-          ? {
-              type: b.conflict.type,
-              target_requirement_title: b.conflict.targetTitle,
-              reason: b.conflict.reason,
-            }
-          : undefined,
-        points: b.points.map((p) => ({
-          title: p.title.trim(),
-          description: p.description,
-          confidence: p.confidence,
-          evidences: p.evidences,
-        })),
-      })),
-      supplements: supps.map((s) => ({
-        target_requirement_title: s.targetTitle,
-        points: s.points.map((p) => ({
-          title: p.title.trim(),
-          description: p.description,
-          confidence: p.confidence,
-          evidences: p.evidences,
-        })),
-      })),
-    }),
-    [blocks, supps],
-  );
-
   const handleConfirmApply = useCallback(async () => {
     setConfirmOpen(false);
     if (applying || !runId) return;
@@ -277,7 +301,7 @@ export function AnalysisWorkbench({
 
     setApplying(true);
     try {
-      const save = await saveAnalysisDraftAction(runId, buildDraftPayload());
+      const save = await saveAnalysisDraftAction(runId, buildDraftPayload(blocks, supps));
       if (!save.ok) {
         showToast(save.message, 'error');
         return;
@@ -300,7 +324,43 @@ export function AnalysisWorkbench({
     } finally {
       setApplying(false);
     }
-  }, [applying, runId, selectedBlocks, selectedSupps, buildDraftPayload, router, projectId, t]);
+  }, [applying, runId, blocks, supps, selectedBlocks, selectedSupps, router, projectId, t]);
+
+  /** 打开 AI 修订弹窗;无批次(草稿未落库)时无法调 core reviseDraft,直接提示 */
+  const openRevise = useCallback(
+    (blockIndex: number, pointIndex: number | null) => {
+      if (!runId) {
+        showToast(t('revise.noRun'), 'error');
+        return;
+      }
+      setReviseTarget({ blockIndex, pointIndex });
+    },
+    [runId, t],
+  );
+
+  /**
+   * AI 修订「应用」:把修订后的块写进本地草稿并整体写回 Run(saveAnalysisDraft,
+   * 修订链 revisions 随载荷保留),成功后 toast + 关弹窗;失败保持弹窗打开。
+   * 用 nextBlocks 先落库再 setState,避免闭包读到旧 blocks。
+   */
+  const handleReviseApplied = useCallback(
+    async (blockIndex: number, nextBlock: DraftBlockState): Promise<boolean> => {
+      if (!runId) return false;
+      const nextBlocks = blocks.map((b, i) => (i === blockIndex ? nextBlock : b));
+      const save = await saveAnalysisDraftAction(runId, buildDraftPayload(nextBlocks, supps));
+      if (!save.ok) {
+        showToast(save.message, 'error');
+        return false;
+      }
+      setBlocks(nextBlocks);
+      showToast(t('revise.applied'));
+      setReviseTarget(null);
+      return true;
+    },
+    [runId, blocks, supps, t],
+  );
+
+  const reviseBlock = reviseTarget ? blocks[reviseTarget.blockIndex] : undefined;
 
   return (
     <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 p-6">
@@ -351,8 +411,18 @@ export function AnalysisWorkbench({
           onBlocksChange={setBlocks}
           onSuppsChange={setSupps}
           onApply={() => setConfirmOpen(true)}
+          onRevise={openRevise}
         />
       </div>
+
+      <ReviseModal
+        open={!!reviseTarget && !!reviseBlock}
+        runId={runId}
+        target={reviseTarget ?? { blockIndex: 0, pointIndex: null }}
+        block={reviseBlock ?? CLOSED_BLOCK}
+        onClose={() => setReviseTarget(null)}
+        onApplied={handleReviseApplied}
+      />
 
       <Modal
         open={confirmOpen}

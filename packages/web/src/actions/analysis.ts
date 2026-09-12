@@ -13,6 +13,7 @@ import {
   type MaterialRow,
   type RequirementRow,
   type RequirementWithOverdue,
+  type ReviseDraftTarget,
   type UpdateRequirementInput,
 } from '@shipmate/core';
 import { getShipmate } from '@/lib/core';
@@ -146,6 +147,58 @@ export async function applyAnalysisRunAction(
     const rows = await core.analysis.applyAnalysisRun(runId, options, 'human');
     revalidateApp();
     return { ok: true, data: rows };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+/**
+ * AI 修订结果中的「修订后内容」客户端结构类型。
+ * core 侧 DraftPoint/DraftRequirement 未从包顶层导出(web client 也不宜把
+ * core 的 zod 运行时拖进浏览器 bundle),此处按 packages/core/src/llm/schema.ts
+ * 同构声明,字段一一对应;core 返回值可结构化赋值给本类型。
+ */
+export interface RevisedDraftPoint {
+  title: string;
+  description?: string;
+  confidence: number;
+  evidences: { material_id: string; quote: string }[];
+}
+
+export interface RevisedDraftBlock {
+  title: string;
+  summary?: string;
+  conflict?: {
+    type: 'duplicate' | 'contradiction';
+    target_requirement_title: string;
+    reason?: string;
+  };
+  points: RevisedDraftPoint[];
+}
+
+/**
+ * AI 修订(spec §9 规则 9):按批注让 LLM 重写草稿中的需求块/需求点。
+ * core reviseDraft 直接把修订后整稿(含追加的块级 revisions 摘要)写回 Run
+ * 草稿并写 change_logs 审计;前端随后经「应用修订」把结果同步进工作台本地
+ * 草稿(saveAnalysisDraftAction),放弃则不改动本地态。
+ */
+export async function reviseDraftAction(
+  runId: string,
+  target: ReviseDraftTarget,
+  annotation: string,
+  keepEvidences?: boolean,
+): Promise<ActionResult<{ run: AnalysisRunRow; revised: RevisedDraftPoint | RevisedDraftBlock }>> {
+  try {
+    const { core } = await getShipmate();
+    const data = await core.analysis.reviseDraft(
+      runId,
+      target,
+      annotation,
+      { keepEvidences },
+      'human',
+    );
+    revalidateApp();
+    return { ok: true, data };
   } catch (e) {
     return toActionError(e);
   }
