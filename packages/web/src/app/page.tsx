@@ -5,13 +5,24 @@ import type { SVGProps } from 'react';
 import { getHomeOverview, getProject } from '@/actions/projects';
 import { CreateProjectDialog, type GroupOption } from './create-project-dialog';
 
+const MS_PER_MINUTE = 60_000;
+const MS_PER_HOUR = 3_600_000;
+const MS_PER_DAY = 86_400_000;
+
 /**
- * P1 项目首页:分组分区(组名 + 项目卡片栅格)+ 未分组区。
- * 卡片:名称/描述/需求完成度(getProject 摘要),整卡可点 → /project/[id],
- * hover 边框 accent 120ms(spec §14);全局无项目时空状态引导 + 创建弹窗。
+ * P1 项目首页(对齐原型):页头(标题 22px + 「N 个项目 · M 个分组」统计 +
+ * 新建项目)+ 全宽两列卡片栅格。卡片:名称 + 分组徽章 / 描述 / 需求完成度
+ * 进度条 / 需求点状态圆点行 / 相对时间 + 「进入项目 ›」。
+ * 侧栏分组行经 /?group=<id>|none 过滤;全局无项目时空状态引导 + 创建弹窗。
  */
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ group?: string }>;
+}) {
   const t = await getTranslations('home');
+  const tShared = await getTranslations('shared.badge');
+  const { group: groupFilter } = await searchParams;
 
   // DB 未起等故障下降级为空列表 → 空状态引导(DB 恢复后创建仍会报错提示,可接受)
   const overview = await getHomeOverview().catch(() => ({
@@ -20,131 +31,198 @@ export default async function HomePage() {
     ungrouped: [],
   }));
 
-  const projects = [...overview.grouped, ...overview.ungrouped];
+  const groupNameById = new Map(overview.groups.map((g) => [g.id, g.name]));
+  const groupOptions: GroupOption[] = overview.groups.map((g) => ({ id: g.id, name: g.name }));
+
+  // 过滤:/?group=<id> 单组;/?group=none 未分组;默认全部
+  // 注:getHomeOverview().grouped 即全量项目,ungrouped 为其中 groupId 为空的子集
+  const allProjects = overview.grouped;
+  const filtered =
+    groupFilter == null || groupFilter === ''
+      ? allProjects
+      : groupFilter === 'none'
+        ? overview.ungrouped
+        : allProjects.filter((p) => p.groupId === groupFilter);
 
   // 卡片完成度:并行取各项目摘要(本机单用户数据量小;失败降级 null 显示占位)
   const summaries = new Map<string, ProjectSummary | null>();
   await Promise.all(
-    projects.map(async (p) => {
+    filtered.map(async (p) => {
       summaries.set(p.id, await getProject(p.id).catch(() => null));
     }),
   );
 
-  const groupOptions: GroupOption[] = overview.groups.map((g) => ({ id: g.id, name: g.name }));
-  const sections = [
-    ...overview.groups.map((g) => ({
-      key: g.id,
-      name: g.name,
-      items: overview.grouped.filter((p) => p.groupId === g.id),
-    })),
-    // 未分组区:有未分组项目才显示(规格 P1 帧)
-    ...(overview.ungrouped.length > 0
-      ? [{ key: '__ungrouped__', name: t('ungrouped'), items: overview.ungrouped }]
-      : []),
-  ];
+  const heading =
+    groupFilter == null || groupFilter === ''
+      ? t('title')
+      : groupFilter === 'none'
+        ? t('ungrouped')
+        : (groupNameById.get(groupFilter) ?? t('title'));
+  const groupCountLabel =
+    groupFilter == null || groupFilter === ''
+      ? t('subtitleStats', { projects: allProjects.length, groups: overview.groups.length })
+      : t('projectCount', { count: filtered.length });
+
+  const statusDotLabels = {
+    done: tShared('done'),
+    developing: tShared('developing'),
+    draft: tShared('draft'),
+    confirmed: tShared('confirmed'),
+  } as const;
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 p-6">
-      <div className="flex items-end justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-text-primary">{t('title')}</h1>
-          <p className="mt-1 text-sm text-text-secondary">{t('subtitle')}</p>
-        </div>
-        {projects.length > 0 && <CreateProjectDialog groups={groupOptions} />}
+    <div className="flex w-full flex-col gap-5 p-8">
+      <div className="flex items-center gap-3">
+        <h1 className="text-[22px] font-bold leading-tight text-text-primary">{heading}</h1>
+        <span className="text-[13px] text-text-muted">{groupCountLabel}</span>
+        <span className="min-w-0 flex-1" />
+        {allProjects.length > 0 && <CreateProjectDialog groups={groupOptions} />}
       </div>
 
-      {projects.length === 0 ? (
+      {allProjects.length === 0 ? (
         <CreateProjectDialog
           groups={groupOptions}
           empty={{ title: t('emptyTitle'), description: t('emptyDesc') }}
         />
+      ) : filtered.length === 0 ? (
+        <p className="rounded-[10px] border border-dashed border-border px-4 py-10 text-center text-sm text-text-muted">
+          {t('groupEmpty')}
+        </p>
       ) : (
-        sections.map((section) => (
-          <section key={section.key}>
-            <h2 className="flex items-center gap-2 text-sm font-medium text-text-secondary">
-              {section.name}
-              <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs tabular-nums text-text-muted">
-                {section.items.length}
-              </span>
-            </h2>
-            {section.items.length === 0 ? (
-              <p className="mt-3 rounded-xl border border-dashed border-border px-4 py-5 text-center text-sm text-text-muted">
-                {t('groupEmpty')}
-              </p>
-            ) : (
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {section.items.map((p) => (
-                  <ProjectCard
-                    key={p.id}
-                    id={p.id}
-                    name={p.name}
-                    description={p.description}
-                    summary={summaries.get(p.id) ?? null}
-                    doneLabel={t('requirementsDone', {
-                      done: summaries.get(p.id)?.requirementDone ?? 0,
-                      total: summaries.get(p.id)?.requirementTotal ?? 0,
-                    })}
-                    noRequirementsLabel={t('noRequirements')}
-                    enterLabel={t('enterProject')}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        ))
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+          {filtered.map((p) => {
+            const s = summaries.get(p.id) ?? null;
+            // 原型语义「N% 需求点完成」:按需求点 done 占比(需求级状态不算)
+            const pointTotal = s
+              ? Object.values(s.pointStatusCounts).reduce((a, b) => a + b, 0)
+              : 0;
+            const pctDone =
+              s && pointTotal > 0 ? Math.round((s.pointStatusCounts.done / pointTotal) * 100) : 0;
+            return (
+              <ProjectCard
+                key={p.id}
+                id={p.id}
+                name={p.name}
+                description={p.description}
+                groupName={p.groupId ? (groupNameById.get(p.groupId) ?? null) : null}
+                summary={s}
+                labels={{
+                  done: statusDotLabels.done,
+                  developing: statusDotLabels.developing,
+                  draft: statusDotLabels.draft,
+                  confirmed: statusDotLabels.confirmed,
+                  pctDone: t('requirementsDonePercent', { pct: pctDone }),
+                  noRequirements: t('noRequirements'),
+                  enter: t('enterProject'),
+                }}
+              />
+            );
+          })}
+        </div>
       )}
     </div>
   );
 }
 
-/** 项目卡片:整卡可点;完成度条 accent 填充;hover 边框 accent + 阴影加深 120ms */
+/** 项目卡片(原型 P1):整卡可点;完成度条 accent 填充;hover 边框 accent 120ms */
 function ProjectCard({
   id,
   name,
   description,
+  groupName,
   summary,
-  doneLabel,
-  noRequirementsLabel,
-  enterLabel,
+  labels,
 }: {
   id: string;
   name: string;
   description: string | null;
+  groupName: string | null;
   summary: ProjectSummary | null;
-  doneLabel: string;
-  noRequirementsLabel: string;
-  enterLabel: string;
+  labels: {
+    done: string;
+    developing: string;
+    draft: string;
+    confirmed: string;
+    pctDone: string;
+    noRequirements: string;
+    enter: string;
+  };
 }) {
+  const counts = summary?.pointStatusCounts;
   const total = summary?.requirementTotal ?? 0;
   const done = summary?.requirementDone ?? 0;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
+  const dotStats = [
+    { label: labels.done, value: counts?.done ?? 0, color: 'bg-success' },
+    { label: labels.developing, value: counts?.developing ?? 0, color: 'bg-warning' },
+    { label: labels.draft, value: counts?.draft ?? 0, color: 'bg-draft-gray' },
+    { label: labels.confirmed, value: counts?.confirmed ?? 0, color: 'bg-accent' },
+  ];
+
   return (
     <Link
       href={`/project/${id}`}
-      className="group flex flex-col rounded-xl border border-border bg-surface p-4 shadow-sm transition-colors duration-[120ms] hover:border-accent hover:shadow-md"
+      className="group flex flex-col gap-3 rounded-[10px] border border-transparent bg-surface p-5 transition-colors duration-[120ms] hover:border-accent"
     >
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="min-w-0 truncate text-[15px] font-medium text-text-primary">{name}</h3>
-        <span className="inline-flex shrink-0 items-center gap-0.5 text-xs text-accent opacity-0 transition-opacity duration-[120ms] group-hover:opacity-100">
-          {enterLabel}
-          <IconChevronRight className="h-3.5 w-3.5" />
-        </span>
+      <div className="flex items-center gap-2.5">
+        <h3 className="min-w-0 truncate text-[15px] font-bold text-text-primary">{name}</h3>
+        <span className="min-w-0 flex-1" />
+        {groupName && (
+          <span className="shrink-0 rounded-[5px] bg-surface-2 px-2 py-[3px] text-[11px] leading-none text-text-secondary">
+            {groupName}
+          </span>
+        )}
       </div>
-      <p className="mt-1.5 line-clamp-2 min-h-10 text-sm text-text-secondary">
+      <p className="line-clamp-1 min-h-5 w-full text-xs text-text-secondary">
         {description || <span className="text-text-muted">—</span>}
       </p>
-      <div className="mt-3 space-y-1.5">
-        <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
+
+      <div className="flex items-center gap-3">
+        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-[3px] bg-surface-2">
           <div
-            className="h-full rounded-full bg-accent transition-[width] duration-[120ms]"
+            className="h-full rounded-[3px] bg-accent transition-[width] duration-[120ms]"
             style={{ width: total > 0 ? `${Math.max(pct, 2)}%` : '0%' }}
           />
         </div>
-        <p className="text-xs text-text-muted">{total > 0 ? doneLabel : noRequirementsLabel}</p>
+        <span className="shrink-0 text-[11px] text-text-muted">
+          {total > 0 ? labels.pctDone : labels.noRequirements}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-3.5">
+        {dotStats.map((s) => (
+          <span key={s.label} className="flex shrink-0 items-center gap-[5px]">
+            <span className={`h-1.5 w-1.5 rounded-full ${s.color}`} />
+            <span className="text-[11px] text-text-muted">
+              {s.label} {s.value}
+            </span>
+          </span>
+        ))}
+        <span className="min-w-0 flex-1" />
+        <span className="shrink-0 text-[11px] text-text-muted">
+          {summary ? formatRelativeTime(summary.project.updatedAt) : ''}
+        </span>
+        <span className="flex shrink-0 items-center gap-0.5 text-[11px] font-bold text-accent">
+          {labels.enter}
+          <IconChevronRight className="h-3 w-3" />
+        </span>
       </div>
     </Link>
   );
+}
+
+/** 相对时间(卡片右下角):刚刚 / N 分钟前 / N 小时前 / N 天前,更久落回日期 */
+function formatRelativeTime(ms: number): string {
+  const rtf = new Intl.RelativeTimeFormat('zh-CN', { numeric: 'auto' });
+  const diff = Date.now() - ms;
+  if (diff < MS_PER_HOUR) {
+    const minutes = Math.floor(diff / MS_PER_MINUTE);
+    return minutes < 1 ? '刚刚' : rtf.format(-minutes, 'minute');
+  }
+  if (diff < MS_PER_DAY) return rtf.format(-Math.floor(diff / MS_PER_HOUR), 'hour');
+  if (diff < 7 * MS_PER_DAY) return rtf.format(-Math.floor(diff / MS_PER_DAY), 'day');
+  return new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit' }).format(ms);
 }
 
 function IconChevronRight(props: SVGProps<SVGSVGElement>) {
@@ -153,7 +231,7 @@ function IconChevronRight(props: SVGProps<SVGSVGElement>) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
