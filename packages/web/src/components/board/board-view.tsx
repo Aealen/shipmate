@@ -14,6 +14,14 @@ type TaskStatus = TaskRow['status'];
 /** 看板四列:pending → in_progress → done;needs_reassessment 为 danger 警示列 */
 const COLUMNS: TaskStatus[] = ['pending', 'in_progress', 'done', 'needs_reassessment'];
 
+/** 列头圆点色(原型 P5:pending 灰 / in_progress 蓝 / done 绿 / 重估橙) */
+const COLUMN_DOT: Record<TaskStatus, string> = {
+  pending: 'bg-draft-gray',
+  in_progress: 'bg-accent',
+  done: 'bg-success',
+  needs_reassessment: 'bg-warning',
+};
+
 /**
  * 拖拽落位合法性(与 core TASK_TRANSITIONS 一致):
  * pending→in_progress(start)、in_progress→done(complete);
@@ -127,18 +135,19 @@ export function BoardView({
         const legal = dragFrom !== null && dropAction(dragFrom, status) !== null;
         const isOver = over?.column === status && dragId !== null;
         return (
-          <section
-            key={status}
-            className="flex min-w-0 flex-col rounded-xl border border-border bg-surface-2/50 p-2"
-          >
-            {status === 'needs_reassessment' && (
-              <div className="mb-1.5 h-[3px] shrink-0 rounded-full bg-danger" aria-hidden />
-            )}
-            <header className="flex items-center justify-between px-1.5 pb-2 pt-1">
-              <span className="text-xs font-medium text-text-secondary">
+          <section key={status} className="flex min-w-0 flex-col gap-2.5">
+            <header className="flex items-center gap-2">
+              <span className={`h-2 w-2 shrink-0 rounded-[4px] ${COLUMN_DOT[status]}`} />
+              <span
+                className={`text-[13px] font-bold leading-none ${
+                  status === 'needs_reassessment' ? 'text-warning' : 'text-text-primary'
+                }`}
+              >
                 {t(`column.${status}`)}
               </span>
-              <span className="text-xs tabular-nums text-text-muted">{cards.length}</span>
+              <span className="inline-flex shrink-0 items-center rounded-[5px] bg-surface-2 px-[7px] py-[2px] text-[11px] leading-none text-text-secondary tabular-nums">
+                {cards.length}
+              </span>
             </header>
             <div
               className={`flex min-h-[120px] flex-col gap-2 rounded-lg p-0.5 ${
