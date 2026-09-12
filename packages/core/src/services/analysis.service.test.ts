@@ -10,6 +10,7 @@ import {
 } from '../db/schema.js';
 import { newId } from '../db/id.js';
 import { DomainError } from '../errors.js';
+import type { DraftPoint, DraftRequirement } from '../llm/schema.js';
 import { AnalysisService, type LlmInvoker } from './analysis.service.js';
 import { TaskService } from './task.service.js';
 
@@ -812,6 +813,299 @@ describe('applyAnalysisRun', () => {
         expect(p.relations!.map((r) => r.point_id).sort()).toEqual(newIds);
         expect(p.relations!.every((r) => r.type === 'conflict')).toBe(true);
       }
+    });
+  });
+});
+
+describe('reviseDraft', () => {
+  const reviseBlock = {
+    title: '导出需求',
+    summary: '支持多种格式导出',
+    points: [
+      {
+        title: '导出 CSV',
+        description: '导出为 CSV 格式',
+        confidence: 0.8,
+        evidences: [{ material_id: 'm1', quote: '要能导出 CSV' }],
+      },
+      { title: '导出 Excel', description: '导出为 Excel 格式', confidence: 0.6, evidences: [] },
+    ],
+  };
+
+  async function seedProject(db: ShipmateDb): Promise<string> {
+    const now = Date.now();
+    return (
+      await db
+        .insert(projects)
+        .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+        .returning()
+    )[0]!.id;
+  }
+
+  async function seedDoneRun(db: ShipmateDb, projectId: string, draft: unknown): Promise<string> {
+    const now = Date.now();
+    return (
+      await db
+        .insert(analysisRuns)
+        .values({
+          id: newId(),
+          projectId,
+          title: '批次',
+          status: 'done',
+          actor: 'human',
+          draftResult: draft as never,
+          createdAt: now,
+          completedAt: now,
+        })
+        .returning()
+    )[0]!.id;
+  }
+
+  async function getRun(db: ShipmateDb, runId: string) {
+    return (await db.select().from(analysisRuns).where(eq(analysisRuns.id, runId)))[0]!;
+  }
+
+  it('点级修订:user 含当前点与批注;点被替换;revisions 追加;change_logs update 记录批注', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      const runId = await seedDoneRun(db, projectId, {
+        requirements: [reviseBlock],
+        supplements: [],
+      });
+      const llm = vi.fn(async (_system: string, _user: string) => ({
+        title: '导出 CSV(支持自定义表头)',
+        description: '导出 CSV,可自定义表头与分隔符',
+        confidence: 0.9,
+        evidences: [],
+      }));
+      const svc = makeService(db, llm);
+      const { run, revised: rawRevised } = await svc.reviseDraft(
+        runId,
+        { blockIndex: 0, pointIndex: 0 },
+        '  加上表头说明  ',
+        undefined,
+        'human',
+      );
+      const revised = rawRevised as DraftPoint;
+      expect(llm).toHaveBeenCalledTimes(1);
+      const user = String(llm.mock.calls[0]![1]);
+      expect(user).toContain('导出 CSV'); // 当前点内容
+      expect(user).toContain('加上表头说明'); // 批注(已 trim)
+      expect(String(llm.mock.calls[0]![0])).toContain('需求点'); // 点级 system
+
+      expect(revised).toMatchObject({ title: '导出 CSV(支持自定义表头)', confidence: 0.9 });
+      expect(run.status).toBe('done');
+
+      const draft = (await getRun(db, runId)).draftResult as {
+        requirements: { title: string; points: { title: string }[]; revisions: unknown[] }[];
+      };
+      const block = draft.requirements[0]!;
+      expect(block.points[0]).toMatchObject({ title: '导出 CSV(支持自定义表头)' });
+      expect(block.points[1]!.title).toBe('导出 Excel'); // 兄弟点不动
+      expect(block.revisions).toEqual([
+        {
+          at: expect.any(Number),
+          actor: 'human',
+          annotation: '加上表头说明',
+          scope: 'point',
+          pointTitle: '导出 CSV(支持自定义表头)',
+        },
+      ]);
+
+      const logs = await db
+        .select()
+        .from(changeLogs)
+        .where(and(eq(changeLogs.entityId, runId), eq(changeLogs.changeType, 'update')));
+      expect(logs).toHaveLength(1);
+      expect(logs[0]!.entityType).toBe('analysis_run');
+      expect(logs[0]!.reason).toBe('AI 修订(需求点「导出 CSV(支持自定义表头)」):加上表头说明');
+      expect(logs[0]!.actor).toBe('human');
+      expect((logs[0]!.beforeSnapshot as { title: string }).title).toBe('导出需求');
+      expect((logs[0]!.afterSnapshot as { revisions: unknown[] }).revisions).toHaveLength(1);
+    });
+  });
+
+  it('keepEvidences 默认 true:LLM 返回空 evidences,写回仍保留原 evidences', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      const runId = await seedDoneRun(db, projectId, {
+        requirements: [reviseBlock],
+        supplements: [],
+      });
+      const llm = vi.fn(async () => ({
+        title: '导出 CSV',
+        description: '改写后的描述',
+        confidence: 0.95,
+        evidences: [],
+      }));
+      const svc = makeService(db, llm);
+      const { revised: rawRevised } = await svc.reviseDraft(
+        runId,
+        { blockIndex: 0, pointIndex: 0 },
+        '改写描述',
+        undefined,
+        'human',
+      );
+      expect((rawRevised as DraftPoint).evidences).toEqual([{ material_id: 'm1', quote: '要能导出 CSV' }]);
+      const draft = (await getRun(db, runId)).draftResult as {
+        requirements: { points: { evidences: unknown }[] }[];
+      };
+      expect(draft.requirements[0]!.points[0]!.evidences).toEqual([
+        { material_id: 'm1', quote: '要能导出 CSV' },
+      ]);
+    });
+  });
+
+  it('keepEvidences=false:LLM 返回空 evidences → 写回为空', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      const runId = await seedDoneRun(db, projectId, {
+        requirements: [reviseBlock],
+        supplements: [],
+      });
+      const llm = vi.fn(async () => ({
+        title: '导出 CSV',
+        description: '改写后的描述',
+        confidence: 0.95,
+        evidences: [],
+      }));
+      const svc = makeService(db, llm);
+      const { revised: rawRevised } = await svc.reviseDraft(
+        runId,
+        { blockIndex: 0, pointIndex: 0 },
+        '改写描述并清空依据',
+        { keepEvidences: false },
+        'human',
+      );
+      expect((rawRevised as DraftPoint).evidences).toEqual([]);
+      const draft = (await getRun(db, runId)).draftResult as {
+        requirements: { points: { evidences: unknown }[] }[];
+      };
+      expect(draft.requirements[0]!.points[0]!.evidences).toEqual([]);
+    });
+  });
+
+  it('块级修订:整块含 points 被替换;同名点 evidences 以原为准;revisions 追加 scope=block', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      const runId = await seedDoneRun(db, projectId, {
+        requirements: [reviseBlock],
+        supplements: [],
+      });
+      const llm = vi.fn(async (_system: string, _user: string) => ({
+        title: '导出需求(增强)',
+        summary: '支持多种格式导出并可配置',
+        points: [
+          { title: '导出 CSV', description: '重写后的 CSV 描述', confidence: 0.9, evidences: [] },
+          { title: '导出 PDF', description: '新增点', confidence: 0.7, evidences: [] },
+        ],
+      }));
+      const svc = makeService(db, llm);
+      const { revised: rawRevised } = await svc.reviseDraft(
+        runId,
+        { blockIndex: 0 },
+        '整体重写,细化 CSV 并新增 PDF',
+        undefined,
+        'human',
+      );
+      const revised = rawRevised as DraftRequirement;
+      expect(String(llm.mock.calls[0]![0])).toContain('需求块'); // 块级 system
+      expect(revised).toMatchObject({ title: '导出需求(增强)' });
+
+      const draft = (await getRun(db, runId)).draftResult as {
+        requirements: {
+          title: string;
+          points: { title: string; evidences: { material_id: string }[] }[];
+          revisions: { scope: string; pointTitle?: string }[];
+        }[];
+      };
+      const block = draft.requirements[0]!;
+      expect(block.title).toBe('导出需求(增强)');
+      expect(block.points.map((p) => p.title)).toEqual(['导出 CSV', '导出 PDF']);
+      // 同名点 evidences 以原为准;LLM 新增点保留 LLM 输出
+      expect(block.points[0]!.evidences).toEqual([{ material_id: 'm1', quote: '要能导出 CSV' }]);
+      expect(block.points[1]!.evidences).toEqual([]);
+      expect(block.revisions).toEqual([
+        {
+          at: expect.any(Number),
+          actor: 'human',
+          annotation: '整体重写,细化 CSV 并新增 PDF',
+          scope: 'block',
+        },
+      ]);
+      expect(revised.points[0]!.evidences).toEqual([{ material_id: 'm1', quote: '要能导出 CSV' }]);
+    });
+  });
+
+  it('校验:run 不存在 NOT_FOUND;无草稿/块越界/点越界/空批注 VALIDATION_ERROR;均不触发 LLM', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      const llm = vi.fn(async () => ({}));
+      const svc = makeService(db, llm);
+
+      await expect(
+        svc.reviseDraft('missing', { blockIndex: 0, pointIndex: 0 }, '批注', undefined, 'human'),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+
+      const empty = await svc.createAnalysisRun({ projectId }, 'human');
+      await expect(
+        svc.reviseDraft(empty.id, { blockIndex: 0 }, '批注', undefined, 'human'),
+      ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', message: expect.stringContaining('没有分析草稿') });
+
+      const runId = await seedDoneRun(db, projectId, {
+        requirements: [reviseBlock],
+        supplements: [],
+      });
+      await expect(
+        svc.reviseDraft(runId, { blockIndex: 9 }, '批注', undefined, 'human'),
+      ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+      await expect(
+        svc.reviseDraft(runId, { blockIndex: 0, pointIndex: 9 }, '批注', undefined, 'human'),
+      ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+      await expect(
+        svc.reviseDraft(runId, { blockIndex: 0 }, '   ', undefined, 'human'),
+      ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+      expect(llm).not.toHaveBeenCalled();
+    });
+  });
+
+  it('LLM 抛 LLM_ERROR → 冒泡且草稿、状态、change_logs 零改动', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      const seedDraft = { requirements: [reviseBlock], supplements: [] };
+      const runId = await seedDoneRun(db, projectId, seedDraft);
+      const svc = makeService(
+        db,
+        async () => {
+          throw new DomainError('LLM_ERROR', '超时');
+        },
+      );
+      await expect(
+        svc.reviseDraft(runId, { blockIndex: 0, pointIndex: 0 }, '批注', undefined, 'human'),
+      ).rejects.toMatchObject({ code: 'LLM_ERROR' });
+
+      const run = await getRun(db, runId);
+      expect(run.status).toBe('done'); // 批次状态不变
+      expect(run.draftResult).toEqual(seedDraft); // 草稿不动
+      expect(
+        await db
+          .select()
+          .from(changeLogs)
+          .where(and(eq(changeLogs.entityId, runId), eq(changeLogs.changeType, 'update'))),
+      ).toHaveLength(0);
+    });
+  });
+
+  it('LLM 产出不合 schema → LLM_SCHEMA_MISMATCH,草稿不动', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      const seedDraft = { requirements: [reviseBlock], supplements: [] };
+      const runId = await seedDoneRun(db, projectId, seedDraft);
+      const svc = makeService(db, async () => ({ wrong: 'shape' }));
+      await expect(
+        svc.reviseDraft(runId, { blockIndex: 0 }, '批注', undefined, 'human'),
+      ).rejects.toMatchObject({ code: 'LLM_SCHEMA_MISMATCH' });
+      expect((await getRun(db, runId)).draftResult).toEqual(seedDraft);
     });
   });
 });

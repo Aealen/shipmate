@@ -19,11 +19,21 @@ export const draftConflictSchema = z.object({
   reason: z.string().optional().default(''),
 });
 
+/** reviseDraft 修订摘要:每次 AI 修订在块上追加一条(spec §9 AI 修订) */
+export const draftRevisionSchema = z.object({
+  at: z.number(),
+  actor: z.string(),
+  annotation: z.string(),
+  scope: z.enum(['block', 'point']),
+  pointTitle: z.string().optional(),
+});
+
 export const draftRequirementSchema = z.object({
   title: z.string().min(1),
   summary: z.string().optional().default(''),
   conflict: draftConflictSchema.optional(),
   points: z.array(draftPointSchema),
+  revisions: z.array(draftRevisionSchema).optional(),
 });
 
 export const draftSupplementSchema = z.object({
@@ -38,6 +48,7 @@ export const analysisResultSchema = z.object({
 
 export type DraftPoint = z.infer<typeof draftPointSchema>;
 export type DraftConflict = z.infer<typeof draftConflictSchema>;
+export type DraftRevision = z.infer<typeof draftRevisionSchema>;
 export type DraftRequirement = z.infer<typeof draftRequirementSchema>;
 export type DraftSupplement = z.infer<typeof draftSupplementSchema>;
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;

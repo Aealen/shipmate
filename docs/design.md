@@ -414,6 +414,7 @@ AnalysisRun(pending)
    - **contradiction 相悖**:**强制人工裁决**,未裁决不能应用该块 — 用新(旧点自动打 `needs_reassessment`,写 conflict ChangeLog)/ 用旧(草稿丢弃)/ 都保留(双向 relations 记 conflict_with)
    - **supplement 补充**:草稿中把匹配到的**已有需求块整体带出** — 已有需求点按实时状态展示(done/developing/…),新增点打「补充」标(origin=supplement);应用时仅追加新点到已有需求下,已有点不动
    - 注:本条所述「conflict ChangeLog」落地为任务 status_change + 需求点 update 两种既有类型(ChangeType 枚举无 conflict 专用值),冲突语境经 reason 字段标注
+9. **AI 修订(草稿阶段)**:对未应用的草稿块/需求点,用户可输入批注让 LLM 重写(reviseDraft)。修订保 spec §5.4(draft 态)与 evidences 溯源规则;每次修订写 change_logs(actor+批注+前后快照)并追加块级 revisions 摘要;mcp `revise_draft` 工具使 agent 可发起修订
 
 ## 10. 配置
 

@@ -20,11 +20,18 @@ import { SettingsService } from './settings.service.js';
 import { chatJson, type LlmConfig } from '../llm/client.js';
 import {
   analysisResultSchema,
+  draftPointSchema,
+  draftRequirementSchema,
   type AnalysisResult,
   type DraftPoint,
   type DraftRequirement,
 } from '../llm/schema.js';
-import { buildSystemPrompt, buildUserPrompt } from '../llm/prompt.js';
+import {
+  buildReviseSystemPrompt,
+  buildReviseUserPrompt,
+  buildSystemPrompt,
+  buildUserPrompt,
+} from '../llm/prompt.js';
 import type { ExistingRequirementDigest } from '../llm/prompt-types.js';
 
 export type LlmInvoker = (system: string, user: string) => Promise<unknown>;
@@ -38,6 +45,12 @@ export type ConflictDecision = {
   requirementTitle: string;
   resolution: ConflictResolution;
 };
+
+/** reviseDraft 修订目标:blockIndex 必填;pointIndex 缺省 = 修订整块 */
+export interface ReviseDraftTarget {
+  blockIndex: number;
+  pointIndex?: number;
+}
 
 export interface AnalysisRunSummary extends AnalysisRunRow {
   materialCount: number;
@@ -360,6 +373,127 @@ export class AnalysisService {
 
       return created;
     });
+  }
+
+  /**
+   * spec §9 AI 修订:按用户批注让 LLM 重写草稿中的某个需求块(pointIndex 缺省)或需求点。
+   * LLM 失败(LLM_ERROR/LLM_SCHEMA_MISMATCH)直接冒泡,草稿与日志零改动,批次状态不变
+   * (与 startAnalysis 不同——修订失败无需置 run failed)。
+   * keepEvidences(默认 true):修订后的点 evidences 以原为准——点级直接回填原值;
+   * 块级按点 title 匹配回填(防 LLM 改写破坏素材溯源,错配风险大于漏配)。
+   */
+  async reviseDraft(
+    runId: string,
+    target: ReviseDraftTarget,
+    annotation: string,
+    opts?: { keepEvidences?: boolean },
+    actor: Actor = 'human',
+  ): Promise<{ run: AnalysisRunRow; revised: DraftRequirement | DraftPoint }> {
+    const run = (await this.db.select().from(analysisRuns).where(eq(analysisRuns.id, runId)))[0];
+    if (!run) throw new DomainError('NOT_FOUND', `分析批次 ${runId} 不存在`);
+    const draft = run.draftResult as AnalysisResult | null;
+    if (!draft) throw new DomainError('VALIDATION_ERROR', '该批次没有分析草稿');
+
+    const block = draft.requirements[target.blockIndex];
+    if (!block)
+      throw new DomainError('VALIDATION_ERROR', `需求块下标 ${target.blockIndex} 不存在`);
+    const scope: 'block' | 'point' = target.pointIndex === undefined ? 'block' : 'point';
+    const originPoint =
+      scope === 'point' ? block.points[target.pointIndex as number] : undefined;
+    if (scope === 'point' && !originPoint)
+      throw new DomainError('VALIDATION_ERROR', `需求点下标 ${target.pointIndex} 不存在`);
+    const annotationText = annotation?.trim();
+    if (!annotationText)
+      throw new DomainError('VALIDATION_ERROR', '修订批注不能为空');
+
+    const current = scope === 'point' ? originPoint : block;
+    const user = buildReviseUserPrompt(
+      current,
+      annotationText,
+      await this.collectExistingDigest(run.projectId),
+    );
+    const system = buildReviseSystemPrompt(scope);
+
+    const raw = await this.llm(system, user);
+    let revisedPoint: DraftPoint | undefined;
+    let revisedBlock: DraftRequirement | undefined;
+    if (scope === 'point') {
+      const parsed = draftPointSchema.safeParse(raw);
+      if (!parsed.success)
+        throw new DomainError(
+          'LLM_SCHEMA_MISMATCH',
+          `LLM 产出不合 schema:${parsed.error.issues[0]?.path.join('.')} ${parsed.error.issues[0]?.message}`,
+        );
+      revisedPoint = parsed.data;
+    } else {
+      const parsed = draftRequirementSchema.safeParse(raw);
+      if (!parsed.success)
+        throw new DomainError(
+          'LLM_SCHEMA_MISMATCH',
+          `LLM 产出不合 schema:${parsed.error.issues[0]?.path.join('.')} ${parsed.error.issues[0]?.message}`,
+        );
+      revisedBlock = parsed.data;
+    }
+
+    if (opts?.keepEvidences !== false) {
+      if (revisedPoint) {
+        revisedPoint.evidences = originPoint!.evidences;
+      } else if (revisedBlock) {
+        for (const p of revisedBlock.points) {
+          const match = block.points.find((op) => op.title === p.title);
+          if (match) p.evidences = match.evidences;
+        }
+      }
+    }
+
+    const now = Date.now();
+    const priorRevisions = block.revisions ?? [];
+    const newBlock: DraftRequirement =
+      revisedPoint !== undefined
+        ? {
+            ...block,
+            points: block.points.map((p, i) => (i === target.pointIndex ? revisedPoint : p)),
+            revisions: [
+              ...priorRevisions,
+              { at: now, actor, annotation: annotationText, scope, pointTitle: revisedPoint.title },
+            ],
+          }
+        : {
+            ...(revisedBlock as DraftRequirement),
+            revisions: [
+              ...priorRevisions,
+              { at: now, actor, annotation: annotationText, scope },
+            ],
+          };
+    const newDraft: AnalysisResult = {
+      ...draft,
+      requirements: draft.requirements.map((b, i) => (i === target.blockIndex ? newBlock : b)),
+    };
+
+    const updated = await this.db.transaction(async (tx) => {
+      const row = (
+        await tx
+          .update(analysisRuns)
+          .set({ draftResult: newDraft as never })
+          .where(eq(analysisRuns.id, runId))
+          .returning()
+      )[0]!;
+      await writeChangeLog(tx, {
+        entityType: 'analysis_run',
+        entityId: runId,
+        changeType: 'update',
+        before: block,
+        after: newBlock,
+        reason: `AI 修订(${scope === 'point' ? `需求点「${revisedPoint!.title}」` : '整个需求块'}):${annotationText}`,
+        actor,
+      });
+      return row;
+    });
+
+    return {
+      run: updated,
+      revised: revisedPoint !== undefined ? revisedPoint : (revisedBlock as DraftRequirement),
+    };
   }
 
   private parseResult(raw: unknown): AnalysisResult {

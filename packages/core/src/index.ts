@@ -69,6 +69,7 @@ export {
   type AnalysisRunDetail,
   type ConflictDecision,
   type ConflictResolution,
+  type ReviseDraftTarget,
 } from './services/analysis.service.js';
 export { analysisResultSchema, type AnalysisResult } from './llm/schema.js';
 export { chatJson, type LlmConfig } from './llm/client.js';
