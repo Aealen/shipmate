@@ -161,9 +161,7 @@ export function ReviseModal({
 
   // 点作用域的实际下标:块级入口打开后切到「单个需求点」时,缺省落第 0 点
   const effectivePointIndex =
-    scope === 'point'
-      ? (target.pointIndex ?? (block.points.length > 0 ? 0 : null))
-      : null;
+    scope === 'point' ? (target.pointIndex ?? (block.points.length > 0 ? 0 : null)) : null;
   const currentPoint = effectivePointIndex !== null ? block.points[effectivePointIndex] : undefined;
 
   const curTitle = currentPoint ? currentPoint.title : block.title;
@@ -267,7 +265,11 @@ export function ReviseModal({
   }
 
   const revTitle = result?.title ?? '';
-  const revDesc = result ? (isRevisedPoint(result) ? (result.description ?? '') : (result.summary ?? '')) : '';
+  const revDesc = result
+    ? isRevisedPoint(result)
+      ? (result.description ?? '')
+      : (result.summary ?? '')
+    : '';
   const revEvidenceCount = result
     ? isRevisedPoint(result)
       ? result.evidences.length
@@ -355,10 +357,7 @@ export function ReviseModal({
                 <p className="text-[11px] text-text-muted">
                   {t('revise.currentEvidence', { count: curEvidenceCount })}
                   {curQuote && (
-                    <>
-                      {' '}
-                      ·「{curQuote.length > 24 ? `${curQuote.slice(0, 24)}…` : curQuote}」
-                    </>
+                    <> ·「{curQuote.length > 24 ? `${curQuote.slice(0, 24)}…` : curQuote}」</>
                   )}
                 </p>
               </div>
@@ -409,10 +408,7 @@ export function ReviseModal({
               )}
 
               {/* 批注输入 + 快捷 chips */}
-              <label
-                htmlFor="revise-annotation"
-                className="block text-[12.5px] text-text-primary"
-              >
+              <label htmlFor="revise-annotation" className="block text-[12.5px] text-text-primary">
                 {t('revise.annotationLabel')}
               </label>
               <textarea
