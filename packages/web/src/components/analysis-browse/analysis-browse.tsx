@@ -40,10 +40,19 @@ const PRIORITY_ORDER: Record<RequirementWithOverdue['priority'], number> = {
   P3: 3,
 };
 
+/** 优先级徽章:P0/P1 红底白字、P2 橙底白字、P3 灰底(原型 P3 帧 P1=红) */
+const PRIORITY_BADGE: Record<RequirementWithOverdue['priority'], string> = {
+  P0: 'bg-danger text-white',
+  P1: 'bg-danger text-white',
+  P2: 'bg-warning text-white',
+  P3: 'bg-surface-2 text-text-secondary',
+};
+
 /**
- * P3 需求分析页主体(双区,对齐原型 P3 帧):
- * 上半「素材分析记录」卡流——每卡 = 一次批次,点击进入工作台(?run=);
- * 下半「需求列表」——draft 置灰置顶,需求点行展开,行尾详情/原文依据入口。
+ * P3 需求分析页主体(对齐原型 P3 帧):
+ * 上半「素材分析记录」白卡——灰底批次卡流,点击进入工作台(?run=);
+ * 下半「需求产出」——需求块(优先级徽章 + 标题 + 计划/超期徽章)默认展开
+ * 需求点行(灰底行卡:状态圆点 + 标题 + 徽章 + 版本 + 详情入口)。
  * 本组件纯只读,写操作都在工作台(C 组)与详情页。
  */
 export function AnalysisBrowse({
@@ -95,21 +104,23 @@ export function AnalysisBrowse({
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8 p-6">
-      {/* 上半:素材分析记录卡流 */}
-      <section>
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-text-primary">{t('runsTitle')}</h2>
+    <div className="flex w-full flex-col gap-4 p-6">
+      {/* 上半:素材分析记录(白卡包裹 + 灰底批次卡流) */}
+      <section className="flex flex-col gap-3 rounded-[10px] border border-transparent bg-surface p-[18px]">
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-sm font-bold text-text-primary">{t('runsTitle')}</h2>
+          <span className="text-[11px] text-text-muted">{t('runsSubtitle')}</span>
+          <span className="min-w-0 flex-1" />
           <Link
             href={newAnalysisHref}
-            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md bg-accent px-3 text-sm font-medium text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97]"
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-[7px] bg-ai px-3 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97]"
           >
             <svg
               viewBox="0 0 24 24"
-              className="h-3.5 w-3.5"
+              className="h-3 w-3"
               fill="none"
               stroke="currentColor"
-              strokeWidth={2}
+              strokeWidth={2.4}
               strokeLinecap="round"
               aria-hidden
             >
@@ -127,21 +138,24 @@ export function AnalysisBrowse({
             onAction={() => router.push(newAnalysisHref)}
           />
         ) : (
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             {runs.map((run) => (
-              <RunCard key={run.id} run={run} href={`${newAnalysisHref}?run=${run.id}`} />
+              <RunCard
+                key={run.id}
+                run={run}
+                href={`${newAnalysisHref}?run=${run.id}`}
+                locale={locale}
+              />
             ))}
           </div>
         )}
       </section>
 
-      {/* 下半:需求列表(draft 置灰置顶) */}
-      <section>
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-text-primary">{t('requirementsTitle')}</h2>
-          <span className="shrink-0 text-xs text-text-muted">
-            {t('requirementCount', { count: requirements.length })}
-          </span>
+      {/* 下半:需求产出(draft 置灰置顶) */}
+      <section className="flex flex-col gap-3.5">
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-sm font-bold text-text-primary">{t('requirementsTitle')}</h2>
+          <span className="text-[11px] text-text-muted">{t('reqsSubtitle')}</span>
         </div>
 
         {requirements.length === 0 ? (
@@ -152,7 +166,7 @@ export function AnalysisBrowse({
             onAction={() => router.push(newAnalysisHref)}
           />
         ) : (
-          <div className="mt-3 space-y-3">
+          <div className="flex flex-col gap-3.5">
             {sortedRequirements.map((req) => (
               <RequirementBlock
                 key={req.id}
@@ -177,34 +191,68 @@ export function AnalysisBrowse({
   );
 }
 
-/** 批次卡:标题/时间/素材数/草稿统计/状态徽章,点击进工作台带 ?run= */
-function RunCard({ run, href }: { run: RunCardData; href: string }) {
+/** 批次卡(原型:灰底描边小卡):素材数徽章 + 状态字 / 标题 / meta / 查看与重跑 */
+function RunCard({ run, href, locale }: { run: RunCardData; href: string; locale: string }) {
   const t = useTranslations('browse');
-  const locale = useLocale();
+
+  const statusBadge =
+    run.status === 'failed' ? (
+      <span className="inline-flex shrink-0 items-center rounded-[4px] bg-danger px-[5px] py-[2px] text-[9px] font-medium leading-none text-white">
+        {t('runStatusFailed')}
+      </span>
+    ) : run.status === 'pending' ? (
+      <span className="inline-flex shrink-0 items-center rounded-[4px] bg-surface px-[5px] py-[2px] text-[9px] font-medium leading-none text-warning">
+        {t('runStatusPending')}
+      </span>
+    ) : (
+      <span className="inline-flex shrink-0 items-center rounded-[4px] bg-surface px-[5px] py-[2px] text-[9px] font-medium leading-none text-success">
+        {t('runStatusDone')}
+      </span>
+    );
+
+  const meta =
+    run.status === 'done'
+      ? t('runMetaDone', {
+          req: run.draftRequirementCount,
+          time: formatShort(run.createdAt, locale),
+        })
+      : run.status === 'pending'
+        ? t('runMetaPending', { time: formatShort(run.createdAt, locale) })
+        : t('runMetaFailed');
+
+  const rerunLabel =
+    run.status === 'pending'
+      ? t('continueAnalysis')
+      : run.status === 'failed'
+        ? t('retryAnalysis')
+        : t('reanalyze');
 
   return (
     <Link
       href={href}
-      className="block rounded-xl border border-border bg-surface p-4 transition-colors duration-[120ms] hover:border-accent"
+      className="flex flex-col gap-[7px] rounded-[9px] border border-border bg-bg p-3 transition-colors duration-[120ms] hover:border-accent"
     >
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="min-w-0 truncate text-sm font-medium text-text-primary">
-          {run.title ?? t('runUntitled')}
-        </h3>
-        <StatusBadge status={run.status} size="sm" />
+      <div className="flex items-center gap-1.5">
+        <span className="inline-flex shrink-0 items-center rounded-[4px] bg-surface-2 px-[5px] py-[2px] text-[9px] leading-none text-text-secondary">
+          {t('runMaterials', { count: run.materialCount })}
+        </span>
+        <span className="min-w-0 flex-1" />
+        {statusBadge}
       </div>
-      <p className="mt-2 text-xs text-text-muted">{formatDateTime(run.createdAt, locale)}</p>
-      <div className="mt-3 flex items-center gap-3 text-xs text-text-secondary">
-        <span>{t('runMaterials', { count: run.materialCount })}</span>
-        {run.status === 'done' && (
-          <span>{t('runDrafts', { count: run.draftRequirementCount })}</span>
-        )}
+      <p className="truncate text-xs font-bold text-text-primary">
+        {run.title ?? t('runUntitled')}
+      </p>
+      <p className="truncate text-[10px] text-text-muted">{meta}</p>
+      <div className="flex items-center gap-2 pt-0.5">
+        <span className="shrink-0 text-[10px] font-bold text-accent">{t('viewDetail')}</span>
+        <span className="min-w-0 flex-1" />
+        <span className="shrink-0 text-[10px] text-text-muted">{rerunLabel}</span>
       </div>
     </Link>
   );
 }
 
-/** 需求块:头部行可点开合需求点;draft 置灰 + 待确认提示;超期/临期徽章 */
+/** 需求块(原型:白卡;头部 优先级徽章+标题+计划+超期徽+右侧就绪统计),点击折叠 */
 function RequirementBlock({
   requirement: req,
   points,
@@ -218,12 +266,14 @@ function RequirementBlock({
 }) {
   const t = useTranslations('browse');
   const locale = useLocale();
-  const [open, setOpen] = useState(false);
+  // 原型需求点行直接可见:默认展开,保留点击头部折叠
+  const [open, setOpen] = useState(true);
   const isDraft = req.status === 'draft';
+  const doneCount = points.filter((p) => p.status === 'done').length;
 
   return (
     <div
-      className={`rounded-xl border border-border bg-surface transition-colors duration-[120ms] hover:border-accent ${
+      className={`flex flex-col gap-3 rounded-[10px] border border-transparent bg-surface p-[18px] transition-colors duration-[120ms] hover:border-accent ${
         isDraft ? 'opacity-75' : ''
       }`}
     >
@@ -231,42 +281,30 @@ function RequirementBlock({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full flex-wrap items-center gap-2 p-4 text-left"
+        title={open ? undefined : t('detail')}
+        className="flex w-full flex-wrap items-center gap-2.5 text-left"
       >
-        <svg
-          viewBox="0 0 24 24"
-          className={`h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-[120ms] ${
-            open ? 'rotate-90' : ''
-          }`}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
+        <span
+          className={`inline-flex shrink-0 items-center rounded-[5px] px-[7px] py-[2px] text-[10px] font-bold leading-none ${PRIORITY_BADGE[req.priority]}`}
         >
-          <path d="m9 6 6 6-6 6" />
-        </svg>
-        <span className="min-w-0 truncate text-[15px] font-medium text-text-primary">
+          {req.priority}
+        </span>
+        <span className="min-w-0 truncate text-[15px] font-bold text-text-primary">
           {req.title}
         </span>
         <StatusBadge status={req.status} size="sm" />
-        {isDraft && <span className="text-xs text-draft-gray">{t('draftHint')}</span>}
-        <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium text-text-secondary">
-          {req.priority}
-        </span>
-        <span className="ml-auto flex shrink-0 items-center gap-1.5">
-          <span className="text-xs text-text-muted">{planTimeText(req, t, locale)}</span>
-          {req.dueSoon && <DueSoonBadge />}
-          {req.overdue && <OverdueBadge days={req.overdueDays} />}
-          <span className="text-xs text-text-muted">
-            {t('pointsCount', { count: points.length })}
-          </span>
+        {isDraft && <span className="shrink-0 text-[11px] text-draft-gray">{t('draftHint')}</span>}
+        <span className="shrink-0 text-[11px] text-text-muted">{planTimeText(req, t, locale)}</span>
+        {req.dueSoon && <DueSoonBadge />}
+        {req.overdue && <OverdueBadge days={req.overdueDays} />}
+        <span className="min-w-0 flex-1" />
+        <span className="shrink-0 text-[11px] text-text-muted">
+          {t('pointsReady', { done: doneCount, total: points.length })}
         </span>
       </button>
 
       {open && points.length > 0 && (
-        <ul className="border-t border-border">
+        <ul className="flex flex-col gap-2">
           {points.map((p) => (
             <PointRow
               key={p.id}
@@ -281,7 +319,7 @@ function RequirementBlock({
   );
 }
 
-/** 需求点行:标题 + 状态徽章 + 行尾「📄 原文依据」「详情 ›」 */
+/** 需求点行(原型:灰底行卡)状态圆点 + 标题 + 徽章 + AI 徽 + 版本 + 详情入口 */
 function PointRow({
   point,
   detailHref,
@@ -293,20 +331,36 @@ function PointRow({
 }) {
   const t = useTranslations('browse');
 
+  const dotColor =
+    point.status === 'done'
+      ? 'bg-success'
+      : point.status === 'developing'
+        ? 'bg-warning'
+        : point.status === 'confirmed'
+          ? 'bg-accent'
+          : 'bg-draft-gray';
+
   return (
-    <li className="flex items-center gap-2 py-2.5 pl-9 pr-4">
-      <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{point.title}</span>
+    <li className="flex items-center gap-2.5 rounded-[8px] bg-bg px-3 py-3">
+      <span className={`h-[7px] w-[7px] shrink-0 rounded-full ${dotColor}`} />
+      <span className="min-w-0 flex-1 truncate text-[13px] text-text-primary">{point.title}</span>
       <StatusBadge status={point.status} size="sm" />
+      {point.origin === 'analysis' && (
+        <span className="inline-flex shrink-0 items-center rounded-[4px] bg-surface-2 px-[6px] py-[2px] text-[10px] leading-none text-ai">
+          ai:analysis
+        </span>
+      )}
+      <span className="shrink-0 text-[10px] tabular-nums text-text-muted">v{point.version}</span>
       <button
         type="button"
         onClick={onEvidence}
-        className="shrink-0 rounded px-1.5 py-0.5 text-xs text-text-secondary transition-all duration-[80ms] hover:text-accent active:scale-[0.97]"
+        className="shrink-0 rounded px-1 py-0.5 text-[11px] text-text-secondary transition-all duration-[80ms] hover:text-accent active:scale-[0.97]"
       >
         📄 {t('evidence')}
       </button>
       <Link
         href={detailHref}
-        className="shrink-0 rounded px-1.5 py-0.5 text-xs text-accent transition-opacity hover:opacity-80"
+        className="shrink-0 rounded px-1 py-0.5 text-[11px] font-bold text-accent transition-opacity hover:opacity-80"
       >
         {t('detail')} ›
       </Link>
@@ -318,14 +372,22 @@ function formatDate(ms: number, locale: string): string {
   return new Intl.DateTimeFormat(locale, { month: '2-digit', day: '2-digit' }).format(ms);
 }
 
-function formatDateTime(ms: number, locale: string): string {
-  return new Intl.DateTimeFormat(locale, {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(ms);
+/** 短时间:今天 HH:mm,其余 MM/dd(批次卡 meta 用) */
+function formatShort(ms: number, locale: string): string {
+  const d = new Date(ms);
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  if (sameDay) {
+    return new Intl.DateTimeFormat(locale, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(ms);
+  }
+  return formatDate(ms, locale);
 }
 
 /** 计划时间文案:双时间显示区间,仅有截止显示「截止 x」,都无显示「未排期」 */
