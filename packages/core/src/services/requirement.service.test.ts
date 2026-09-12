@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { withDb } from '../db/database.js';
 import { changeLogs, projects, type RequirementRow } from '../db/schema.js';
 import { newId } from '../db/id.js';
@@ -100,8 +100,12 @@ describe('RequirementService', () => {
       const r = await svc.createRequirement({ projectId: p.id, title: 'A' }, 'human');
       const done = await svc.updateRequirement(r.id, { status: 'done' }, 'human');
       expect(done.completedAt).not.toBeNull();
+      // 按 entityId 收窄:共享真实库中存在其他 status_change 日志
       expect(
-        await db.select().from(changeLogs).where(eq(changeLogs.changeType, 'status_change')),
+        await db
+          .select()
+          .from(changeLogs)
+          .where(and(eq(changeLogs.changeType, 'status_change'), eq(changeLogs.entityId, r.id))),
       ).toHaveLength(1);
 
       const reopened = await svc.updateRequirement(r.id, { status: 'confirmed' }, 'human');
@@ -121,7 +125,11 @@ describe('RequirementService', () => {
       )[0]!;
       const r = await svc.createRequirement({ projectId: p.id, title: '旧' }, 'human');
       await svc.updateRequirement(r.id, { title: '新' }, 'human');
-      const logs = await db.select().from(changeLogs).where(eq(changeLogs.changeType, 'update'));
+      // 按 entityId 收窄:共享真实库中存在其他 update 日志
+      const logs = await db
+        .select()
+        .from(changeLogs)
+        .where(and(eq(changeLogs.changeType, 'update'), eq(changeLogs.entityId, r.id)));
       expect(logs).toHaveLength(1);
       expect(logs[0]?.beforeSnapshot).toMatchObject({ title: '旧' });
     });

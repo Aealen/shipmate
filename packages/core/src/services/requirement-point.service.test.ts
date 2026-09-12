@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { withDb, type ShipmateDb } from '../db/database.js';
 import { changeLogs, projects, requirementPoints, requirements } from '../db/schema.js';
 import { newId } from '../db/id.js';
@@ -70,10 +70,11 @@ describe('RequirementPointService 状态机', () => {
       );
       expect((await svc.setRequirementPointStatus(id, 'start', 'human')).status).toBe('developing');
       expect((await svc.setRequirementPointStatus(id, 'complete', 'human')).status).toBe('done');
+      // 按 entityId 收窄:共享真实库中存在其他 status_change 日志
       const logs = await db
         .select()
         .from(changeLogs)
-        .where(eq(changeLogs.changeType, 'status_change'));
+        .where(and(eq(changeLogs.changeType, 'status_change'), eq(changeLogs.entityId, id)));
       expect(logs).toHaveLength(3);
     });
   });
@@ -109,7 +110,7 @@ describe('实质修改联动(spec §5.3)', () => {
       const taskSvc = new TaskService(db);
       const reqId = await seedRequirement(db);
       const id = await seedPoint(db, reqId, 'developing', 3);
-      await taskSvc.createTask({ requirementPointId: id, title: 'T1' }, 'human');
+      const t1 = await taskSvc.createTask({ requirementPointId: id, title: 'T1' }, 'human');
       const t2 = await taskSvc.createTask({ requirementPointId: id, title: 'T2' }, 'human');
       await taskSvc.setTaskStatus(t2.id, 'start', 'human');
 
@@ -129,7 +130,11 @@ describe('实质修改联动(spec §5.3)', () => {
       );
       expect(kinds).toContain('update');
       expect(kinds).toContain('linkage_impact');
-      const taskLogs = await db.select().from(changeLogs).where(eq(changeLogs.entityType, 'task'));
+      // 收窄到本用例自建的两个任务:共享真实库中可能存在其他 task 日志
+      const taskLogs = await db
+        .select()
+        .from(changeLogs)
+        .where(inArray(changeLogs.entityId, [t1.id, t2.id]));
       // 3 条 = T2 start 1 条(TaskService.setTaskStatus 记 status_change)+ 联动打标 T1/T2 各 1 条
       expect(taskLogs.filter((l) => l.changeType === 'status_change')).toHaveLength(3);
     });

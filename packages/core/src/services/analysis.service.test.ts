@@ -558,8 +558,12 @@ describe('applyAnalysisRun', () => {
         'human',
       );
       expect(created1).toHaveLength(0);
+      // discard log 的 entityId 即 runId,按其收窄:共享真实库中可能存在其他 discard 日志
       expect(
-        await db.select().from(changeLogs).where(eq(changeLogs.changeType, 'discard')),
+        await db
+          .select()
+          .from(changeLogs)
+          .where(and(eq(changeLogs.changeType, 'discard'), eq(changeLogs.entityId, run1))),
       ).toHaveLength(1);
 
       const run2 = await seedDraft(db, projectId, {
@@ -572,7 +576,8 @@ describe('applyAnalysisRun', () => {
         'human',
       );
       expect(created2).toHaveLength(1);
-      const allTasks = await new TaskService(db).listTasks({});
+      // 收窄到本用例自建项目:共享真实库中存在其他项目的任务
+      const allTasks = await new TaskService(db).listTasks({ projectId });
       expect(allTasks.every((t) => t.status === 'needs_reassessment')).toBe(true);
     });
   });

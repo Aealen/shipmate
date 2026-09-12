@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { withDb, type ShipmateDb } from '../db/database.js';
 import { changeLogs, groups, projects } from '../db/schema.js';
 import { newId } from '../db/id.js';
@@ -51,7 +51,11 @@ describe('GroupService', () => {
       const g = await svc.createGroup({ name: '旧名' }, 'human');
       const after = await svc.updateGroup(g.id, { name: '新名', sortOrder: 5 }, 'human');
       expect(after).toMatchObject({ name: '新名', sortOrder: 5, description: null });
-      const log = await db.select().from(changeLogs).where(eq(changeLogs.changeType, 'update'));
+      // 按 entityId 收窄:共享真实库中存在其他 update 日志
+      const log = await db
+        .select()
+        .from(changeLogs)
+        .where(and(eq(changeLogs.changeType, 'update'), eq(changeLogs.entityId, g.id)));
       expect(log).toHaveLength(1);
       expect(log[0]?.beforeSnapshot).toMatchObject({ name: '旧名', sortOrder: 0 });
     });
@@ -72,7 +76,11 @@ describe('GroupService', () => {
       const empty = await svc.createGroup({ name: '空组' }, 'human');
       await expect(svc.deleteGroup(empty.id, 'human')).resolves.toBeUndefined();
       expect(await db.select().from(groups).where(eq(groups.id, empty.id))).toHaveLength(0);
-      const log = await db.select().from(changeLogs).where(eq(changeLogs.changeType, 'delete'));
+      // 按 entityId 收窄:共享真实库中可能存在其他 delete 日志
+      const log = await db
+        .select()
+        .from(changeLogs)
+        .where(and(eq(changeLogs.changeType, 'delete'), eq(changeLogs.entityId, empty.id)));
       expect(log).toHaveLength(1);
       expect(log[0]?.entityType).toBe('group');
     });
@@ -100,11 +108,16 @@ describe('GroupService', () => {
   it('listGroups:含各组项目数', async () => {
     await withDb(async (db) => {
       const svc = new GroupService(db);
-      await svc.createGroup({ name: 'G1' }, 'human');
-      await svc.createGroup({ name: 'G2' }, 'human');
+      const before = (await svc.listGroups()).length;
+      const g1 = await svc.createGroup({ name: 'G1' }, 'human');
+      const g2 = await svc.createGroup({ name: 'G2' }, 'human');
       const rows = await svc.listGroups();
-      expect(rows).toHaveLength(2);
-      expect(rows.every((r) => r.projectCount === 0)).toBe(true);
+      // 共享真实库:总列表用相对计数 diff
+      expect(rows.length - before).toBe(2);
+      // projectCount 仅对本用例自建的空组断言(真实组可能已有项目)
+      const mine = rows.filter((r) => r.id === g1.id || r.id === g2.id);
+      expect(mine).toHaveLength(2);
+      expect(mine.every((r) => r.projectCount === 0)).toBe(true);
     });
   });
 });

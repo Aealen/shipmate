@@ -131,12 +131,16 @@ describe('ProjectService', () => {
   it('listProjects:全部 / 按组 / 未分组(null)', async () => {
     await withDb(async (db) => {
       const svc = new ProjectService(db);
+      // 共享真实库,断言用相对计数 diff,不假设全表初值
+      const beforeAll = (await svc.listProjects()).length;
+      const beforeUngrouped = (await svc.listProjects({ groupId: null })).length;
       const gid = await seedGroup(db);
       await svc.createProject({ groupId: gid, name: '在组内' }, 'human');
       await svc.createProject({ name: '不在组内' }, 'human');
-      expect(await svc.listProjects()).toHaveLength(2);
+      expect((await svc.listProjects()).length - beforeAll).toBe(2);
+      // 本用例自建组,gid 天然隔离,可精确断言
       expect(await svc.listProjects({ groupId: gid })).toHaveLength(1);
-      expect(await svc.listProjects({ groupId: null })).toHaveLength(1);
+      expect((await svc.listProjects({ groupId: null })).length - beforeUngrouped).toBe(1);
     });
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { withDb, type ShipmateDb } from '../db/database.js';
 import {
   changeLogs,
@@ -117,7 +117,11 @@ describe('TaskService', () => {
       const pointId = await seedPoint(db);
       const t = await svc.createTask({ requirementPointId: pointId, title: '旧' }, 'human');
       await svc.updateTask(t.id, { title: '新', sortOrder: 3 }, 'human');
-      const log = await db.select().from(changeLogs).where(eq(changeLogs.changeType, 'update'));
+      // 按 entityId 收窄:共享真实库中存在其他 update 日志
+      const log = await db
+        .select()
+        .from(changeLogs)
+        .where(and(eq(changeLogs.changeType, 'update'), eq(changeLogs.entityId, t.id)));
       expect(log).toHaveLength(1);
     });
   });

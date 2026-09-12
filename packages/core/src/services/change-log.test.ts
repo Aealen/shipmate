@@ -39,7 +39,8 @@ describe('writeChangeLog', () => {
           after: {},
           actor: 'mcp:claude-code',
         });
-        const seen = await tx.select().from(changeLogs);
+        // 按 entityId 过滤:库内(共享真实库)存在其他数据,不能对全表计数
+        const seen = await tx.select().from(changeLogs).where(eq(changeLogs.entityId, 't1'));
         expect(seen).toHaveLength(1);
         await writeChangeLog(tx, {
           entityType: 'task',
@@ -49,7 +50,9 @@ describe('writeChangeLog', () => {
           actor: 'human',
         });
       });
-      expect(await db.select().from(changeLogs)).toHaveLength(2);
+      expect(
+        await db.select().from(changeLogs).where(eq(changeLogs.entityId, 't1')),
+      ).toHaveLength(2);
     });
   });
 });

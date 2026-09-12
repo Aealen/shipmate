@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { createDatabase, withDb } from './database.js';
 import { groups, projects } from './schema.js';
 import { newId } from './id.js';
@@ -47,31 +47,32 @@ describe('createDatabase', () => {
 
 describe('withDb(事务回滚隔离)', () => {
   it('事务内写入可见,回滚后零残留', async () => {
+    const id = newId();
     await withDb(async (db) => {
       const now = Date.now();
-      await db
-        .insert(groups)
-        .values({ id: newId(), name: '测试分组', sortOrder: 0, createdAt: now, updatedAt: now });
-      const rows = await db.select().from(groups);
+      await db.insert(groups).values({ id, name: '测试分组', sortOrder: 0, createdAt: now, updatedAt: now });
+      // 按自建 id 过滤:共享真实库,groups 表并非空表
+      const rows = await db.select().from(groups).where(eq(groups.id, id));
       expect(rows).toHaveLength(1);
       expect(rows[0]?.name).toBe('测试分组');
     });
     // 回滚后必须查不到
     const db = await createDatabase(TEST_URL!);
-    expect(await db.select().from(groups)).toHaveLength(0);
+    expect(await db.select().from(groups).where(eq(groups.id, id))).toHaveLength(0);
   });
 
   it('service 内部事务在外层事务中变为 SAVEPOINT,同样被回滚', async () => {
+    const id = newId();
     await withDb(async (db) => {
       await db.transaction(async (tx) => {
         const now = Date.now();
         await tx
           .insert(groups)
-          .values({ id: newId(), name: '嵌套写入', sortOrder: 0, createdAt: now, updatedAt: now });
+          .values({ id, name: '嵌套写入', sortOrder: 0, createdAt: now, updatedAt: now });
       });
-      expect(await db.select().from(groups)).toHaveLength(1);
+      expect(await db.select().from(groups).where(eq(groups.id, id))).toHaveLength(1);
     });
     const db = await createDatabase(TEST_URL!);
-    expect(await db.select().from(groups)).toHaveLength(0);
+    expect(await db.select().from(groups).where(eq(groups.id, id))).toHaveLength(0);
   });
 });
