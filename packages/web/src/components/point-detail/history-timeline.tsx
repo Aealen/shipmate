@@ -96,7 +96,7 @@ export function HistoryTimeline({ changeLogs }: { changeLogs: ChangeLogRow[] }) 
             </div>
             {statusFlow && (
               <p className="mt-1 flex items-center gap-1 text-xs text-text-secondary">
-                {tBadge(`badge.${statusFlow.from}`)}
+                {tBadge(statusFlow.from)}
                 <svg
                   viewBox="0 0 24 24"
                   className="h-3 w-3 text-text-muted"
@@ -109,7 +109,7 @@ export function HistoryTimeline({ changeLogs }: { changeLogs: ChangeLogRow[] }) 
                 >
                   <path d="M5 12h14M13 6l6 6-6 6" />
                 </svg>
-                {tBadge(`badge.${statusFlow.to}`)}
+                {tBadge(statusFlow.to)}
               </p>
             )}
             {log.reason && (

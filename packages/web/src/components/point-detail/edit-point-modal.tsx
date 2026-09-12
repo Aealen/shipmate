@@ -133,8 +133,8 @@ export function EditPointModal({
                 {willRollback && (
                   <PreviewLine tone="warning">
                     {t('previewRollback', {
-                      from: tBadge(`badge.${point.status}`),
-                      to: tBadge('badge.confirmed'),
+                      from: tBadge(point.status),
+                      to: tBadge('confirmed'),
                     })}
                   </PreviewLine>
                 )}
