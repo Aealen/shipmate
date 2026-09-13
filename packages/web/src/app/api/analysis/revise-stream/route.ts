@@ -37,7 +37,10 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as ReviseStreamBody;
   } catch {
-    return Response.json({ ok: false, code: 'VALIDATION_ERROR', message: '请求体不是合法 JSON' }, { status: 400 });
+    return Response.json(
+      { ok: false, code: 'VALIDATION_ERROR', message: '请求体不是合法 JSON' },
+      { status: 400 },
+    );
   }
   const { runId, blockIndex, pointIndex, annotation, keepEvidences } = body;
   if (typeof runId !== 'string' || !runId || typeof annotation !== 'string' || !annotation.trim()) {
@@ -101,7 +104,10 @@ export async function POST(request: Request) {
           send({ type: 'error', message: e.message });
         } else {
           console.error('[revise-stream] 未预期错误:', e);
-          send({ type: 'error', message: e instanceof Error ? e.message : '服务内部错误,请稍后重试' });
+          send({
+            type: 'error',
+            message: e instanceof Error ? e.message : '服务内部错误,请稍后重试',
+          });
         }
       } finally {
         closed = true;

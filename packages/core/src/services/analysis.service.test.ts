@@ -11,7 +11,12 @@ import {
 import { newId } from '../db/id.js';
 import { DomainError } from '../errors.js';
 import type { DraftPoint, DraftRequirement } from '../llm/schema.js';
-import { AnalysisService, type LlmInvoker, type LlmStreamInvoker, type ReviseStreamEvent } from './analysis.service.js';
+import {
+  AnalysisService,
+  type LlmInvoker,
+  type LlmStreamInvoker,
+  type ReviseStreamEvent,
+} from './analysis.service.js';
 import { TaskService } from './task.service.js';
 
 function makeService(db: ShipmateDb, llm: LlmInvoker, llmStream?: LlmStreamInvoker) {
@@ -1171,18 +1176,20 @@ describe('reviseDraftStream', () => {
     const chunks = [json.slice(0, 24), json.slice(24, 48), json.slice(48)].filter(
       (c) => c.length > 0,
     );
-    return vi.fn(async (
-      _system: string,
-      _user: string,
-      h: { onDelta?: (deltaText: string, fullText: string) => void; signal?: AbortSignal },
-    ) => {
-      let full = '';
-      for (const c of chunks) {
-        full += c;
-        h.onDelta?.(c, full);
-      }
-      return JSON.parse(full);
-    });
+    return vi.fn(
+      async (
+        _system: string,
+        _user: string,
+        h: { onDelta?: (deltaText: string, fullText: string) => void; signal?: AbortSignal },
+      ) => {
+        let full = '';
+        for (const c of chunks) {
+          full += c;
+          h.onDelta?.(c, full);
+        }
+        return JSON.parse(full);
+      },
+    );
   }
 
   it('点级:stage×3 → delta×N → stage×2 → done 事件按序;signal 透传;写回/日志/revisions 与 reviseDraft 一致', async () => {
@@ -1325,7 +1332,7 @@ describe('reviseDraftStream', () => {
 
   it('校验失败不发任何事件:run 不存在 NOT_FOUND', async () => {
     await withDb(async (db) => {
-      const projectId = await seedProject(db);
+      await seedProject(db);
       const svc = makeService(db, async () => ({}), fakeStreamInvoker({}));
       const events: ReviseStreamEvent[] = [];
       await expect(
@@ -1344,14 +1351,16 @@ describe('reviseDraftStream', () => {
       const runId = await seedDoneRun(db, projectId, seedDraft);
       const abortError = new Error('The operation was aborted');
       abortError.name = 'AbortError';
-      const llmStream = vi.fn(async (
-        _system: string,
-        _user: string,
-        h: { onDelta?: (deltaText: string, fullText: string) => void },
-      ) => {
-        h.onDelta?.('{"ti', '{"ti');
-        throw abortError;
-      });
+      const llmStream = vi.fn(
+        async (
+          _system: string,
+          _user: string,
+          h: { onDelta?: (deltaText: string, fullText: string) => void },
+        ) => {
+          h.onDelta?.('{"ti', '{"ti');
+          throw abortError;
+        },
+      );
       const svc = makeService(db, async () => ({}), llmStream);
       const events: ReviseStreamEvent[] = [];
       await expect(
@@ -1366,9 +1375,9 @@ describe('reviseDraftStream', () => {
       const run = await getRun(db, runId);
       expect(run.status).toBe('done');
       expect(run.draftResult).toEqual(seedDraft);
-      expect(
-        await db.select().from(changeLogs).where(eq(changeLogs.entityId, runId)),
-      ).toHaveLength(0);
+      expect(await db.select().from(changeLogs).where(eq(changeLogs.entityId, runId))).toHaveLength(
+        0,
+      );
     });
   });
 });

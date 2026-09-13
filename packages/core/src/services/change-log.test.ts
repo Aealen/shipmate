@@ -50,9 +50,9 @@ describe('writeChangeLog', () => {
           actor: 'human',
         });
       });
-      expect(
-        await db.select().from(changeLogs).where(eq(changeLogs.entityId, 't1')),
-      ).toHaveLength(2);
+      expect(await db.select().from(changeLogs).where(eq(changeLogs.entityId, 't1'))).toHaveLength(
+        2,
+      );
     });
   });
 });

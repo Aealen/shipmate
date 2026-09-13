@@ -4,11 +4,7 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import type { DraftBlockState, DraftRevisionView } from '@/components/analysis/draft-block';
 import { toPointState } from '@/components/analysis/draft-block';
-import {
-  getAnalysisRun,
-  type RevisedDraftBlock,
-  type RevisedDraftPoint,
-} from '@/actions/analysis';
+import { getAnalysisRun, type RevisedDraftBlock, type RevisedDraftPoint } from '@/actions/analysis';
 import { showToast } from '@/components/shared/toast';
 
 /** 修订目标:块下标必填;pointIndex 为 null = 修订整块(与 core ReviseDraftTarget 对应) */

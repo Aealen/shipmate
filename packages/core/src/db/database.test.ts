@@ -50,7 +50,9 @@ describe('withDb(事务回滚隔离)', () => {
     const id = newId();
     await withDb(async (db) => {
       const now = Date.now();
-      await db.insert(groups).values({ id, name: '测试分组', sortOrder: 0, createdAt: now, updatedAt: now });
+      await db
+        .insert(groups)
+        .values({ id, name: '测试分组', sortOrder: 0, createdAt: now, updatedAt: now });
       // 按自建 id 过滤:共享真实库,groups 表并非空表
       const rows = await db.select().from(groups).where(eq(groups.id, id));
       expect(rows).toHaveLength(1);
