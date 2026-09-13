@@ -1,6 +1,6 @@
 # @shipmate/mcp
 
-ShipMate 的 MCP(Model Context Protocol)工具面:把 core 的 34 个领域能力以 MCP 工具暴露,供 Claude Code 等 agent 直接读写需求库。零业务逻辑薄壳——handler 只做「zod 校验后调 core → 结果 JSON 序列化 / DomainError → isError」。
+ShipMate 的 MCP(Model Context Protocol)工具面:把 core 的 35 个领域能力以 MCP 工具暴露,供 Claude Code 等 agent 直接读写需求库。零业务逻辑薄壳——handler 只做「zod 校验后调 core → 结果 JSON 序列化 / DomainError → isError」。
 
 - **actor 审计**:stdio 服务器固定 `mcp:claude-code`;HTTP streamable 从 initialize 的 `clientInfo.name` 推导为 `mcp:<name>`(缺省 `mcp:unknown`),全部写操作自动落 change_logs。
 - **错误映射**:`DomainError` → `isError: true` + 文本 `"CODE: message"`;未知错误 → `"INTERNAL: <message>"`。
@@ -34,7 +34,7 @@ ShipMate 的 MCP(Model Context Protocol)工具面:把 core 的 34 个领域能�
 
 由 web 包(Plan 3)将 `createMcpHttpHandler(db)` 挂载到 `/api/mcp`(POST/GET/DELETE)。客户端流程:`initialize`(携带 `clientInfo.name` 决定审计 actor)→ `notifications/initialized` → 正常调用;响应为 JSON 模式,会话由 `mcp-session-id` 头管理,`DELETE` 关闭会话。
 
-## 工具清单(34 个)
+## 工具清单(35 个)
 
 ### 分组(5)
 
@@ -46,7 +46,7 @@ ShipMate 的 MCP(Model Context Protocol)工具面:把 core 的 34 个领域能�
 | `list_groups`  | —                                 | 全部分组,含 projectCount                    |
 | `get_group`    | id                                | 分组 + 组内项目及各自需求完成度             |
 
-### 项目(4)
+### 项目(5)
 
 | 工具             | 入参                                             | 说明                                                       |
 | ---------------- | ------------------------------------------------ | ---------------------------------------------------------- |
@@ -54,6 +54,7 @@ ShipMate 的 MCP(Model Context Protocol)工具面:把 core 的 34 个领域能�
 | `update_project` | id, name?/description?/status?(active\|archived) | 修改项目                                                   |
 | `list_projects`  | groupId?(可 null = 仅无分组项目)                 | 项目数组                                                   |
 | `get_project`    | id                                               | 项目概要:完成度 + 需求点状态分布 + 超期数 + 最近 20 条变更 |
+| `delete_project` | id                                               | 永久删除项目及其全部需求数据(级联),变更审计保留——危险操作  |
 
 ### 需求(3)
 

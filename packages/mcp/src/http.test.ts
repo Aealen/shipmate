@@ -55,7 +55,7 @@ async function handshake(handler: Handler, clientName: string): Promise<string> 
 }
 
 describe('MCP HTTP streamable handler', () => {
-  it('initialize 握手返回 serverInfo 与 session id,tools/list 列全 34 个工具', async () => {
+  it('initialize 握手返回 serverInfo 与 session id,tools/list 列全 35 个工具', async () => {
     await withDb(async (db) => {
       const handler = createMcpHttpHandler(db);
       const sessionId = await handshake(handler, 'claude-code');
@@ -64,7 +64,7 @@ describe('MCP HTTP streamable handler', () => {
       expect(listRes.status).toBe(200);
       const listBody = (await listRes.json()) as { result: { tools: { name: string }[] } };
       const names = listBody.result.tools.map((t) => t.name).sort();
-      expect(names).toHaveLength(34);
+      expect(names).toHaveLength(35);
       // 抽样核对每组的代表工具
       expect(names).toContain('create_group');
       expect(names).toContain('add_material');

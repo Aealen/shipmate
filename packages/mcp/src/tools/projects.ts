@@ -57,4 +57,14 @@ export function registerProjectTools(server: McpServer, core: ShipmateCore, acto
     },
     withCore(core, actor, (c, { id }) => c.projects.getProject(id)),
   );
+
+  server.registerTool(
+    'delete_project',
+    {
+      title: '删除项目',
+      description: '永久删除项目及其全部需求数据(级联),变更审计保留——危险操作',
+      inputSchema: { id: z.string().describe('项目 id') },
+    },
+    withCore(core, actor, (c, { id }) => c.projects.deleteProject(id, actor)),
+  );
 }

@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { createCore, withDb } from '@shipmate/core';
+import {
+  analysisRuns,
+  createCore,
+  materials,
+  newId,
+  requirementPoints,
+  tasks,
+  withDb,
+} from '@shipmate/core';
 import { callTool, setupServer, TEST_ACTOR } from '../test-helpers.js';
 
-/** 9 个工具名(tools/list 断言用,防漏注册) */
+/** 10 个工具名(tools/list 断言用,防漏注册) */
 const ALL_TOOLS = [
   'create_group',
   'update_group',
@@ -13,6 +21,7 @@ const ALL_TOOLS = [
   'update_project',
   'list_projects',
   'get_project',
+  'delete_project',
 ];
 
 describe('分组与项目工具', () => {
@@ -195,6 +204,92 @@ describe('分组与项目工具', () => {
       const { isError, text } = await callTool(client, 'get_project', { id: 'ghost' });
       expect(isError).toBe(true);
       expect(text).toContain('NOT_FOUND');
+    });
+  });
+
+  it('delete_project 级联删除全链数据并返回统计;description 为危险操作提示;不存在返回 NOT_FOUND', async () => {
+    await withDb(async (db) => {
+      const core = createCore(db);
+      const { client } = await setupServer(db);
+
+      // description 携带危险操作语义提示(给 agent 的警示)
+      const { tools } = await client.listTools();
+      const del = tools.find((t) => t.name === 'delete_project')!;
+      expect(del.description).toContain('危险操作');
+      expect(del.description).toContain('级联');
+
+      // 造全链数据:需求 → 点 → 任务 + 分析批次 → 素材
+      const project = await core.projects.createProject({ name: '待删全链项目' }, 'human');
+      const req = await core.requirements.createRequirement(
+        { projectId: project.id, title: '需求R' },
+        'human',
+      );
+      const now = Date.now();
+      const point = (
+        await db
+          .insert(requirementPoints)
+          .values({
+            id: newId(),
+            requirementId: req.id,
+            title: '点P',
+            status: 'draft',
+            version: 1,
+            origin: 'manual',
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning()
+      )[0]!;
+      await db.insert(tasks).values({
+        id: newId(),
+        requirementPointId: point.id,
+        title: '任务T',
+        status: 'pending',
+        sortOrder: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+      const run = (
+        await db
+          .insert(analysisRuns)
+          .values({
+            id: newId(),
+            projectId: project.id,
+            status: 'pending',
+            actor: 'human',
+            createdAt: now,
+          })
+          .returning()
+      )[0]!;
+      await db.insert(materials).values({
+        id: newId(),
+        projectId: project.id,
+        analysisRunId: run.id,
+        type: 'paste_text',
+        rawContent: '素材原文',
+        actor: 'human',
+        createdAt: now,
+      });
+
+      const { isError, text } = await callTool(client, 'delete_project', { id: project.id });
+      expect(isError).toBe(false);
+      expect(JSON.parse(text)).toEqual({
+        requirements: 1,
+        points: 1,
+        tasks: 1,
+        runs: 1,
+        materials: 1,
+      });
+      // 项目已不存在;审计历史保留(delete 留痕)
+      await expect(core.projects.getProject(project.id)).rejects.toMatchObject({
+        code: 'NOT_FOUND',
+      });
+      const logs = await core.audit.getChangeLog({ entityType: 'project', entityId: project.id });
+      expect(logs.map((l) => l.changeType)).toContain('delete');
+
+      const missing = await callTool(client, 'delete_project', { id: 'ghost-project' });
+      expect(missing.isError).toBe(true);
+      expect(missing.text).toContain('NOT_FOUND');
     });
   });
 });
