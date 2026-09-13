@@ -3,6 +3,7 @@
 import type {
   CreateGroupInput,
   CreateProjectInput,
+  DeleteProjectCascade,
   GroupRow,
   GroupWithCount,
   ProjectRow,
@@ -121,6 +122,22 @@ export async function updateProjectAction(
     const row = await core.projects.updateProject(id, input, 'human');
     revalidateApp();
     return { ok: true, data: row };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+/**
+ * 删除项目(级联):成功返回五类从属数据统计。
+ * 跳转由调用方负责(删除后当前项目页已不存在,回到 /);
+ * 不在本 action 内 redirect——redirect 抛出的 NEXT_REDIRECT 会被 catch 误吞。
+ */
+export async function deleteProjectAction(id: string): Promise<ActionResult<DeleteProjectCascade>> {
+  try {
+    const { core } = await getShipmate();
+    const cascade = await core.projects.deleteProject(id, 'human');
+    revalidateApp();
+    return { ok: true, data: cascade };
   } catch (e) {
     return toActionError(e);
   }

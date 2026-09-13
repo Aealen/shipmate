@@ -29,6 +29,26 @@
     "groupCreated": "Group \"{name}\" created",
     "requirementsDonePercent": "{pct}% points done"
   },
+  "deleteProject": {
+    "menu": "Delete Project",
+    "title": "Delete Project",
+    "subtitle": "This cannot be undone — proceed with caution",
+    "warning": "Project \"{name}\" and all of its data will be permanently deleted:",
+    "statRequirements": "Requirements",
+    "statPoints": "Points",
+    "statTasks": "Tasks",
+    "statRuns": "Analysis runs",
+    "statMaterials": "Materials",
+    "auditNote": "Audit history is fully preserved; the deletion itself is recorded too",
+    "confirmLabel": "Type the project name to confirm: {name}",
+    "confirmPlaceholder": "Type \"{name}\" to confirm",
+    "cancel": "Cancel",
+    "submit": "🗑 Delete permanently",
+    "submitting": "Deleting…",
+    "deleted": "Project \"{name}\" deleted",
+    "statsLoading": "Loading stats…",
+    "statsFailed": "Failed to load stats; you can still confirm by typing the name"
+  },
   "project": {
     "tabOverview": "Overview",
     "tabAnalysis": "Analysis",

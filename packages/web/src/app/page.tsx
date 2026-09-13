@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import type { SVGProps } from 'react';
 import { getHomeOverview, getProject } from '@/actions/projects';
+import { ProjectDeleteMenu } from '@/components/shared/delete-project-dialog';
 import { CreateProjectDialog, type GroupOption } from './create-project-dialog';
 
 const MS_PER_MINUTE = 60_000;
@@ -173,6 +174,8 @@ function ProjectCard({
             {groupName}
           </span>
         )}
+        {/* hover 右上 ⋯ → 删除项目菜单;stopPropagation 防误触整卡跳转 */}
+        <ProjectDeleteMenu projectId={id} projectName={name} autoHide />
       </div>
       <p className="line-clamp-1 min-h-5 w-full text-xs text-text-secondary">
         {description || <span className="text-text-muted">—</span>}

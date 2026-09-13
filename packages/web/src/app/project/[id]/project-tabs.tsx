@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { StatusBadge } from '@/components/shared/badge';
+import { ProjectDeleteMenu } from '@/components/shared/delete-project-dialog';
 
 /**
  * 项目 Tab 组(对齐原型 P2-P7 帧):五项均分整行,文字 13px 居中 +
@@ -92,6 +93,8 @@ export function ProjectHeader({
           <StatusBadge status={status} />
           <span className="min-w-0 flex-1" />
           <span className="shrink-0 text-[11px] text-text-muted">{t('mcpHint')}</span>
+          {/* 头部右侧 ⋯ → 删除项目菜单(P2 入口) */}
+          <ProjectDeleteMenu projectId={id} projectName={name} />
         </div>
         {description && (
           <p className="w-full text-[13px] leading-snug text-text-secondary">{description}</p>
@@ -117,6 +120,7 @@ export function ProjectHeader({
         >
           {t('overviewLink')}
         </Link>
+        <ProjectDeleteMenu projectId={id} projectName={name} />
       </div>
       <div className="pt-0.5">
         <ProjectTabs id={id} />
