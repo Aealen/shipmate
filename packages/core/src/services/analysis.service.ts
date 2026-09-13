@@ -17,7 +17,7 @@ import type { Actor } from '../types.js';
 import { DomainError } from '../errors.js';
 import { writeChangeLog } from './change-log.js';
 import { SettingsService } from './settings.service.js';
-import { chatJson, type LlmConfig } from '../llm/client.js';
+import { chatJson, chatJsonStream, type LlmConfig } from '../llm/client.js';
 import {
   analysisResultSchema,
   draftPointSchema,
@@ -35,6 +35,22 @@ import {
 import type { ExistingRequirementDigest } from '../llm/prompt-types.js';
 
 export type LlmInvoker = (system: string, user: string) => Promise<unknown>;
+
+/** 流式 LLM invoker:增量经 handlers.onDelta 透传;handlers.signal 透传给 fetch 以支持取消 */
+export type LlmStreamInvoker = (
+  system: string,
+  user: string,
+  handlers: { onDelta?: (deltaText: string, fullText: string) => void; signal?: AbortSignal },
+) => Promise<unknown>;
+
+/**
+ * reviseDraftStream 的进度事件(原型 P3f3/P3f4 弹窗下部流式日志区):
+ * stage 按序推进 → delta 透传 LLM 增量 → done 携带终稿;中断以 AbortError 冒泡表达。
+ */
+export type ReviseStreamEvent =
+  | { type: 'stage'; message: string }
+  | { type: 'delta'; text: string }
+  | { type: 'done'; revised: DraftRequirement | DraftPoint };
 
 /** 冲突处置决策(spec §9 规则 8):duplicate → merge/create_anyway/skip;contradiction → use_new/use_old/keep_both */
 export type ConflictResolution =
@@ -83,6 +99,7 @@ export class AnalysisService {
   constructor(
     private db: ShipmateDb,
     private llm: LlmInvoker,
+    private llmStream?: LlmStreamInvoker,
   ) {}
 
   async createAnalysisRun(
@@ -389,23 +406,53 @@ export class AnalysisService {
     opts?: { keepEvidences?: boolean },
     actor: Actor = 'human',
   ): Promise<{ run: AnalysisRunRow; revised: DraftRequirement | DraftPoint }> {
+    return this.reviseDraftInternal(runId, target, annotation, opts, actor);
+  }
+
+  /**
+   * reviseDraft 的流式版(原型 P3f3/P3f4:修订弹窗下部流式日志区,支持取消):
+   * 校验与写回事务与 reviseDraft 完全同源(同一 internal,无复制粘贴),
+   * 差异仅在 LLM 走流式调用——onEvent 按序收 stage/delta/done,
+   * handlers.signal 透传 LLM 请求,用户中断的 AbortError 原样冒泡,草稿与日志零改动。
+   */
+  async reviseDraftStream(
+    runId: string,
+    target: ReviseDraftTarget,
+    annotation: string,
+    opts?: { keepEvidences?: boolean },
+    actor: Actor = 'human',
+    handlers?: { onEvent?: (e: ReviseStreamEvent) => void; signal?: AbortSignal },
+  ): Promise<{ run: AnalysisRunRow; revised: DraftRequirement | DraftPoint }> {
+    return this.reviseDraftInternal(runId, target, annotation, opts, actor, handlers);
+  }
+
+  /** reviseDraft / reviseDraftStream 的单一实现;stream 存在时按序发 stage→delta→done 事件 */
+  private async reviseDraftInternal(
+    runId: string,
+    target: ReviseDraftTarget,
+    annotation: string,
+    opts: { keepEvidences?: boolean } | undefined,
+    actor: Actor,
+    stream?: { onEvent?: (e: ReviseStreamEvent) => void; signal?: AbortSignal },
+  ): Promise<{ run: AnalysisRunRow; revised: DraftRequirement | DraftPoint }> {
+    const emit = (e: ReviseStreamEvent) => stream?.onEvent?.(e);
+
     const run = (await this.db.select().from(analysisRuns).where(eq(analysisRuns.id, runId)))[0];
     if (!run) throw new DomainError('NOT_FOUND', `分析批次 ${runId} 不存在`);
     const draft = run.draftResult as AnalysisResult | null;
     if (!draft) throw new DomainError('VALIDATION_ERROR', '该批次没有分析草稿');
 
+    emit({ type: 'stage', message: '解析批注' });
     const block = draft.requirements[target.blockIndex];
-    if (!block)
-      throw new DomainError('VALIDATION_ERROR', `需求块下标 ${target.blockIndex} 不存在`);
+    if (!block) throw new DomainError('VALIDATION_ERROR', `需求块下标 ${target.blockIndex} 不存在`);
     const scope: 'block' | 'point' = target.pointIndex === undefined ? 'block' : 'point';
-    const originPoint =
-      scope === 'point' ? block.points[target.pointIndex as number] : undefined;
+    const originPoint = scope === 'point' ? block.points[target.pointIndex as number] : undefined;
     if (scope === 'point' && !originPoint)
       throw new DomainError('VALIDATION_ERROR', `需求点下标 ${target.pointIndex} 不存在`);
     const annotationText = annotation?.trim();
-    if (!annotationText)
-      throw new DomainError('VALIDATION_ERROR', '修订批注不能为空');
+    if (!annotationText) throw new DomainError('VALIDATION_ERROR', '修订批注不能为空');
 
+    emit({ type: 'stage', message: '识别修订意图(对照已有需求摘要)' });
     const current = scope === 'point' ? originPoint : block;
     const user = buildReviseUserPrompt(
       current,
@@ -414,7 +461,19 @@ export class AnalysisService {
     );
     const system = buildReviseSystemPrompt(scope);
 
-    const raw = await this.llm(system, user);
+    emit({ type: 'stage', message: scope === 'point' ? '重写需求点' : '重写需求块' });
+    let raw: unknown;
+    if (stream && this.llmStream) {
+      raw = await this.llmStream(system, user, {
+        onDelta: (deltaText) => emit({ type: 'delta', text: deltaText }),
+        signal: stream.signal,
+      });
+    } else {
+      // 未注入流式 invoker 时退化为非流式调用(stage/done 事件照发,无 delta)
+      raw = await this.llm(system, user);
+    }
+
+    emit({ type: 'stage', message: '校验溯源与依据保留' });
     let revisedPoint: DraftPoint | undefined;
     let revisedBlock: DraftRequirement | undefined;
     if (scope === 'point') {
@@ -446,6 +505,7 @@ export class AnalysisService {
       }
     }
 
+    emit({ type: 'stage', message: '终稿生成' });
     const now = Date.now();
     const priorRevisions = block.revisions ?? [];
     const newBlock: DraftRequirement =
@@ -460,10 +520,7 @@ export class AnalysisService {
           }
         : {
             ...(revisedBlock as DraftRequirement),
-            revisions: [
-              ...priorRevisions,
-              { at: now, actor, annotation: annotationText, scope },
-            ],
+            revisions: [...priorRevisions, { at: now, actor, annotation: annotationText, scope }],
           };
     const newDraft: AnalysisResult = {
       ...draft,
@@ -490,10 +547,10 @@ export class AnalysisService {
       return row;
     });
 
-    return {
-      run: updated,
-      revised: revisedPoint !== undefined ? revisedPoint : (revisedBlock as DraftRequirement),
-    };
+    const revised: DraftRequirement | DraftPoint =
+      revisedPoint !== undefined ? revisedPoint : (revisedBlock as DraftRequirement);
+    emit({ type: 'done', revised });
+    return { run: updated, revised };
   }
 
   private parseResult(raw: unknown): AnalysisResult {
@@ -800,11 +857,18 @@ export class AnalysisService {
   }
 }
 
-/** 生产工厂:LLM 配置来自 settings 表(含 env 首次种子化后的值) */
+/** 生产工厂:LLM 配置来自 settings 表(含 env 首次种子化后的值);流式/非流式共用同一配置 */
 export function createAnalysisService(db: ShipmateDb): AnalysisService {
   const settings = new SettingsService(db);
-  return new AnalysisService(db, async (system, user) => {
-    const cfg: LlmConfig = await settings.getLlmConfig();
-    return chatJson(cfg, system, user);
-  });
+  return new AnalysisService(
+    db,
+    async (system, user) => {
+      const cfg: LlmConfig = await settings.getLlmConfig();
+      return chatJson(cfg, system, user);
+    },
+    async (system, user, handlers) => {
+      const cfg: LlmConfig = await settings.getLlmConfig();
+      return chatJsonStream(cfg, system, user, handlers);
+    },
+  );
 }

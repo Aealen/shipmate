@@ -65,6 +65,8 @@ export {
   AnalysisService,
   createAnalysisService,
   type LlmInvoker,
+  type LlmStreamInvoker,
+  type ReviseStreamEvent,
   type AnalysisRunSummary,
   type AnalysisRunDetail,
   type ConflictDecision,
@@ -72,7 +74,7 @@ export {
   type ReviseDraftTarget,
 } from './services/analysis.service.js';
 export { analysisResultSchema, type AnalysisResult } from './llm/schema.js';
-export { chatJson, type LlmConfig } from './llm/client.js';
+export { chatJson, chatJsonStream, type LlmConfig } from './llm/client.js';
 export { buildSystemPrompt, buildUserPrompt } from './llm/prompt.js';
 export { writeChangeLog, type ChangeLogInput } from './services/change-log.js';
 
