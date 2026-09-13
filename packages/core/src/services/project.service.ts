@@ -1,11 +1,14 @@
 import { desc, eq, inArray, isNull } from 'drizzle-orm';
 import type { ShipmateDb } from '../db/database.js';
 import {
+  analysisRuns,
   changeLogs,
   groups,
+  materials,
   projects,
   requirementPoints,
   requirements,
+  tasks,
   type ChangeLogRow,
   type ProjectRow,
 } from '../db/schema.js';
@@ -28,6 +31,15 @@ export interface UpdateProjectInput {
 }
 
 export type PointStatusKey = 'draft' | 'confirmed' | 'developing' | 'done';
+
+/** 删除项目的级联统计(五类从属数据,change_logs 不在其中——历史永久保留) */
+export interface DeleteProjectCascade {
+  requirements: number;
+  points: number;
+  tasks: number;
+  runs: number;
+  materials: number;
+}
 
 export interface ProjectSummary {
   project: ProjectRow;
@@ -173,5 +185,72 @@ export class ProjectService {
       return this.db.select().from(projects).where(eq(projects.groupId, filter.groupId));
     }
     return this.db.select().from(projects);
+  }
+
+  /**
+   * 永久删除项目:单事务级联删除全部从属数据
+   * (顺序:tasks → requirement_points → requirements → materials → analysis_runs → projects)。
+   * change_logs 历史保留(审计核心,不删);同事务追加一条 delete 留痕,
+   * before 为项目整行,after 为 { deleted, cascade } 统计。
+   */
+  async deleteProject(id: string, actor: Actor): Promise<DeleteProjectCascade> {
+    return this.db.transaction(async (tx) => {
+      const project = (await tx.select().from(projects).where(eq(projects.id, id)))[0];
+      if (!project) throw new DomainError('NOT_FOUND', `项目 ${id} 不存在`);
+
+      // 先收集 id 链(projectId → requirementIds → pointIds),供子表按 inArray 删除
+      const reqs = await tx
+        .select({ id: requirements.id })
+        .from(requirements)
+        .where(eq(requirements.projectId, id));
+      const reqIds = reqs.map((r) => r.id);
+      const pts = reqIds.length
+        ? await tx
+            .select({ id: requirementPoints.id })
+            .from(requirementPoints)
+            .where(inArray(requirementPoints.requirementId, reqIds))
+        : [];
+      const pointIds = pts.map((pt) => pt.id);
+
+      const taskRows = pointIds.length
+        ? await tx.delete(tasks).where(inArray(tasks.requirementPointId, pointIds)).returning()
+        : [];
+      const pointRows = reqIds.length
+        ? await tx
+            .delete(requirementPoints)
+            .where(inArray(requirementPoints.requirementId, reqIds))
+            .returning()
+        : [];
+      const reqRows = reqIds.length
+        ? await tx.delete(requirements).where(inArray(requirements.id, reqIds)).returning()
+        : [];
+      const materialRows = await tx
+        .delete(materials)
+        .where(eq(materials.projectId, id))
+        .returning();
+      const runRows = await tx
+        .delete(analysisRuns)
+        .where(eq(analysisRuns.projectId, id))
+        .returning();
+      await tx.delete(projects).where(eq(projects.id, id));
+
+      const cascade: DeleteProjectCascade = {
+        requirements: reqRows.length,
+        points: pointRows.length,
+        tasks: taskRows.length,
+        runs: runRows.length,
+        materials: materialRows.length,
+      };
+      await writeChangeLog(tx, {
+        entityType: 'project',
+        entityId: id,
+        changeType: 'delete',
+        before: project,
+        after: { deleted: true, cascade },
+        reason: '删除项目(级联)',
+        actor,
+      });
+      return cascade;
+    });
   }
 }

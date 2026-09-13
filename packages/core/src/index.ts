@@ -37,6 +37,7 @@ export {
   type CreateProjectInput,
   type UpdateProjectInput,
   type ProjectSummary,
+  type DeleteProjectCascade,
 } from './services/project.service.js';
 export {
   RequirementService,
