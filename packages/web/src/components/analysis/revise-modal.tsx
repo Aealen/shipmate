@@ -1,11 +1,11 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { DraftBlockState, DraftRevisionView } from '@/components/analysis/draft-block';
 import { toPointState } from '@/components/analysis/draft-block';
 import {
-  reviseDraftAction,
+  getAnalysisRun,
   type RevisedDraftBlock,
   type RevisedDraftPoint,
 } from '@/actions/analysis';
@@ -18,6 +18,17 @@ export interface ReviseTarget {
 }
 
 type ReviseScope = 'block' | 'point';
+
+/** 流式日志行(stage 事件一条完整过程行;delta 聚合为独立的「重写中…」行,不入列) */
+type StreamLine = { kind: 'stage'; text: string };
+
+/** revise-stream SSE 事件(core ReviseStreamEvent + 路由侧收尾 error/canceled) */
+type StreamEvent =
+  | { type: 'stage'; message: string }
+  | { type: 'delta'; text: string }
+  | { type: 'done'; revised: RevisedDraftPoint | RevisedDraftBlock }
+  | { type: 'error'; message: string }
+  | { type: 'canceled' };
 
 /** 提交修订前抓取的原文快照(预览态左栏回显) */
 interface OriginSnapshot {
@@ -81,9 +92,10 @@ const CHIP_KEYS = ['chipConcise', 'chipSplit', 'chipFormal', 'chipAcceptance'] a
 const ANIM_MS = 120;
 
 /**
- * AI 修订两态弹窗(原型 P3f/P3f2,spec §9 规则 9):
+ * AI 修订三态弹窗(原型 P3f/P3f2/P3f3/P3f4,spec §9 规则 9):
  * 输入态(作用域/当前内容/修订记录/批注/快捷 chips/保留依据)→
- * 调 reviseDraftAction(LLM 重写 + 库内 revisions 追加 + 审计)→
+ * 修订中态(POST /api/analysis/revise-stream,弹窗下部深色流式日志区:
+ * 3 行紧凑/点击展开 20 行,stage 整行推进、delta 聚合计数,可取消修订)→
  * 预览态(批注回显 + 原文/修订后对照)→「应用」把修订同步进工作台本地草稿
  * (由 onApplied 完整写回 Run),「放弃/取消」仅关闭、不动本地态。
  */
@@ -108,7 +120,7 @@ export function ReviseModal({
 
   const [mounted, setMounted] = useState(false);
   const [shown, setShown] = useState(false);
-  const [phase, setPhase] = useState<'input' | 'preview'>('input');
+  const [phase, setPhase] = useState<'input' | 'revising' | 'preview'>('input');
   const [scope, setScope] = useState<ReviseScope>('block');
   const [annotation, setAnnotation] = useState('');
   const [keepEvidences, setKeepEvidences] = useState(true);
@@ -117,10 +129,23 @@ export function ReviseModal({
   const [origin, setOrigin] = useState<OriginSnapshot | null>(null);
   const [result, setResult] = useState<RevisedDraftPoint | RevisedDraftBlock | null>(null);
   const [nextRevisions, setNextRevisions] = useState<DraftRevisionView[]>([]);
+  // 流式日志区(P3f3/P3f4):行列表 + delta 聚合字数 + 展开/收起
+  const [lines, setLines] = useState<StreamLine[]>([]);
+  const [deltaChars, setDeltaChars] = useState(0);
+  const [expanded, setExpanded] = useState(false);
 
-  // 打开时按入口重置全部状态;关闭播退出动画后卸载
+  // 修订请求与 delta 节流的命令式状态:中断/关闭要即时生效,不进 render
+  const abortRef = useRef<AbortController | null>(null);
+  const charsRef = useRef(0);
+  const lastPaintRef = useRef(0);
+  const paintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const logRef = useRef<HTMLDivElement | null>(null);
+
+  // 打开时按入口重置全部状态;关闭播退出动画后卸载(并中止在途修订请求)
   useEffect(() => {
     if (!open) {
+      abortRef.current?.abort();
+      abortRef.current = null;
       setShown(false);
       const timer = setTimeout(() => setMounted(false), ANIM_MS);
       return () => clearTimeout(timer);
@@ -135,6 +160,10 @@ export function ReviseModal({
     setOrigin(null);
     setResult(null);
     setNextRevisions([]);
+    setLines([]);
+    setDeltaChars(0);
+    setExpanded(false);
+    charsRef.current = 0;
     // 双 rAF:先绘制初始态再切目标态,过渡才生效(与 shared/modal 一致)
     let raf2 = 0;
     const raf1 = requestAnimationFrame(() => {
@@ -148,16 +177,89 @@ export function ReviseModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // 卸载后清 delta 节流定时器
+  useEffect(
+    () => () => {
+      if (paintTimerRef.current) clearTimeout(paintTimerRef.current);
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') requestClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, onClose]);
 
+  // 日志区自动滚底(行推进/delta 计数/展开收起都保持最新内容可见)
+  useEffect(() => {
+    const el = logRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [lines, deltaChars, expanded, phase]);
+
   if (!mounted) return null;
+
+  /** 统一关闭入口:修订中先 abort(服务端随之中止 LLM),再走父级 onClose */
+  function requestClose() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    onClose();
+  }
+
+  /** 取消修订:中断请求、关日志区回输入态;服务端事务保证草稿零残留 */
+  function cancelRevise() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setStarting(false);
+    setPhase('input');
+    showToast(t('revise.cancelToast'));
+  }
+
+  /** delta 聚合计数:字数即时累加,行文案按 500ms 节流重绘 */
+  function accumulateDelta(len: number) {
+    charsRef.current += len;
+    const elapsed = Date.now() - lastPaintRef.current;
+    if (elapsed >= 500) {
+      lastPaintRef.current = Date.now();
+      setDeltaChars(charsRef.current);
+      return;
+    }
+    if (paintTimerRef.current) return;
+    paintTimerRef.current = setTimeout(() => {
+      paintTimerRef.current = null;
+      lastPaintRef.current = Date.now();
+      setDeltaChars(charsRef.current);
+    }, 500 - elapsed);
+  }
+
+  /** 逐帧解析 SSE(body 按空行分帧,data: 前缀取 JSON) */
+  async function readSse(res: Response, onEvent: (e: StreamEvent) => void) {
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const frame = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        for (const line of frame.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            onEvent(JSON.parse(line.slice(6)) as StreamEvent);
+          } catch {
+            /* 残缺帧忽略 */
+          }
+        }
+      }
+    }
+  }
 
   // 点作用域的实际下标:块级入口打开后切到「单个需求点」时,缺省落第 0 点
   const effectivePointIndex =
@@ -183,6 +285,26 @@ export function ReviseModal({
 
   const startDisabled = starting || !annotation.trim() || (scope === 'point' && !currentPoint);
 
+  /** done 后取库内最新修订链(草稿已由 route 写回);读取失败退化为本地追加 */
+  async function finishDone(revised: RevisedDraftPoint | RevisedDraftBlock) {
+    setResult(revised);
+    const scopePoint = effectivePointIndex !== null;
+    const localEntry: DraftRevisionView = {
+      at: Date.now(),
+      actor: 'human',
+      annotation: annotation.trim(),
+      scope: scopePoint ? 'point' : 'block',
+      ...(scopePoint ? { pointTitle: isRevisedPoint(revised) ? revised.title : undefined } : {}),
+    };
+    try {
+      const detail = await getAnalysisRun(runId ?? '');
+      setNextRevisions(revisionsFromRun(detail.run.draftResult, target.blockIndex));
+    } catch {
+      setNextRevisions([...block.revisions, localEntry]);
+    }
+    setPhase('preview');
+  }
+
   async function start() {
     if (!annotation.trim() || starting) return;
     if (scope === 'point' && effectivePointIndex === null) return;
@@ -193,24 +315,67 @@ export function ReviseModal({
       desc: curDesc,
       evidenceCount: curEvidenceCount,
     });
+    // 进入修订中态:清空日志区、紧凑高度
+    setPhase('revising');
+    setLines([]);
+    setDeltaChars(0);
+    charsRef.current = 0;
+    lastPaintRef.current = Date.now();
+    setExpanded(false);
+
+    const ac = new AbortController();
+    abortRef.current = ac;
     try {
-      const res = await reviseDraftAction(
-        runId ?? '',
-        {
+      const res = await fetch('/api/analysis/revise-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          runId,
           blockIndex: target.blockIndex,
           ...(effectivePointIndex !== null ? { pointIndex: effectivePointIndex } : {}),
-        },
-        annotation.trim(),
-        keepEvidences,
-      );
-      if (!res.ok) {
-        showToast(res.message, 'error');
+          annotation: annotation.trim(),
+          keepEvidences,
+        }),
+        signal: ac.signal,
+      });
+      if (!res.ok || !res.body) {
+        // 非 SSE(参数 400/服务未就绪 500):取 JSON message 提示
+        let message = `HTTP ${res.status}`;
+        try {
+          const j = (await res.json()) as { message?: string };
+          if (j.message) message = j.message;
+        } catch {
+          /* 非 JSON 响应 */
+        }
+        showToast(message, 'error');
+        setPhase('input');
         return;
       }
-      setResult(res.data.revised);
-      setNextRevisions(revisionsFromRun(res.data.run.draftResult, target.blockIndex));
-      setPhase('preview');
+      await readSse(res, (ev) => {
+        if (ev.type === 'stage') {
+          setLines((prev) => [...prev, { kind: 'stage', text: ev.message }]);
+        } else if (ev.type === 'delta') {
+          accumulateDelta(ev.text.length);
+        } else if (ev.type === 'done') {
+          void finishDone(ev.revised);
+        } else if (ev.type === 'error') {
+          showToast(ev.message, 'error');
+          setPhase('input');
+        }
+        // canceled:客户端自己 abort 的镜像事件,无需处理
+      });
+    } catch (e) {
+      if (!ac.signal.aborted) {
+        showToast(e instanceof Error ? e.message : String(e), 'error');
+        setPhase('input');
+      }
+      // abort 由 cancelRevise/requestClose 处理(toast + 回输入态/关弹窗),此处不再重复
     } finally {
+      if (paintTimerRef.current) {
+        clearTimeout(paintTimerRef.current);
+        paintTimerRef.current = null;
+      }
+      if (abortRef.current === ac) abortRef.current = null;
       setStarting(false);
     }
   }
@@ -282,12 +447,12 @@ export function ReviseModal({
         className={`absolute inset-0 bg-black/40 transition-opacity duration-[120ms] ${
           shown ? 'opacity-100' : 'opacity-0'
         }`}
-        onClick={onClose}
+        onClick={requestClose}
       />
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={phase === 'input' ? t('revise.title') : t('revise.previewTitle')}
+        aria-label={phase === 'preview' ? t('revise.previewTitle') : t('revise.title')}
         className={`relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-xl transition-all duration-[120ms] ${
           shown ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
         } ${phase === 'preview' ? 'max-w-[760px]' : 'max-w-[640px]'}`}
@@ -299,13 +464,13 @@ export function ReviseModal({
           </span>
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-text-primary">
-              {phase === 'input' ? t('revise.title') : t('revise.previewTitle')}
+              {phase === 'preview' ? t('revise.previewTitle') : t('revise.title')}
             </h2>
             <p className="mt-0.5 truncate text-xs text-text-secondary">{subtitle}</p>
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label={ts('close')}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary"
           >
@@ -324,7 +489,7 @@ export function ReviseModal({
         </header>
 
         <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto px-5 pb-4 pt-1">
-          {phase === 'input' ? (
+          {phase !== 'preview' ? (
             <>
               {/* 作用域 segmented */}
               <div className="flex rounded-lg bg-surface-2 p-[3px]" role="tablist">
@@ -460,6 +625,46 @@ export function ReviseModal({
                 </span>
                 <span className="text-xs text-text-secondary">{t('revise.keepEvidences')}</span>
               </button>
+
+              {/* 流式反馈区(P3f3/P3f4):深色日志区,紧凑 66px / 展开 440px,自动滚底 */}
+              {phase === 'revising' && (
+                <div
+                  className="flex shrink-0 flex-col overflow-hidden rounded-lg bg-[#111827] transition-[height] duration-[120ms]"
+                  style={{ height: expanded ? 440 : 66 }}
+                >
+                  <div className="flex shrink-0 items-center justify-between px-3 pt-2">
+                    <span className="text-[10.5px] leading-[19px] text-[#8AB4FF]">
+                      {t('revise.streamTitle')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((v) => !v)}
+                      className="rounded-full bg-white/[0.08] px-2 py-[2px] text-[10px] leading-[14px] text-[#C9D4E8] transition-colors hover:bg-white/[0.16]"
+                    >
+                      {expanded ? t('revise.streamCollapse') : t('revise.streamExpand')}
+                    </button>
+                  </div>
+                  <div
+                    ref={logRef}
+                    className="min-h-0 flex-1 space-y-[3px] overflow-hidden px-3 pb-2 pt-[3px]"
+                  >
+                    {lines.map((l, i) => (
+                      <p key={i} className="truncate text-[11px] leading-4 text-[#8AB4FF]">
+                        <span aria-hidden>✦ </span>
+                        {l.text}
+                      </p>
+                    ))}
+                    {deltaChars > 0 && (
+                      <p className="truncate text-[11px] leading-4 text-[#AEB9CB]">
+                        {t('revise.streamWriting', { count: deltaChars })}
+                        <span className="text-[#8AB4FF]" aria-hidden>
+                          ▊
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -514,40 +719,71 @@ export function ReviseModal({
 
         {/* 底部操作 */}
         <div className="flex shrink-0 items-center justify-end gap-3 px-5 pb-5 pt-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={applying}
-            className="h-9 rounded-lg px-3 text-[13.5px] text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary disabled:opacity-50"
-          >
-            {phase === 'preview' ? t('revise.discard') : t('revise.cancel')}
-          </button>
-          {phase === 'input' ? (
-            <button
-              type="button"
-              onClick={start}
-              disabled={startDisabled}
-              className="flex h-9 items-center gap-1.5 rounded-lg bg-accent px-[18px] text-[13.5px] font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {starting ? (
-                <SparkIcon spinning />
-              ) : (
+          {phase === 'revising' ? (
+            <>
+              <button
+                type="button"
+                onClick={cancelRevise}
+                className="h-9 rounded-lg px-3 text-[13px] text-danger transition-colors hover:bg-surface-2"
+              >
+                {t('revise.cancelRevise')}
+              </button>
+              <button
+                type="button"
+                onClick={requestClose}
+                className="h-9 rounded-lg px-3 text-[13.5px] text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+              >
+                {t('revise.cancel')}
+              </button>
+              <button
+                type="button"
+                disabled
+                className="flex h-9 cursor-not-allowed items-center gap-1.5 rounded-lg bg-accent px-[18px] text-[13.5px] font-medium text-white opacity-60"
+              >
                 <span className="text-sm leading-none" aria-hidden>
-                  ✨
+                  ✦
                 </span>
-              )}
-              {starting ? t('revise.starting') : t('revise.start')}
-            </button>
+                {t('revise.starting')}
+              </button>
+            </>
           ) : (
-            <button
-              type="button"
-              onClick={apply}
-              disabled={applying}
-              className="flex h-9 items-center gap-1.5 rounded-lg bg-accent px-[18px] text-[13.5px] font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <span aria-hidden>✓</span>
-              {applying ? t('revise.applying') : t('revise.apply')}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={requestClose}
+                disabled={applying}
+                className="h-9 rounded-lg px-3 text-[13.5px] text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary disabled:opacity-50"
+              >
+                {phase === 'preview' ? t('revise.discard') : t('revise.cancel')}
+              </button>
+              {phase === 'input' ? (
+                <button
+                  type="button"
+                  onClick={start}
+                  disabled={startDisabled}
+                  className="flex h-9 items-center gap-1.5 rounded-lg bg-accent px-[18px] text-[13.5px] font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {starting ? (
+                    <SparkIcon spinning />
+                  ) : (
+                    <span className="text-sm leading-none" aria-hidden>
+                      ✨
+                    </span>
+                  )}
+                  {starting ? t('revise.starting') : t('revise.start')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={apply}
+                  disabled={applying}
+                  className="flex h-9 items-center gap-1.5 rounded-lg bg-accent px-[18px] text-[13.5px] font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span aria-hidden>✓</span>
+                  {applying ? t('revise.applying') : t('revise.apply')}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

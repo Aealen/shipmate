@@ -465,7 +465,13 @@
       "applying": "Applying…",
       "applied": "Revision written to draft",
       "pointsSummary": "{count} points in total",
-      "noRun": "No analysis batch yet; AI revise is unavailable"
+      "noRun": "No analysis batch yet; AI revise is unavailable",
+      "streamTitle": "✦ AI revising — live progress",
+      "streamExpand": "Expand 20 lines ⤢",
+      "streamCollapse": "Collapse ⤡",
+      "streamWriting": "Rewriting… {count} chars written",
+      "cancelRevise": "Cancel revision",
+      "cancelToast": "Revision canceled"
     }
   },
   "browse": {
