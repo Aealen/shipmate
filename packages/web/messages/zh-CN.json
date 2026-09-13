@@ -467,7 +467,7 @@
       "pointsSummary": "共 {count} 个需求点",
       "noRun": "暂无分析批次,无法使用 AI 修订",
       "streamTitle": "✦ AI 修订中 — 实时过程",
-      "streamExpand": "展开 20 行 ⤢",
+      "streamExpand": "展开 ⤢",
       "streamCollapse": "收起 ⤡",
       "streamWriting": "重写中… 已输出 {count} 字",
       "cancelRevise": "取消修订",

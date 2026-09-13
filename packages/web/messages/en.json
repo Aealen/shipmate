@@ -467,7 +467,7 @@
       "pointsSummary": "{count} points in total",
       "noRun": "No analysis batch yet; AI revise is unavailable",
       "streamTitle": "✦ AI revising — live progress",
-      "streamExpand": "Expand 20 lines ⤢",
+      "streamExpand": "Expand ⤢",
       "streamCollapse": "Collapse ⤡",
       "streamWriting": "Rewriting… {count} chars written",
       "cancelRevise": "Cancel revision",

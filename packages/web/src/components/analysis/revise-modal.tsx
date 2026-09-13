@@ -642,7 +642,7 @@ export function ReviseModal({
                   </div>
                   <div
                     ref={logRef}
-                    className="min-h-0 flex-1 space-y-[3px] overflow-hidden px-3 pb-2 pt-[3px]"
+                    className="min-h-0 flex-1 space-y-[3px] overflow-y-auto px-3 pb-2 pt-[3px]"
                   >
                     {lines.map((l, i) => (
                       <p key={i} className="truncate text-[11px] leading-4 text-[#8AB4FF]">
