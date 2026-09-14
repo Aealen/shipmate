@@ -24,7 +24,7 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
   const pointTitles = Object.fromEntries(points.map((p) => [p.id, p.title]));
 
   return (
-    <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 p-6">
+    <div className="flex h-full flex-col gap-4 p-6">
       <header className="flex flex-col gap-0.5">
         <p className="text-xs text-text-muted">{summary.project.name}</p>
         <h1 className="text-lg font-semibold text-text-primary">{t('title')}</h1>

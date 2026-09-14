@@ -363,7 +363,7 @@ export function AnalysisWorkbench({
   const reviseBlock = reviseTarget ? blocks[reviseTarget.blockIndex] : undefined;
 
   return (
-    <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 p-6">
+    <div className="flex h-full flex-col gap-4 p-6">
       <style>{WORKBENCH_CSS}</style>
 
       <header className="flex shrink-0 items-center gap-3">
