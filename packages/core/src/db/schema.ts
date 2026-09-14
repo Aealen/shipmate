@@ -34,7 +34,7 @@ export const projects = pgTable('projects', {
   updatedAt: bigint('updated_at', { mode: 'number' }).notNull(),
 });
 
-// §3.2 analysis_runs;draft_result 为计划补齐列(草稿暂存,不落业务表)
+// §3.2 analysis_runs;draft_result 为计划补齐列(草稿暂存,不落业务表);error 为失败时的错误摘要(成功为 null)
 export const analysisRuns = pgTable('analysis_runs', {
   id: text('id').primaryKey(),
   projectId: text('project_id')
@@ -44,6 +44,7 @@ export const analysisRuns = pgTable('analysis_runs', {
   status: text('status', { enum: ['pending', 'done', 'failed'] }).notNull(),
   actor: text('actor').notNull(),
   draftResult: jsonb('draft_result'),
+  error: text('error'),
   createdAt: bigint('created_at', { mode: 'number' }).notNull(),
   completedAt: bigint('completed_at', { mode: 'number' }),
 });

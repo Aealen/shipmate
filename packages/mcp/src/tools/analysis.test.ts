@@ -86,6 +86,7 @@ describe('素材与分析工具', () => {
         'add_material',
         'list_materials',
         'get_material',
+        'update_material',
         'start_analysis',
         'apply_analysis_run',
         'revise_draft',
@@ -177,6 +178,38 @@ describe('素材与分析工具', () => {
       const ghost = await callTool(client, 'get_material', { runId: run.id, id: 'ghost' });
       expect(ghost.isError).toBe(true);
       expect(ghost.text).toContain('NOT_FOUND');
+    });
+  });
+
+  it('update_material 更新素材并写审计,actor 为注入值;空入参报 VALIDATION_ERROR', async () => {
+    await withDb(async (db) => {
+      const core = createCore(db);
+      const project = await core.projects.createProject({ name: '项目' }, 'human');
+      const run = await core.analysis.createAnalysisRun({ projectId: project.id }, 'human');
+      const material = await core.analysis.addMaterial(
+        { runId: run.id, type: 'doc', rawContent: '旧正文', title: '旧标题' },
+        'human',
+      );
+      const { client } = await setupServer(db);
+
+      const res = await callTool(client, 'update_material', {
+        id: material.id,
+        rawContent: '新正文',
+        title: '新标题',
+      });
+      expect(res.isError).toBe(false);
+      expect(JSON.parse(res.text)).toMatchObject({ id: material.id, title: '新标题', rawContent: '新正文' });
+
+      // 审计 actor 为注入值(mcp 门面),before/after 快照齐全
+      const logs = await core.audit.getChangeLog({ entityType: 'material', entityId: material.id });
+      expect(logs).toHaveLength(2); // create + update
+      expect(logs[0]).toMatchObject({ actor: 'mcp:test', changeType: 'update' });
+      expect(logs[0].beforeSnapshot).toMatchObject({ title: '旧标题', rawContent: '旧正文' });
+      expect(logs[0].afterSnapshot).toMatchObject({ title: '新标题', rawContent: '新正文' });
+
+      const empty = await callTool(client, 'update_material', { id: material.id });
+      expect(empty.isError).toBe(true);
+      expect(empty.text).toContain('VALIDATION_ERROR');
     });
   });
 

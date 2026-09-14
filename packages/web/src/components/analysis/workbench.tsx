@@ -9,8 +9,10 @@ import {
   addMaterialAction,
   applyAnalysisRunAction,
   createAnalysisRunAction,
+  getAnalysisRun,
   saveAnalysisDraftAction,
   startAnalysisAction,
+  updateMaterialAction,
 } from '@/actions/analysis';
 import { createModuleAction, listModulesAction } from '@/actions/modules';
 import { Modal } from '@/components/shared/modal';
@@ -193,6 +195,8 @@ export function AnalysisWorkbench({
 
   const [runId, setRunId] = useState<string | null>(run?.run.id ?? null);
   const [runStatus, setRunStatus] = useState<RunStatus | null>(run?.run.status ?? null);
+  // 失败原因摘要(spec §3.2 run.error):旧失败数据为 null 时横幅维持现状文案
+  const [runError, setRunError] = useState<string | null>(run?.run.error ?? null);
   const [materials, setMaterials] = useState<MaterialRow[]>(run?.materials ?? []);
   const [blocks, setBlocks] = useState<DraftBlockState[]>(() => {
     const draft = run ? toDraft(run.run.draftResult) : null;
@@ -296,6 +300,24 @@ export function AnalysisWorkbench({
     [ensureRun, t],
   );
 
+  /** 编辑素材(spec §3.3):成功后本地替换该行;失败 toast 并保持卡片编辑态 */
+  const handleUpdateMaterial = useCallback(
+    async (
+      id: string,
+      input: { title: string; rawContent: string },
+    ): Promise<boolean> => {
+      const res = await updateMaterialAction(id, input);
+      if (!res.ok) {
+        showToast(res.message, 'error');
+        return false;
+      }
+      setMaterials((prev) => prev.map((m) => (m.id === id ? res.data : m)));
+      showToast(t('materialUpdated'));
+      return true;
+    },
+    [t],
+  );
+
   const handleStart = useCallback(async () => {
     if (analyzing || materials.length === 0) return;
     setAnalyzing(true);
@@ -305,11 +327,18 @@ export function AnalysisWorkbench({
       const res = await startAnalysisAction(id);
       if (!res.ok) {
         // LLM 未配置为 VALIDATION_ERROR,中文 message 直接 toast;LLM 类错误同时置批次失败态
-        if (res.code === 'LLM_ERROR' || res.code === 'LLM_SCHEMA_MISMATCH') setRunStatus('failed');
+        if (res.code === 'LLM_ERROR' || res.code === 'LLM_SCHEMA_MISMATCH') {
+          setRunStatus('failed');
+          // 失败摘要已由 core 落库(spec §3.2),重新拉取供失败横幅展示诊断
+          const detail = await getAnalysisRun(id).catch(() => null);
+          if (detail) setRunError(detail.run.error);
+        }
         showToast(res.message, 'error');
         return;
       }
       setRunStatus(res.data.status);
+      // 重新分析成功时 core 已置 error=null,本地同步清掉旧失败摘要
+      setRunError(res.data.error ?? null);
       const draft = toDraft(res.data.draftResult);
       if (draft) {
         setBlocks(blocksFromDraft(draft));
@@ -434,9 +463,11 @@ export function AnalysisWorkbench({
         <MaterialPanel
           materials={materials}
           runStatus={runStatus}
+          runError={runError}
           analyzing={analyzing}
           onStart={handleStart}
           onAdd={handleAddMaterial}
+          onUpdate={handleUpdateMaterial}
         />
         <DraftPanel
           blocks={blocks}

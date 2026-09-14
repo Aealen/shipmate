@@ -84,6 +84,24 @@ export async function addMaterialAction(input: {
   }
 }
 
+/**
+ * 更新素材标题/原文(spec §3.3 素材可更新):只更新传入的字段。
+ * title 传空串时 core 置 null,前端显示「未命名素材」回退。
+ */
+export async function updateMaterialAction(
+  id: string,
+  input: { title?: string; rawContent?: string },
+): Promise<ActionResult<MaterialRow>> {
+  try {
+    const { core } = await getShipmate();
+    const row = await core.analysis.updateMaterial(id, input, 'human');
+    revalidateApp();
+    return { ok: true, data: row };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
 /** 开始分析(调 LLM,耗时可达模型 timeout;调用方自行 loading 态) */
 export async function startAnalysisAction(runId: string): Promise<ActionResult<AnalysisRunRow>> {
   try {

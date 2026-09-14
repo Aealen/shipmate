@@ -388,6 +388,10 @@
       "submitting": "Adding…"
     },
     "materialAdded": "Material added",
+    "materialUpdated": "Material updated",
+    "materialEdit": "Edit material",
+    "materialSaving": "Saving…",
+    "materialContentRequired": "Material content is required",
     "materialUntitled": "Untitled material",
     "startAnalysis": "Start analysis",
     "analyzing": "Analyzing…",
@@ -502,7 +506,6 @@
     "requirementCount": "{count} requirements",
     "reqsEmptyTitle": "No requirements yet",
     "reqsEmptyDesc": "Run a material analysis and apply the draft; requirements will appear here",
-    "draftHint": "AI draft, pending confirmation",
     "unscheduled": "Unscheduled",
     "planDue": "Due {date}",
     "planRange": "{start} ~ {end}",

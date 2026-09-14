@@ -15,6 +15,13 @@
       "when": 1789368587658,
       "tag": "0001_abnormal_catseye",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789373591109,
+      "tag": "0002_loose_pride",
+      "breakpoints": true
     }
   ]
 }

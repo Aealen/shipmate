@@ -38,6 +38,8 @@ export interface RunCardData {
   id: string;
   title: string | null;
   status: 'pending' | 'done' | 'failed';
+  /** 失败原因摘要(spec §3.2);null = 旧失败数据,卡面维持现状文案 */
+  error: string | null;
   createdAt: number;
   completedAt: number | null;
   materialCount: number;
@@ -468,6 +470,15 @@ function RunCard({ run, href, locale }: { run: RunCardData; href: string; locale
         {run.title ?? t('runUntitled')}
       </p>
       <p className="truncate text-[10px] text-text-muted">{meta}</p>
+      {/* 失败原因摘要:截两行,悬停看全文;旧失败数据无摘要时维持现状 */}
+      {run.status === 'failed' && run.error && (
+        <p
+          className="line-clamp-2 break-all text-[11px] leading-snug text-danger"
+          title={run.error}
+        >
+          {run.error}
+        </p>
+      )}
       <div className="flex items-center gap-2 pt-0.5">
         <span className="shrink-0 text-[10px] font-bold text-accent">{t('viewDetail')}</span>
         <span className="min-w-0 flex-1" />
@@ -533,7 +544,6 @@ function RequirementBlock({
             {req.title}
           </span>
           <StatusBadge status={req.status} size="sm" />
-          {isDraft && <span className="shrink-0 text-[11px] text-draft-gray">{t('draftHint')}</span>}
           <span className="shrink-0 text-[11px] text-text-muted">{planTimeText(req, t, locale)}</span>
           {req.dueSoon && <DueSoonBadge />}
           {req.overdue && <OverdueBadge days={req.overdueDays} />}
@@ -587,7 +597,8 @@ function RequirementBlock({
       </div>
 
       {open && points.length > 0 && (
-        <ul className="flex flex-col gap-2">
+        /* 块头与点行区之间的浅分隔:增强「块头 / 点列表」分区感 */
+        <ul className="flex flex-col gap-2 border-t border-border pt-3">
           {points.map((p) => (
             <PointRow
               key={p.id}
@@ -801,7 +812,7 @@ function ModuleGroup({
           <BoxIcon />
         </span>
         <span
-          className={`shrink-0 text-[14px] font-bold ${
+          className={`shrink-0 text-[15px] font-bold ${
             untagged ? 'text-text-secondary' : 'text-text-primary'
           }`}
         >

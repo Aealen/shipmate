@@ -388,6 +388,10 @@
       "submitting": "添加中…"
     },
     "materialAdded": "素材已添加",
+    "materialUpdated": "素材已更新",
+    "materialEdit": "编辑素材",
+    "materialSaving": "保存中…",
+    "materialContentRequired": "素材内容不能为空",
     "materialUntitled": "未命名素材",
     "startAnalysis": "开始分析",
     "analyzing": "分析中…",
@@ -502,7 +506,6 @@
     "requirementCount": "{count} 项需求",
     "reqsEmptyTitle": "还没有需求",
     "reqsEmptyDesc": "完成一次素材分析并应用草稿后,需求会出现在这里",
-    "draftHint": "AI 产出草稿,待确认",
     "unscheduled": "未排期",
     "planDue": "截止 {date}",
     "planRange": "{start} ~ {end}",

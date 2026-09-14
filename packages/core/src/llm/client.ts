@@ -24,7 +24,7 @@ export async function chatJson(cfg: LlmConfig, system: string, user: string): Pr
           { role: 'user', content: user },
         ],
       }),
-      signal: AbortSignal.timeout(cfg.timeoutMs ?? 120_000),
+      signal: AbortSignal.timeout(cfg.timeoutMs ?? 300_000),
     });
   } catch (e) {
     throw new DomainError('LLM_ERROR', `LLM 请求失败:${(e as Error).message}`);
@@ -77,7 +77,8 @@ export async function chatJsonStream(
           { role: 'user', content: user },
         ],
       }),
-      signal: handlers.signal ?? AbortSignal.timeout(cfg.timeoutMs ?? 120_000),
+      // 默认 5 分钟:推理模型(如 glm 系列)响应慢,120s 不够;settings llm.timeout_ms 可覆盖
+      signal: handlers.signal ?? AbortSignal.timeout(cfg.timeoutMs ?? 300_000),
     });
   } catch (e) {
     if (isAbortError(e)) throw e;

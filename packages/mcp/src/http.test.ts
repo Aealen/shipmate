@@ -64,10 +64,11 @@ describe('MCP HTTP streamable handler', () => {
       expect(listRes.status).toBe(200);
       const listBody = (await listRes.json()) as { result: { tools: { name: string }[] } };
       const names = listBody.result.tools.map((t) => t.name).sort();
-      expect(names).toHaveLength(39);
+      expect(names).toHaveLength(40);
       // 抽样核对每组的代表工具
       expect(names).toContain('create_group');
       expect(names).toContain('add_material');
+      expect(names).toContain('update_material');
       expect(names).toContain('create_module');
       expect(names).toContain('apply_analysis_run');
       expect(names).toContain('confirm_task_reassessment');

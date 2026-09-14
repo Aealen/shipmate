@@ -168,6 +168,44 @@ export class AnalysisService {
     });
   }
 
+  /**
+   * 更新素材的标题/原文(spec §6 updateMaterial):title 与 rawContent 至少提供一项,
+   * 只更新传入的字段;写 before/after 审计(entityType=material, changeType=update)。
+   * materials 表无 updated_at 列(spec §3.3 有意为之),不新增;重新分析同一批次覆盖 Run 草稿。
+   */
+  async updateMaterial(
+    id: string,
+    input: { title?: string; rawContent?: string },
+    actor: Actor,
+  ): Promise<MaterialRow> {
+    const title = input.title?.trim();
+    const rawContent = input.rawContent?.trim();
+    if (title === undefined && rawContent === undefined) {
+      throw new DomainError('VALIDATION_ERROR', 'title 与 rawContent 至少提供一项');
+    }
+    if (rawContent === '') throw new DomainError('VALIDATION_ERROR', '素材内容不能为空');
+    return this.db.transaction(async (tx) => {
+      const before = (await tx.select().from(materials).where(eq(materials.id, id)))[0];
+      if (!before) throw new DomainError('NOT_FOUND', `素材 ${id} 不存在`);
+      const updated = (
+        await tx
+          .update(materials)
+          .set({ title: title || null, ...(rawContent !== undefined ? { rawContent } : {}) })
+          .where(eq(materials.id, id))
+          .returning()
+      )[0]!;
+      await writeChangeLog(tx, {
+        entityType: 'material',
+        entityId: id,
+        changeType: 'update',
+        before,
+        after: updated,
+        actor,
+      });
+      return updated;
+    });
+  }
+
   /** spec §9 主链路:汇集素材 → LLM 结构化输出 → 草稿暂存 Run(不落业务表) */
   async startAnalysis(runId: string, actor: Actor): Promise<AnalysisRunRow> {
     const run = (await this.db.select().from(analysisRuns).where(eq(analysisRuns.id, runId)))[0];
@@ -190,7 +228,8 @@ export class AnalysisService {
         const updated = (
           await tx
             .update(analysisRuns)
-            .set({ status: 'done', draftResult: parsed as never, completedAt: Date.now() })
+            // error 置 null:重新分析成功后覆盖上次失败的错误摘要
+            .set({ status: 'done', draftResult: parsed as never, completedAt: Date.now(), error: null })
             .where(eq(analysisRuns.id, runId))
             .returning()
         )[0]!;
@@ -676,7 +715,8 @@ export class AnalysisService {
       const updated = (
         await tx
           .update(analysisRuns)
-          .set({ status: 'failed', completedAt: Date.now() })
+          // 错误摘要落库(spec §3.2 error 列),截断至 500 字符,供 UI 展示诊断
+          .set({ status: 'failed', completedAt: Date.now(), error: reason.slice(0, 500) })
           .where(eq(analysisRuns.id, runId))
           .returning()
       )[0];

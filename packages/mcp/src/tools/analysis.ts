@@ -67,6 +67,22 @@ export function registerAnalysisTools(server: McpServer, core: ShipmateCore, act
   );
 
   server.registerTool(
+    'update_material',
+    {
+      title: '更新素材',
+      description: '按 id 更新素材的标题/原文;title 与 rawContent 至少提供一项,变更记审计',
+      inputSchema: {
+        id: z.string().describe('素材 id'),
+        title: z.string().optional().describe('新标题;不传保持不变'),
+        rawContent: z.string().optional().describe('新原文内容;不传保持不变'),
+      },
+    },
+    withCore(core, actor, (c, { id, title, rawContent }) =>
+      c.analysis.updateMaterial(id, { title, rawContent }, actor),
+    ),
+  );
+
+  server.registerTool(
     'start_analysis',
     {
       title: '启动 AI 分析',

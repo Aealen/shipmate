@@ -70,6 +70,71 @@ describe('批次与素材', () => {
     });
   });
 
+  it('updateMaterial:更新 title/rawContent 落库并写 update 审计(before/after)', async () => {
+    await withDb(async (db) => {
+      const svc = makeService(db, async () => ({}));
+      const now = Date.now();
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
+      const run = await svc.createAnalysisRun({ projectId: p.id }, 'human');
+      const m = await svc.addMaterial(
+        { runId: run.id, type: 'paste_text', title: '旧标题', rawContent: '旧内容' },
+        'human',
+      );
+
+      const updated = await svc.updateMaterial(
+        m.id,
+        { title: ' 新标题 ', rawContent: '新内容' },
+        'human',
+      );
+      expect(updated).toMatchObject({ id: m.id, title: '新标题', rawContent: '新内容' });
+      // materials 表无 updated_at 列(spec §3.3),createdAt 不动
+      expect(updated.createdAt).toBe(m.createdAt);
+
+      const logs = await db
+        .select()
+        .from(changeLogs)
+        .where(and(eq(changeLogs.entityType, 'material'), eq(changeLogs.entityId, m.id)));
+      expect(logs).toHaveLength(2); // create + update
+      const upd = logs.find((l) => l.changeType === 'update')!;
+      expect(upd.beforeSnapshot).toMatchObject({ title: '旧标题', rawContent: '旧内容' });
+      expect(upd.afterSnapshot).toMatchObject({ title: '新标题', rawContent: '新内容' });
+      expect(upd.actor).toBe('human');
+    });
+  });
+
+  it('updateMaterial:只改 title 时 rawContent 不动;空输入抛 VALIDATION_ERROR;不存在抛 NOT_FOUND', async () => {
+    await withDb(async (db) => {
+      const svc = makeService(db, async () => ({}));
+      const now = Date.now();
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
+      const run = await svc.createAnalysisRun({ projectId: p.id }, 'human');
+      const m = await svc.addMaterial(
+        { runId: run.id, type: 'doc', rawContent: '原文' },
+        'human',
+      );
+
+      const renamed = await svc.updateMaterial(m.id, { title: '改名' }, 'human');
+      expect(renamed).toMatchObject({ title: '改名', rawContent: '原文' });
+
+      await expect(svc.updateMaterial(m.id, {}, 'human')).rejects.toMatchObject({
+        code: 'VALIDATION_ERROR',
+      });
+      await expect(svc.updateMaterial('missing', { title: 'x' }, 'human')).rejects.toMatchObject({
+        code: 'NOT_FOUND',
+      });
+    });
+  });
+
   it('listAnalysisRuns / getAnalysisRun 汇总素材与草稿计数', async () => {
     await withDb(async (db) => {
       const svc = makeService(db, async () => ({
@@ -162,9 +227,12 @@ describe('startAnalysis', () => {
       await expect(fail.startAnalysis(run.id, 'human')).rejects.toMatchObject({
         code: 'LLM_ERROR',
       });
-      expect(
-        (await db.select().from(analysisRuns).where(eq(analysisRuns.id, run.id)))[0]!.status,
-      ).toBe('failed');
+      const failed = (
+        await db.select().from(analysisRuns).where(eq(analysisRuns.id, run.id))
+      )[0]!;
+      expect(failed.status).toBe('failed');
+      // 失败原因落库(spec §3.2 error 列),供 UI 展示诊断
+      expect(failed.error).toContain('超时');
 
       const ok = makeService(db, async () => ({
         requirements: [{ title: '新草稿', points: [] }],
@@ -172,6 +240,8 @@ describe('startAnalysis', () => {
       }));
       const done = await ok.startAnalysis(run.id, 'human');
       expect(done.status).toBe('done');
+      // 重新分析成功后错误摘要清空
+      expect(done.error).toBeNull();
       expect(
         (done.draftResult as { requirements: { title: string }[] }).requirements[0]!.title,
       ).toBe('新草稿');

@@ -91,11 +91,12 @@ PostgreSQL 类型约定:所有时间戳列(`*_at` / `plan_*_at`)用 `bigint`(dri
 | status                    | text NOT NULL, enum       | `pending`(待分析)/ `done`(已完成)/ `failed`(失败)    |
 | actor                     | text NOT NULL             | 发起者,见 §5.1                                       |
 | draft_result              | jsonb, 可空               | 分析草稿暂存(spec §9:草稿不落业务表,暂存于 Run 自身) |
+| error                     | text, 可空                | 失败时的错误摘要(LLM_ERROR 等,截断 500 字符),成功为 null |
 | created_at / completed_at | bigint NOT NULL / 可空    |                                                      |
 
 ### 3.3 materials(素材)
 
-素材分析批次(Run)的输入;一次 Run 可含多条素材。
+素材分析批次(Run)的输入;一次 Run 可含多条素材。素材 `title` / `raw_content` 可更新(`updateMaterial`,update 记审计);重新分析同一批次覆盖 Run 草稿。
 
 | 字段            | 类型                           | 说明                                                                 |
 | --------------- | ------------------------------ | -------------------------------------------------------------------- |
@@ -297,6 +298,7 @@ listProjects(filter?: { groupId? }): Project[]
 // AnalysisService(素材分析批次:一次 Run = N 条素材 → 产出需求)
 createAnalysisRun(input: { projectId, title? }, actor): AnalysisRun
 addMaterial(input: { runId, type, title?, rawContent }, actor): Material
+updateMaterial(id, input: { title?, rawContent? }, actor): Material   // title/rawContent 至少一项,update 记审计
 startAnalysis(runId, actor): AnalysisResult           // 产出暂存 Run 草稿(不落业务表),见 §9;重复执行覆盖草稿
 applyAnalysisRun(runId, options?: { selectedRequirements?: string[]; selectedSupplements?: string[]; decisions?: ConflictDecision[] }, actor): Requirement[]   // 选中项事务落库为 draft,默认全选;见 §9
 listAnalysisRuns(projectId, filter?: { status? }): AnalysisRunSummary[]   // 含素材数与产出统计
@@ -361,7 +363,7 @@ core 层统一 `DomainError`(带 code),web 映射 HTTP 状态码,mcp 映射 `isE
 
 原则:MCP 零业务逻辑,薄壳调 core;写操作自动记 actor;入参用 zod schema 定义并生成工具 JSON Schema。
 
-工具共 **39 个**:分组 5 / 项目 4 / 模块 4 / 素材 2 / 素材分析 6 / 需求 3 / 需求点 5 / 开发步骤 5 / 审计与进度 3(+ 修订/删除 2)。
+工具共 **40 个**:分组 5 / 项目 4 / 模块 4 / 素材 3 / 素材分析 6 / 需求 3 / 需求点 5 / 开发步骤 5 / 审计与进度 3(+ 修订/删除 2)。
 
 > **同名裁定(2026-09-11)**:素材组与分析组的 `add_material` 同名,仅保留 **runId 版**(素材必属批次);原素材组 `add_material(projectId…, analyze?)` 删除,素材查询(`list_materials`/`get_material`)相应以 runId 定位。
 
@@ -382,6 +384,7 @@ core 层统一 `DomainError`(带 code),web 映射 HTTP 状态码,mcp 映射 `isE
 |            | `list_modules`                 | projectId                                                       | 模块数组,含需求数与需求点就绪统计                                                                                                                                                                                                                        |
 | 素材       | `list_materials`               | runId                                                           | 素材数组(素材必属批次)                                                                                                                                                                                                                                  |
 |            | `get_material`                 | runId, id                                                       | 素材对象                                                                                                                                                                                                                                                |
+|            | `update_material`              | id, title?, rawContent?                                         | 素材对象(title/rawContent 至少一项,变更记审计)                                                                                                                                                                                                          |
 | 素材分析   | `create_analysis_run`          | projectId, title?                                               | 分析记录对象(pending)                                                                                                                                                                                                                                   |
 |            | `add_material`                 | runId, type, rawContent, title?                                 | 素材对象;同一 Run 可多次调用添加多条                                                                                                                                                                                                                    |
 |            | `start_analysis`               | runId                                                           | 产出暂存 Run 草稿(不落业务表);重复执行覆盖草稿;同步执行,耗时取决于模型                                                                                                                                                                                  |
@@ -432,7 +435,7 @@ AnalysisRun(pending)
 1. 模型接入走 OpenAI 兼容协议(`/chat/completions` + JSON mode / tool-call 结构化输出),base-url / model / key 配置化,不绑厂商
 2. AI 产出永远 `draft`:应用落库后即 draft 态,confirm 后才进 confirmed(见 §5.4)
 3. 同步执行:素材手动粘贴量小,直接 await,不做 job 队列(YAGNI)
-4. 失败即回滚:LLM 失败 → `Run.status = failed`;草稿仅存于 Run 自身,不产生业务表脏数据;apply 落库为单事务,要么全成要么全不动
+4. 失败即回滚:LLM 失败 → `Run.status = failed`,错误摘要写入 `Run.error`(截断 500 字符,供 UI 展示诊断;重新分析成功后清空);草稿仅存于 Run 自身,不产生业务表脏数据;apply 落库为单事务,要么全成要么全不动
 5. confidence 仅作展示字段,不参与状态决策;**置信度必须可溯源** — 每个需求点要求附 evidences(引用具体素材的原文段落),evidences 为空的点标注"无原文依据,需人工校验",不阻塞落库,由人定夺
 6. **重新分析同一批次**:直接覆盖 Run 草稿(未应用的产出随之替换,无审计负担);已应用落库的需求不受影响。`discard` 枚举保留,用于应用后删除 draft 需求的场景
 7. 后期增强位(当前不做):需求点细化 Task 草案、需求点重复/冲突检测的自动化(embedding 相似度);当前重复/相悖由 LLM 标注 + apply 时 core 兜底

@@ -39,6 +39,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
     id: r.id,
     title: r.title,
     status: r.status,
+    error: r.error,
     createdAt: r.createdAt,
     completedAt: r.completedAt,
     materialCount: r.materialCount,
