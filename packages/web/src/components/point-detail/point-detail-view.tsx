@@ -34,7 +34,16 @@ const NEXT_TRANSITION: Partial<
  * 描述 + 溯源依据;右栏=关联任务 + 变更历史。面包屑横跨顶部。
  * 写操作经 server actions;action 内 revalidatePath 使页面自动刷新。
  */
-export function PointDetailView({ data, projectId }: { data: PointPageData; projectId: string }) {
+export function PointDetailView({
+  data,
+  projectId,
+  moduleName,
+}: {
+  data: PointPageData;
+  projectId: string;
+  /** 需求所挂模块名(spec §14 面包屑模块层);null = 未挂模块,面包屑不渲染该段 */
+  moduleName: string | null;
+}) {
   const t = useTranslations('pointDetail');
   const tBadge = useTranslations('shared.badge');
   const [editOpen, setEditOpen] = useState(false);
@@ -56,7 +65,7 @@ export function PointDetailView({ data, projectId }: { data: PointPageData; proj
 
   return (
     <div className="flex w-full flex-col gap-4 p-6">
-      {/* 面包屑:项目 › 需求 › 需求点(需求列表在 P3 分析页) */}
+      {/* 面包屑:项目 › 模块(只读,未挂模块不渲染) › 需求 › 需求点(需求列表在 P3 分析页) */}
       <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-[13px]">
         <Link
           href={`/project/${projectId}`}
@@ -65,6 +74,14 @@ export function PointDetailView({ data, projectId }: { data: PointPageData; proj
           {data.project.name}
         </Link>
         <span className="text-text-muted">/</span>
+        {moduleName && (
+          <>
+            <span className="text-text-muted" title={t('breadcrumbModule')}>
+              {moduleName}
+            </span>
+            <span className="text-text-muted">/</span>
+          </>
+        )}
         <Link
           href={`/project/${projectId}/analysis`}
           className="text-text-muted transition-colors hover:text-accent"

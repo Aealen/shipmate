@@ -8,6 +8,13 @@
       "when": 1789114980948,
       "tag": "0000_bizarre_zuras",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789368587658,
+      "tag": "0001_abnormal_catseye",
+      "breakpoints": true
     }
   ]
 }

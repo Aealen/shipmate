@@ -31,6 +31,8 @@ export const draftRevisionSchema = z.object({
 export const draftRequirementSchema = z.object({
   title: z.string().min(1),
   summary: z.string().optional().default(''),
+  // AI 归类建议(spec §9 规则 10):模块名;空串 = 未归类。默认空串保证旧草稿(无该字段)兼容
+  module: z.string().optional().default(''),
   conflict: draftConflictSchema.optional(),
   points: z.array(draftPointSchema),
   revisions: z.array(draftRevisionSchema).optional(),

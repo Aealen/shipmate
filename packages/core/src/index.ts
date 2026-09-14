@@ -1,6 +1,7 @@
 import type { ShipmateDb } from './db/database.js';
 import { GroupService } from './services/group.service.js';
 import { ProjectService } from './services/project.service.js';
+import { ModuleService } from './services/module.service.js';
 import { RequirementService } from './services/requirement.service.js';
 import { RequirementPointService } from './services/requirement-point.service.js';
 import { TaskService } from './services/task.service.js';
@@ -39,6 +40,12 @@ export {
   type ProjectSummary,
   type DeleteProjectCascade,
 } from './services/project.service.js';
+export {
+  ModuleService,
+  type CreateModuleInput,
+  type UpdateModuleInput,
+  type ModuleSummary,
+} from './services/module.service.js';
 export {
   RequirementService,
   computeOverdue,
@@ -84,6 +91,7 @@ export function createCore(db: ShipmateDb) {
   return {
     groups: new GroupService(db),
     projects: new ProjectService(db),
+    modules: new ModuleService(db),
     requirements: new RequirementService(db),
     points: new RequirementPointService(db),
     tasks: new TaskService(db),

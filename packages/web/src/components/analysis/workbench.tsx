@@ -3,8 +3,8 @@
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
-import type { AnalysisResult, AnalysisRunDetail, MaterialRow } from '@shipmate/core';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { AnalysisResult, AnalysisRunDetail, MaterialRow, ModuleRow, ModuleSummary } from '@shipmate/core';
 import {
   addMaterialAction,
   applyAnalysisRunAction,
@@ -12,6 +12,7 @@ import {
   saveAnalysisDraftAction,
   startAnalysisAction,
 } from '@/actions/analysis';
+import { createModuleAction, listModulesAction } from '@/actions/modules';
 import { Modal } from '@/components/shared/modal';
 import { showToast } from '@/components/shared/toast';
 import {
@@ -49,6 +50,7 @@ const CLOSED_BLOCK: DraftBlockState = {
   selected: true,
   title: '',
   summary: '',
+  module: '',
   conflict: null,
   resolution: null,
   points: [],
@@ -72,6 +74,8 @@ function blocksFromDraft(draft: AnalysisResult): DraftBlockState[] {
     selected: true,
     title: r.title,
     summary: r.summary ?? '',
+    // AI 归类建议(spec §9 规则 10);旧草稿无该字段,兜底空串 = 未归类
+    module: r.module ?? '',
     conflict: r.conflict
       ? {
           type: r.conflict.type,
@@ -140,6 +144,8 @@ function buildDraftPayload(
     requirements: blocks.map((b) => ({
       title: b.title.trim(),
       summary: b.summary.trim(),
+      // 块级归类建议随草稿带出(spec §9 规则 10),apply 按名落模块
+      module: b.module,
       conflict: b.conflict
         ? {
             type: b.conflict.type,
@@ -199,8 +205,40 @@ export function AnalysisWorkbench({
   const [analyzing, setAnalyzing] = useState(false);
   const [applying, setApplying] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  /** 项目模块列表(归类下拉选项);进工作台拉一次,新建后本地追加 */
+  const [modules, setModules] = useState<ModuleSummary[]>([]);
   /** AI 修订弹窗目标(null = 关闭);blockIndex 定位本地块,pointIndex null = 整块 */
   const [reviseTarget, setReviseTarget] = useState<ReviseTarget | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    listModulesAction(projectId)
+      .then((rows) => {
+        if (!cancelled) setModules(rows);
+      })
+      .catch(() => {
+        /* 列表拉取失败不阻塞工作台,归类下拉仅缺选项 */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  /** 归类下拉内新建模块:成功后本地追加列表并返回新行(选中),失败 toast 返回 null */
+  const handleCreateModule = useCallback(
+    async (name: string): Promise<ModuleRow | null> => {
+      const res = await createModuleAction({ projectId, name });
+      if (!res.ok) {
+        showToast(res.message, 'error');
+        return null;
+      }
+      // ModuleRow 无统计字段,新模块尚无需求,本地补零对齐 ModuleSummary
+      const summary: ModuleSummary = { ...res.data, requirementCount: 0, pointsDone: 0, pointsTotal: 0 };
+      setModules((prev) => [...prev, summary]);
+      return res.data;
+    },
+    [projectId],
+  );
 
   const existingByTitle = useMemo(
     () => new Map(existingRequirements.map((r) => [r.title, r])),
@@ -404,6 +442,8 @@ export function AnalysisWorkbench({
           blocks={blocks}
           supps={supps}
           existingByTitle={existingByTitle}
+          modules={modules}
+          onCreateModule={handleCreateModule}
           analyzing={analyzing}
           applying={applying}
           applyDisabled={applyDisabled}

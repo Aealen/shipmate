@@ -187,6 +187,7 @@ async function main(): Promise<void> {
         {
           title: '报表导出增强',
           summary: '',
+          module: '',
           points: [
             {
               title: '导出 CSV 格式',
@@ -256,6 +257,7 @@ async function main(): Promise<void> {
         {
           title: '离线采集',
           summary: '',
+          module: '',
           points: [
             {
               title: '离线包管理',

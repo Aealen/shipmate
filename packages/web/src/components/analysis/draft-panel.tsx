@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import type { ModuleRow, ModuleSummary } from '@shipmate/core';
 import { Skeleton } from '@/components/shared/skeleton';
 import { EmptyState } from '@/components/shared/empty-state';
 import {
@@ -21,6 +22,8 @@ export function DraftPanel({
   blocks,
   supps,
   existingByTitle,
+  modules,
+  onCreateModule,
   analyzing,
   applying,
   applyDisabled,
@@ -33,6 +36,10 @@ export function DraftPanel({
   blocks: DraftBlockState[];
   supps: SupplementBlockState[];
   existingByTitle: Map<string, ExistingRequirementView>;
+  /** 项目模块列表(workbench 拉取;归类下拉选项) */
+  modules: ModuleSummary[];
+  /** 归类下拉内新建模块(workbench 处理 action/toast/列表刷新) */
+  onCreateModule: (name: string) => Promise<ModuleRow | null>;
   analyzing: boolean;
   applying: boolean;
   applyDisabled: boolean;
@@ -102,6 +109,8 @@ export function DraftPanel({
               <div key={b.key} className="analysis-enter" style={{ animationDelay: `${i * 40}ms` }}>
                 <DraftBlock
                   block={b}
+                  modules={modules}
+                  onCreateModule={onCreateModule}
                   onChange={(patch) =>
                     onBlocksChange(blocks.map((q) => (q.key === b.key ? { ...q, ...patch } : q)))
                   }

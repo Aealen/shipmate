@@ -15,6 +15,7 @@ export function registerRequirementTools(
       description: '在项目下创建需求,默认 draft 态、P2 优先级;时间为 Unix 毫秒时间戳',
       inputSchema: {
         projectId: z.string().describe('所属项目 id'),
+        moduleId: z.string().optional().describe('所属模块 id,缺省未归类'),
         title: z.string().describe('需求标题'),
         summary: z.string().optional().describe('需求摘要'),
         priority: z.enum(['P0', 'P1', 'P2', 'P3']).optional().describe('优先级,缺省 P2'),
@@ -33,6 +34,11 @@ export function registerRequirementTools(
         '修改需求标题/摘要/状态/优先级/计划时间;时间为 Unix 毫秒,传 null 清空;状态变化记审计',
       inputSchema: {
         id: z.string().describe('需求 id'),
+        moduleId: z
+          .string()
+          .nullable()
+          .optional()
+          .describe('所属模块 id;null 转未归类,不传则不变'),
         title: z.string().optional().describe('新标题'),
         summary: z.string().optional().describe('新摘要'),
         status: z.enum(['draft', 'confirmed', 'done', 'archived']).optional().describe('需求状态'),
@@ -59,6 +65,11 @@ export function registerRequirementTools(
         '列出项目下需求,每项含 overdue/overdueDays/dueSoon 计算字段;可按状态/优先级/是否超期过滤',
       inputSchema: {
         projectId: z.string().describe('项目 id'),
+        moduleId: z
+          .string()
+          .nullable()
+          .optional()
+          .describe('按模块过滤;null = 仅未归类,不传则不过滤'),
         status: z.string().optional().describe('按状态过滤(draft/confirmed/done/archived)'),
         priority: z.string().optional().describe('按优先级过滤(P0/P1/P2/P3)'),
         overdue: z.boolean().optional().describe('传 true 仅返回超期需求'),

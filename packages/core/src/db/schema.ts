@@ -64,12 +64,13 @@ export const materials = pgTable('materials', {
   createdAt: bigint('created_at', { mode: 'number' }).notNull(),
 });
 
-// §3.4 requirements
+// §3.4 requirements;moduleId 为可空分类维度(§3.9 modules,D8),回调引用延迟解析
 export const requirements = pgTable('requirements', {
   id: text('id').primaryKey(),
   projectId: text('project_id')
     .notNull()
     .references(() => projects.id),
+  moduleId: text('module_id').references(() => modules.id),
   title: text('title').notNull(),
   summary: text('summary'),
   status: text('status', { enum: ['draft', 'confirmed', 'done', 'archived'] }).notNull(),
@@ -139,6 +140,7 @@ export const changeLogs = pgTable(
       enum: [
         'group',
         'project',
+        'module',
         'analysis_run',
         'material',
         'requirement',
@@ -177,6 +179,23 @@ export const settings = pgTable('settings', {
   updatedAt: bigint('updated_at', { mode: 'number' }).notNull(),
 });
 
+// §3.9 modules(项目内需求分类维度,纯分类容器无状态机;spec D8)
+export const modules = pgTable(
+  'modules',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => projects.id),
+    name: text('name').notNull(),
+    description: text('description'),
+    sortOrder: integer('sort_order').notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+    updatedAt: bigint('updated_at', { mode: 'number' }).notNull(),
+  },
+  (t) => [index('idx_modules_project').on(t.projectId, t.sortOrder)],
+);
+
 // ---- 行类型导出(服务层统一使用)----
 export type GroupRow = typeof groups.$inferSelect;
 export type ProjectRow = typeof projects.$inferSelect;
@@ -187,6 +206,7 @@ export type RequirementPointRow = typeof requirementPoints.$inferSelect;
 export type TaskRow = typeof tasks.$inferSelect;
 export type ChangeLogRow = typeof changeLogs.$inferSelect;
 export type SettingRow = typeof settings.$inferSelect;
+export type ModuleRow = typeof modules.$inferSelect;
 
 export type EntityType = (typeof changeLogs.$inferSelect)['entityType'];
 export type ChangeType = (typeof changeLogs.$inferSelect)['changeType'];

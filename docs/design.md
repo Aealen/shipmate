@@ -49,7 +49,7 @@ shipmate/
 
 ## 3. 领域模型(字段级)
 
-层级:Group(分组)→ Project → Requirement → RequirementPoint → Task;横切 Material 与 ChangeLog。
+层级:Group(分组)→ Project → Module(模块)→ Requirement → RequirementPoint → Task;横切 Material 与 ChangeLog。
 
 所有表主键 `id: text`,取 UUID v7(时间有序,利于排序与审计)。
 
@@ -116,6 +116,7 @@ AI 从素材归纳出的需求主题。
 | ----------------------- | --------------------------- | ------------------------------------------- |
 | id                      | text PK                     | UUID v7                                     |
 | project_id              | text NOT NULL FK→projects   |                                             |
+| module_id               | text FK→modules,可空        | 所属模块;可选,允许未归类(已定稿 D8)        |
 | title                   | text NOT NULL               |                                             |
 | summary                 | text                        | 摘要,可空                                   |
 | status                  | text NOT NULL, enum         | `draft` / `confirmed` / `done` / `archived` |
@@ -163,7 +164,7 @@ AI 从素材归纳出的需求主题。
 | 字段            | 类型                | 说明                                                                                                                                                                               |
 | --------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | id              | text PK             | UUID v7                                                                                                                                                                            |
-| entity_type     | text NOT NULL, enum | `group` / `project` / `analysis_run` / `material` / `requirement` / `requirement_point` / `task`                                                                                   |
+| entity_type     | text NOT NULL, enum | `group` / `project` / `module` / `analysis_run` / `material` / `requirement` / `requirement_point` / `task`                                                                                   |
 | entity_id       | text NOT NULL       | 对应实体 id(多态引用,不设外键)                                                                                                                                                     |
 | change_type     | text NOT NULL, enum | `create` / `update` / `status_change` / `linkage_impact` / `discard`(作废 draft 时的快照留存) / `delete`(实体删除时的快照留存) / `revision`(AI 修订记录于应用时结转至实体变更历史) |
 | before_snapshot | text(JSON), 可空    | 变更前实体快照;`create` 时为 null                                                                                                                                                  |
@@ -185,6 +186,21 @@ AI 从素材归纳出的需求主题。
 | key        | text PK             | 如 `llm.base_url` / `llm.api_key` / `llm.model` / `ui.theme` / `ui.locale` / `backup.auto` |
 | value      | text NOT NULL(JSON) | 值                                                                                         |
 | updated_at | bigint NOT NULL     |                                                                                            |
+
+### 3.9 modules(模块)
+
+项目内的需求分类维度(项目 → 模块 → 需求 三级结构);纯分类容器,无状态机、无排期(已定稿 D8)。
+
+| 字段                    | 类型                        | 说明           |
+| ----------------------- | --------------------------- | -------------- |
+| id                      | text PK                     | UUID v7        |
+| project_id              | text NOT NULL FK→projects   |                |
+| name                    | text NOT NULL               | 模块名(项目内唯一) |
+| description             | text                        | 可空           |
+| sort_order              | integer NOT NULL, default 0 | 模块展示排序   |
+| created_at / updated_at | bigint NOT NULL             |                |
+
+索引:`(project_id, sort_order)`。删除模块时其下需求 `module_id` 置空(转未归类),需求本身不动;模块 CRUD 写 change_logs(entity_type=`module`)。
 
 ## 4. 状态机
 
@@ -286,10 +302,16 @@ applyAnalysisRun(runId, options?: { selectedRequirements?: string[]; selectedSup
 listAnalysisRuns(projectId, filter?: { status? }): AnalysisRunSummary[]   // 含素材数与产出统计
 getAnalysisRun(id): AnalysisRunDetail                 // 含全部素材与产出需求
 
+// ModuleService(模块:项目内的需求分类维度,纯分组无状态)
+createModule(input: { projectId, name, description? }, actor): Module
+updateModule(id, input: { name?, description?, sortOrder? }, actor): Module
+deleteModule(id, actor): void            // 其下需求 module_id 置空(转未归类),不删需求
+listModules(projectId): Module[]         // 含各模块需求数与需求点就绪统计
+
 // RequirementService
-createRequirement(input: { projectId, title, summary?, priority?, planStartAt?, planDueAt? }, actor): Requirement
-updateRequirement(id, input: { title?, summary?, status?, priority?, planStartAt?, planDueAt? }, actor): Requirement
-listRequirements(projectId, filter?: { status?, priority?, overdue? }): Requirement[]   // 返回含 overdue/overdueDays 计算字段
+createRequirement(input: { projectId, moduleId?, title, summary?, priority?, planStartAt?, planDueAt? }, actor): Requirement
+updateRequirement(id, input: { moduleId?, title?, summary?, status?, priority?, planStartAt?, planDueAt? }, actor): Requirement
+listRequirements(projectId, filter?: { moduleId?, status?, priority?, overdue? }): Requirement[]   // 返回含 overdue/overdueDays 计算字段
 
 // RequirementPointService
 listRequirementPoints(filter: { requirementId? / projectId? / status? }): RequirementPoint[]
@@ -327,6 +349,7 @@ core 层统一 `DomainError`(带 code),web 映射 HTTP 状态码,mcp 映射 `isE
 | `VALIDATION_ERROR`            | 入参不合法(zod 校验失败)         | 400       |
 | `INVALID_STATUS_TRANSITION`   | 状态机非法流转                   | 409       |
 | `GROUP_NOT_EMPTY`             | 分组下仍有项目,禁止删除          | 409       |
+| `MODULE_NAME_TAKEN`           | 模块名项目内已存在               | 409       |
 | `PROJECT_HAS_NO_REQUIREMENTS` | Requirement confirm 前置校验失败 | 409       |
 | `LLM_ERROR`                   | LLM 调用失败(网络/超时/鉴权)     | 502       |
 | `LLM_SCHEMA_MISMATCH`         | LLM 返回不合 JSON schema         | 502       |
@@ -338,7 +361,7 @@ core 层统一 `DomainError`(带 code),web 映射 HTTP 状态码,mcp 映射 `isE
 
 原则:MCP 零业务逻辑,薄壳调 core;写操作自动记 actor;入参用 zod schema 定义并生成工具 JSON Schema。
 
-工具共 **33 个**:分组 5 / 项目 4 / 素材 2 / 素材分析 6 / 需求 3 / 需求点 5 / 开发步骤 5 / 审计与进度 3。
+工具共 **39 个**:分组 5 / 项目 4 / 模块 4 / 素材 2 / 素材分析 6 / 需求 3 / 需求点 5 / 开发步骤 5 / 审计与进度 3(+ 修订/删除 2)。
 
 > **同名裁定(2026-09-11)**:素材组与分析组的 `add_material` 同名,仅保留 **runId 版**(素材必属批次);原素材组 `add_material(projectId…, analyze?)` 删除,素材查询(`list_materials`/`get_material`)相应以 runId 定位。
 
@@ -353,6 +376,10 @@ core 层统一 `DomainError`(带 code),web 映射 HTTP 状态码,mcp 映射 `isE
 |            | `update_project`               | id, name?/description?/status?                                  | 项目对象                                                                                                                                                                                                                                                |
 |            | `list_projects`                | groupId?(null = 仅无分组项目)                                   | 项目数组                                                                                                                                                                                                                                                |
 |            | `get_project`                  | id                                                              | 项目 + 需求完成度 + 需求点状态分布 + 超期需求数 + 最近 20 条变更                                                                                                                                                                                        |
+| 模块       | `create_module`                | projectId, name, description?                                   | 模块对象                                                                                                                                                                                                                                                |
+|            | `update_module`                | id, name?/description?/sortOrder?                               | 模块对象                                                                                                                                                                                                                                                |
+|            | `delete_module`                | id                                                              | 其下需求转未归类;模块对象快照留存 change_logs                                                                                                                                                                                                            |
+|            | `list_modules`                 | projectId                                                       | 模块数组,含需求数与需求点就绪统计                                                                                                                                                                                                                        |
 | 素材       | `list_materials`               | runId                                                           | 素材数组(素材必属批次)                                                                                                                                                                                                                                  |
 |            | `get_material`                 | runId, id                                                       | 素材对象                                                                                                                                                                                                                                                |
 | 素材分析   | `create_analysis_run`          | projectId, title?                                               | 分析记录对象(pending)                                                                                                                                                                                                                                   |
@@ -361,9 +388,9 @@ core 层统一 `DomainError`(带 code),web 映射 HTTP 状态码,mcp 映射 `isE
 |            | `apply_analysis_run`           | runId, selectedRequirements?, selectedSupplements?, decisions?  | 选中需求事务落库为 draft(默认全选);相悖块必须携带裁决结果(用新/用旧/都保留),重复块携带处置(并入/仍要新建/跳过);草稿块以 title 定位(草稿未落库无 id),selectedRequirements 语义即草稿需求 title 数组;decisions 为 `{ requirementTitle, resolution }` 数组 |
 |            | `list_analysis_runs`           | projectId, status?                                              | 分析记录数组,含素材数与产出统计                                                                                                                                                                                                                         |
 |            | `get_analysis_run`             | id                                                              | 记录 + 全部素材 + 草稿产出                                                                                                                                                                                                                              |
-| 需求       | `create_requirement`           | projectId, title, summary?, priority?, planStartAt?, planDueAt? | 需求对象                                                                                                                                                                                                                                                |
-|            | `update_requirement`           | id, title?/summary?/status?/priority?/planStartAt?/planDueAt?   | 需求对象                                                                                                                                                                                                                                                |
-|            | `list_requirements`            | projectId, status?/priority?/overdue?                           | 需求数组,含 overdue/overdueDays 计算字段                                                                                                                                                                                                                |
+| 需求       | `create_requirement`           | projectId, moduleId?, title, summary?, priority?, planStartAt?, planDueAt? | 需求对象                                                                                                                                                                                                                                     |
+|            | `update_requirement`           | id, moduleId?/title?/summary?/status?/priority?/planStartAt?/planDueAt?   | 需求对象                                                                                                                                                                                                                                     |
+|            | `list_requirements`            | projectId, moduleId?/status?/priority?/overdue?                   | 需求数组,含 overdue/overdueDays 计算字段                                                                                                                                                                                                                |
 | 需求点     | `list_requirement_points`      | requirementId?/projectId?/status?                               | 需求点数组                                                                                                                                                                                                                                              |
 |            | `get_requirement_point`        | id                                                              | 需求点 + 完整变更历史 + 关联任务 + evidences 溯源                                                                                                                                                                                                       |
 |            | `update_requirement_point`     | id, title?/description?, reason?                                | 更新后需求点(附联动影响 task 数)                                                                                                                                                                                                                        |
@@ -415,6 +442,7 @@ AnalysisRun(pending)
    - **supplement 补充**:草稿中把匹配到的**已有需求块整体带出** — 已有需求点按实时状态展示(done/developing/…),新增点打「补充」标(origin=supplement);应用时仅追加新点到已有需求下,已有点不动
    - 注:本条所述「conflict ChangeLog」落地为任务 status_change + 需求点 update 两种既有类型(ChangeType 枚举无 conflict 专用值),冲突语境经 reason 字段标注
 9. **AI 修订(草稿阶段)**:对未应用的草稿块/需求点,用户可输入批注让 LLM 重写(reviseDraft)。修订保 spec §5.4(draft 态)与 evidences 溯源规则;每次修订写 change_logs(actor+批注+前后快照)并追加块级 revisions 摘要;mcp `revise_draft` 工具使 agent 可发起修订。修订结果中缺失的点视为按批注移除:真删出草稿点列表并逐点追加移除记录;修订记录于应用时结转至实体变更历史(apply 落库后写 `change_type='revision'` 的 ChangeLog,并清空草稿已结转的 revisions 防重复结转)
+10. **AI 模块归类(草稿阶段)**:分析输入注入项目已有模块列表;LLM 对**每个草稿需求块**独立给出 `module` 归类建议(同名模块自动匹配已有,否则作为新模块名落库)——同批素材可跨多个模块。建议在草稿工作台逐块可改(下拉选已有 / 新建),apply 落库时写入 `requirements.module_id`;无法归类的块为空(未归类)。模块归类不写独立审计(模块变更经 update_requirement 的既有 ChangeLog 覆盖)
 
 ## 10. 配置
 
@@ -460,6 +488,8 @@ stdio 模式下仅需 DB + LLM 配置,不监听端口。
 | D5  | Requirement confirm 前置校验 | 仅提示不强拦(自用灵活优先,后续有需要再收紧)                                                              |
 | D6  | 项目入组                     | 分组可选,group_id 可空,允许暂不入组                                                                      |
 | D7  | 数据库                       | PostgreSQL 替代 SQLite(2026-09-11 老大提供自建实例);测试用同库事务回滚隔离,凭据只存 `.env`(gitignore)    |
+| D8  | 模块(2026-09-14)            | 项目 → 模块 → 需求 三级结构;模块是纯分类容器,无状态机、无排期;`module_id` 可空允许未归类;删除模块时需求转未归类 |
+| D9  | AI 模块归类(2026-09-14)      | 分析时 LLM 逐块建议模块(同批素材可跨模块),工作台确认时可逐块修改;无法归类为未归类;看板/进度的模块筛选一期同步做 |
 
 ## 14. 页面交互与动效(Web 实现)
 
@@ -480,4 +510,4 @@ stdio 模式下仅需 DB + LLM 配置,不监听端口。
 
 导航结构约定:所有页面左侧固定侧栏(可折叠),左上角 ShipMate 图标是侧栏折叠开关,不承担"回到首页"职责;回到首页走侧栏"全部项目"项。顶栏只放头像,下拉收纳主题/语言/MCP 接入/退出。
 
-页面跳转关系:P1 项目卡片(整卡可点,右侧「进入项目 ›」)→ P2 项目概览;项目 Tab 组五项:**概览(P2)/ 需求分析(P3)/ 进度(P5b)/ 任务看板(P5)/ 审计(P6)**。素材与需求同属需求分析阶段,合并在 P3 一个 Tab 内:上半为**素材分析记录卡流**(每卡 = 一次分析批次:N 条素材 → 产出统计),下半为需求列表(产出,draft 置顶待确认);数据层 AnalysisRun / Material / Requirement 为独立实体,合并的只是界面流程。| P3 点分析记录或「新增素材分析」→ P3c 素材分析页(左:本次批次素材列表,可新增多条后「开始分析」;右:分析产出草稿 — 需求块**左上角勾选角标**表达选中态,默认全选、点卡片切换,需求与需求点均可新增/删除;重复块打「与已有需求重复」标默认"素材并入",相悖块标「⚡ 与 X 相悖」**强制人工裁决**(用新/用旧/都保留),补充块带出完整已有需求(已有点实时状态 + 新点「补充」标);右上「应用」→ P3d 确认弹窗「请确认,所选需求将全部追加到需求列表中」→ 选中项以 draft 态追加至 P3 需求产出列表),完成后返回 P3;P3 产出卡「📄 原文依据」→ P3b 依据 Modal。需求点行「详情 ›」→ P4 需求点详情,面包屑逐级回退;P4「编辑(实质修改)」→ P4b 编辑弹窗(reason 必填,弹窗内预览联动后果:version+1 / 状态回退 / 关联任务转待重估);P5 待重估卡「确认重估」→ P5c 重估确认弹窗(展示进入重估的原因、需求点变更对比链接,确认后任务回 pending,原完成记录留审计);P5 待重估列卡片点击 → 对应 P4;项目上下文条(项目名 + Tab 组)在 P3/P3c/P4/P5/P5b/P6 常驻,当前 Tab 高亮。
+页面跳转关系:P1 项目卡片(整卡可点,右侧「进入项目 ›」)→ P2 项目概览;项目 Tab 组五项:**概览(P2)/ 需求分析(P3)/ 进度(P5b)/ 任务看板(P5)/ 审计(P6)**。素材与需求同属需求分析阶段,合并在 P3 一个 Tab 内:上半为**素材分析记录卡流**(每卡 = 一次分析批次:N 条素材 → 产出统计),下半为需求列表(产出,draft 置顶待确认);需求产出按**模块分组**(项目 → 模块 → 需求,D8):模块组头含 box 图标 + 名称 + 需求/就绪统计 + 组内「+ 需求」与折叠钮,「未归类」组置底,section 行右侧「+ 新建模块」;任务看板(P5)与进度(P5b)顶部提供模块筛选(默认全部模块);数据层 AnalysisRun / Material / Requirement 为独立实体,合并的只是界面流程。| P3 点分析记录或「新增素材分析」→ P3c 素材分析页(左:本次批次素材列表,可新增多条后「开始分析」;右:分析产出草稿 — 需求块**左上角勾选角标**表达选中态,默认全选、点卡片切换,需求与需求点均可新增/删除;每块头部下有**模块归类行**(AI 建议,下拉可改/新建,见 §9 规则 10);重复块打「与已有需求重复」标默认"素材并入",相悖块标「⚡ 与 X 相悖」**强制人工裁决**(用新/用旧/都保留),补充块带出完整已有需求(已有点实时状态 + 新点「补充」标);右上「应用」→ P3d 确认弹窗「请确认,所选需求将全部追加到需求列表中」→ 选中项以 draft 态追加至 P3 需求产出列表),完成后返回 P3;P3 产出卡「📄 原文依据」→ P3b 依据 Modal。需求点行「详情 ›」→ P4 需求点详情,面包屑逐级回退(含模块层);P4「编辑(实质修改)」→ P4b 编辑弹窗(reason 必填,弹窗内预览联动后果:version+1 / 状态回退 / 关联任务转待重估);P5 待重估卡「确认重估」→ P5c 重估确认弹窗(展示进入重估的原因、需求点变更对比链接,确认后任务回 pending,原完成记录留审计);P5 待重估列卡片点击 → 对应 P4;项目上下文条(项目名 + Tab 组)在 P3/P3c/P4/P5/P5b/P6 常驻,当前 Tab 高亮。

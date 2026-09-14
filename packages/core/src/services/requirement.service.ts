@@ -1,6 +1,6 @@
-import { and, eq } from 'drizzle-orm';
-import type { ShipmateDb } from '../db/database.js';
-import { projects, requirements, type RequirementRow } from '../db/schema.js';
+import { and, eq, isNull } from 'drizzle-orm';
+import type { ShipmateDb, ShipmateTx } from '../db/database.js';
+import { modules, projects, requirements, type RequirementRow } from '../db/schema.js';
 import { newId } from '../db/id.js';
 import type { Actor } from '../types.js';
 import { DomainError } from '../errors.js';
@@ -26,6 +26,8 @@ export function computeOverdue(
 
 export interface CreateRequirementInput {
   projectId: string;
+  /** 归属模块(§3.9);缺省 = 未归类 */
+  moduleId?: string;
   title: string;
   summary?: string;
   priority?: 'P0' | 'P1' | 'P2' | 'P3';
@@ -34,6 +36,8 @@ export interface CreateRequirementInput {
 }
 
 export interface UpdateRequirementInput {
+  /** 显式 null = 转未归类(spec D8) */
+  moduleId?: string | null;
   title?: string;
   summary?: string;
   status?: 'draft' | 'confirmed' | 'done' | 'archived';
@@ -50,6 +54,18 @@ export type RequirementWithOverdue = RequirementRow & {
 
 const PRIORITIES = ['P0', 'P1', 'P2', 'P3'] as const;
 
+/** moduleId 非空时,模块必须存在且与目标项目一致(spec D8),否则 VALIDATION_ERROR */
+async function assertModuleUsable(
+  tx: ShipmateTx,
+  moduleId: string,
+  projectId: string,
+): Promise<void> {
+  const module = (await tx.select().from(modules).where(eq(modules.id, moduleId)))[0];
+  if (!module || module.projectId !== projectId) {
+    throw new DomainError('VALIDATION_ERROR', `模块 ${moduleId} 不存在或不属于该项目`);
+  }
+}
+
 export class RequirementService {
   constructor(private db: ShipmateDb) {}
 
@@ -63,12 +79,14 @@ export class RequirementService {
       // 存在性检查须取首行判空:drizzle select 返回数组,空数组为 truthy,不能直接取反
       const project = (await tx.select().from(projects).where(eq(projects.id, input.projectId)))[0];
       if (!project) throw new DomainError('NOT_FOUND', `项目 ${input.projectId} 不存在`);
+      if (input.moduleId) await assertModuleUsable(tx, input.moduleId, input.projectId);
       const now = Date.now();
       const rows = await tx
         .insert(requirements)
         .values({
           id: newId(),
           projectId: input.projectId,
+          moduleId: input.moduleId ?? null,
           title,
           summary: input.summary ?? null,
           status: 'draft',
@@ -99,10 +117,17 @@ export class RequirementService {
     return this.db.transaction(async (tx) => {
       const before = (await tx.select().from(requirements).where(eq(requirements.id, id)))[0];
       if (!before) throw new DomainError('NOT_FOUND', `需求 ${id} 不存在`);
+      if (input.moduleId) await assertModuleUsable(tx, input.moduleId, before.projectId);
 
       const patch: Partial<typeof requirements.$inferInsert> = { updatedAt: Date.now() };
       let contentChanged = false;
       let statusChanged = false;
+
+      // 显式 null = 转未归类(spec D8),亦视为内容变更
+      if (input.moduleId !== undefined && input.moduleId !== before.moduleId) {
+        patch.moduleId = input.moduleId;
+        contentChanged = true;
+      }
 
       if (input.title !== undefined && input.title.trim() !== before.title) {
         if (!input.title.trim()) throw new DomainError('VALIDATION_ERROR', '需求标题不能为空');
@@ -165,9 +190,12 @@ export class RequirementService {
 
   async listRequirements(
     projectId: string,
-    filter?: { status?: string; priority?: string; overdue?: boolean },
+    filter?: { moduleId?: string | null; status?: string; priority?: string; overdue?: boolean },
   ): Promise<RequirementWithOverdue[]> {
     const conds = [eq(requirements.projectId, projectId)];
+    // moduleId=null 过滤未归类;undefined = 不过滤
+    if (filter?.moduleId === null) conds.push(isNull(requirements.moduleId));
+    else if (filter?.moduleId) conds.push(eq(requirements.moduleId, filter.moduleId));
     if (filter?.status)
       conds.push(eq(requirements.status, filter.status as RequirementRow['status']));
     if (filter?.priority)

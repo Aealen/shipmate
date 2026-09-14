@@ -11,10 +11,11 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const { core } = await getShipmate();
 
-  const [runs, requirements, points] = await Promise.all([
+  const [runs, requirements, points, modules] = await Promise.all([
     core.analysis.listAnalysisRuns(id),
     core.requirements.listRequirements(id),
     core.points.listRequirementPoints({ projectId: id }),
+    core.modules.listModules(id),
   ]);
 
   // ✨N 修订徽标只需计数(轻量选列);Modal 打开时再经 action 拉全量
@@ -52,6 +53,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
       runs={runCards}
       requirements={requirements}
       points={points}
+      modules={modules}
       materialTitles={materialTitles}
       revisionCounts={revisionCounts}
     />

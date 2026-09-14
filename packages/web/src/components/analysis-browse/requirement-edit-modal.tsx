@@ -1,6 +1,6 @@
 'use client';
 
-import type { RequirementWithOverdue, UpdateRequirementInput } from '@shipmate/core';
+import type { ModuleSummary, RequirementWithOverdue, UpdateRequirementInput } from '@shipmate/core';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -48,11 +48,14 @@ function fromDateInput(value: string): number | null {
  */
 export function RequirementEditModal({
   requirement,
+  modules,
   open,
   onClose,
   onSaved,
 }: {
   requirement: RequirementWithOverdue;
+  /** 模块列表(P3k,由 analysis-browse 下发;模块下拉选项用) */
+  modules: ModuleSummary[];
   open: boolean;
   onClose: () => void;
   /** 保存成功后回调(父组件刷新列表用),可选 */
@@ -65,6 +68,8 @@ export function RequirementEditModal({
   const [summary, setSummary] = useState(requirement.summary ?? '');
   const [status, setStatus] = useState<RequirementWithOverdue['status']>(requirement.status);
   const [priority, setPriority] = useState<RequirementWithOverdue['priority']>(requirement.priority);
+  // 模块下拉值用 '' 表示未归类(core 侧 moduleId 为可空 text)
+  const [moduleId, setModuleId] = useState(requirement.moduleId ?? '');
   const [planStart, setPlanStart] = useState(toDateInput(requirement.planStartAt));
   const [planDue, setPlanDue] = useState(toDateInput(requirement.planDueAt));
   const [saving, setSaving] = useState(false);
@@ -80,6 +85,7 @@ export function RequirementEditModal({
       setSummary(requirement.summary ?? '');
       setStatus(requirement.status);
       setPriority(requirement.priority);
+      setModuleId(requirement.moduleId ?? '');
       setPlanStart(toDateInput(requirement.planStartAt));
       setPlanDue(toDateInput(requirement.planDueAt));
       setSaving(false);
@@ -125,6 +131,9 @@ export function RequirementEditModal({
     if (summary !== (requirement.summary ?? '')) patch.summary = summary;
     if (status !== requirement.status) patch.status = status;
     if (priority !== requirement.priority) patch.priority = priority;
+    // 模块:空串 = 未归类(core 显式 null);与当前值不同才提交
+    const nextModuleId = moduleId === '' ? null : moduleId;
+    if (nextModuleId !== requirement.moduleId) patch.moduleId = nextModuleId;
     const startMs = fromDateInput(planStart);
     if (startMs !== requirement.planStartAt) patch.planStartAt = startMs;
     const dueMs = fromDateInput(planDue);
@@ -238,6 +247,23 @@ export function RequirementEditModal({
               </select>
             </label>
           </div>
+
+          {/* 模块(P3k:未归类 + 模块列表,归属变更也记修订) */}
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-bold text-text-muted">{t('module')}</span>
+            <select
+              value={moduleId}
+              onChange={(e) => setModuleId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">{t('moduleUntagged')}</option>
+              {modules.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </label>
 
           {/* 计划开始 + 计划结束(date input,提交转本地时区当日零点毫秒) */}
           <div className="flex gap-2.5">

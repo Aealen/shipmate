@@ -9,6 +9,7 @@ import {
   RequirementService,
   type RequirementWithOverdue,
 } from './requirement.service.js';
+import { ModuleService } from './module.service.js';
 
 const DAY = 86_400_000;
 
@@ -16,6 +17,7 @@ function baseReq(): RequirementRow {
   return {
     id: 'r',
     projectId: 'p',
+    moduleId: null,
     title: 'R',
     summary: null,
     priority: 'P2',
@@ -166,6 +168,96 @@ describe('RequirementService', () => {
       const overdue = await svc.listRequirements(p.id, { overdue: true });
       expect(overdue.map((r) => r.title)).toEqual(['已超期']);
       expect(overdue[0]?.overdueDays).toBe(5);
+    });
+  });
+
+  it('moduleId:创建落库;不存在或跨项目抛 VALIDATION_ERROR;update 置 null 转未归类并写快照', async () => {
+    await withDb(async (db) => {
+      const svc = new RequirementService(db);
+      const moduleSvc = new ModuleService(db);
+      const now = Date.now();
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
+      const other = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'other', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
+      const m = await moduleSvc.createModule({ projectId: p.id, name: '归属模块' }, 'human');
+      const foreign = await moduleSvc.createModule(
+        { projectId: other.id, name: '外项目模块' },
+        'human',
+      );
+
+      // 创建带 moduleId 落库
+      const r = await svc.createRequirement(
+        { projectId: p.id, moduleId: m.id, title: '挂载需求' },
+        'human',
+      );
+      expect(r.moduleId).toBe(m.id);
+
+      // 模块不存在 / 属其他项目:创建与更新均拒绝
+      for (const badModuleId of ['missing', foreign.id]) {
+        for (const call of [
+          () =>
+            svc.createRequirement({ projectId: p.id, moduleId: badModuleId, title: 'x' }, 'human'),
+          () => svc.updateRequirement(r.id, { moduleId: badModuleId }, 'human'),
+        ]) {
+          try {
+            await call();
+            expect.unreachable('应当抛 VALIDATION_ERROR');
+          } catch (e) {
+            expect((e as DomainError).code).toBe('VALIDATION_ERROR');
+          }
+        }
+      }
+
+      // update 显式 null = 转未归类,快照含 moduleId 变更
+      const untagged = await svc.updateRequirement(r.id, { moduleId: null }, 'human');
+      expect(untagged.moduleId).toBeNull();
+      const logs = await db
+        .select()
+        .from(changeLogs)
+        .where(
+          and(
+            eq(changeLogs.entityType, 'requirement'),
+            eq(changeLogs.entityId, r.id),
+            eq(changeLogs.changeType, 'update'),
+          ),
+        );
+      expect(logs).toHaveLength(1);
+      expect(logs[0]?.beforeSnapshot).toMatchObject({ moduleId: m.id });
+      expect(logs[0]?.afterSnapshot).toMatchObject({ moduleId: null });
+    });
+  });
+
+  it('listRequirements:filter.moduleId 过滤,null 取未归类', async () => {
+    await withDb(async (db) => {
+      const svc = new RequirementService(db);
+      const moduleSvc = new ModuleService(db);
+      const now = Date.now();
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
+      const m = await moduleSvc.createModule({ projectId: p.id, name: 'M' }, 'human');
+      await svc.createRequirement({ projectId: p.id, moduleId: m.id, title: '挂载' }, 'human');
+      await svc.createRequirement({ projectId: p.id, title: '未挂' }, 'human');
+
+      expect((await svc.listRequirements(p.id, { moduleId: m.id })).map((r) => r.title)).toEqual([
+        '挂载',
+      ]);
+      expect((await svc.listRequirements(p.id, { moduleId: null })).map((r) => r.title)).toEqual([
+        '未挂',
+      ]);
+      expect((await svc.listRequirements(p.id)).map((r) => r.title)).toEqual(['挂载', '未挂']);
     });
   });
 });

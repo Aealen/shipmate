@@ -113,6 +113,7 @@ async function main(): Promise<void> {
       {
         title: '报表导出功能', // 与已有需求同名 → LLM 标注重复
         summary: '',
+        module: '',
         conflict: {
           type: 'duplicate',
           target_requirement_title: '报表导出功能',
@@ -130,6 +131,7 @@ async function main(): Promise<void> {
       {
         title: '报表定时推送',
         summary: '定时邮件推送报表',
+        module: '',
         points: [
           {
             title: '每日定时邮件推送',

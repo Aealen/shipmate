@@ -4,6 +4,7 @@ import { withDb, type ShipmateDb } from '../db/database.js';
 import {
   analysisRuns,
   changeLogs,
+  modules,
   projects,
   requirementPoints,
   requirements,
@@ -17,6 +18,7 @@ import {
   type LlmStreamInvoker,
   type ReviseStreamEvent,
 } from './analysis.service.js';
+import { ModuleService } from './module.service.js';
 import { TaskService } from './task.service.js';
 
 function makeService(db: ShipmateDb, llm: LlmInvoker, llmStream?: LlmStreamInvoker) {
@@ -1640,6 +1642,137 @@ describe('reviseDraftStream', () => {
       expect(await db.select().from(changeLogs).where(eq(changeLogs.entityId, runId))).toHaveLength(
         0,
       );
+    });
+  });
+});
+
+describe('AI 模块归类', () => {
+  async function seedProject(db: ShipmateDb): Promise<string> {
+    const now = Date.now();
+    return (
+      await db
+        .insert(projects)
+        .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+        .returning()
+    )[0]!.id;
+  }
+
+  async function seedDraft(db: ShipmateDb, projectId: string, draft: unknown): Promise<string> {
+    const now = Date.now();
+    return (
+      await db
+        .insert(analysisRuns)
+        .values({
+          id: newId(),
+          projectId,
+          title: '批次',
+          status: 'done',
+          actor: 'human',
+          draftResult: draft as never,
+          createdAt: now,
+          completedAt: now,
+        })
+        .returning()
+    )[0]!.id;
+  }
+
+  it('startAnalysis:user prompt 注入已有模块列表与归类指令;无模块时不注入', async () => {
+    await withDb(async (db) => {
+      const llm = vi.fn(async (_system: string, _user: string) => ({
+        requirements: [],
+        supplements: [],
+      }));
+      const svc = makeService(db, llm);
+      const projectId = await seedProject(db);
+      const moduleSvc = new ModuleService(db);
+      await moduleSvc.createModule({ projectId, name: '文档解析' }, 'human');
+      await moduleSvc.createModule({ projectId, name: '报表中心' }, 'human');
+      const run = await svc.createAnalysisRun({ projectId }, 'human');
+      await svc.addMaterial({ runId: run.id, type: 'paste_text', rawContent: '素材' }, 'human');
+      await svc.startAnalysis(run.id, 'ai:analysis');
+      expect(llm).toHaveBeenCalledTimes(1);
+      const user = String(llm.mock.calls[0]![1]);
+      // 模块列表段:格式「项目已有模块:[a、b]」+ 归类指令;不断言顺序(collation 不稳)
+      expect(user).toMatch(/项目已有模块:\[[^\]]*文档解析[^\]]*\]/);
+      expect(user).toContain('报表中心');
+      expect(user).toContain('module 归类建议');
+      expect(user).toContain('同批素材可归属不同模块');
+
+      // 无模块项目:整段不注入
+      const llm2 = vi.fn(async (_system: string, _user: string) => ({
+        requirements: [],
+        supplements: [],
+      }));
+      const svc2 = makeService(db, llm2);
+      const projectId2 = await seedProject(db);
+      const run2 = await svc2.createAnalysisRun({ projectId: projectId2 }, 'human');
+      await svc2.addMaterial({ runId: run2.id, type: 'paste_text', rawContent: '素材' }, 'human');
+      await svc2.startAnalysis(run2.id, 'ai:analysis');
+      expect(String(llm2.mock.calls[0]![1])).not.toContain('项目已有模块');
+    });
+  });
+
+  it('apply:块 module 命中既有模块(trim 后按名匹配);空串与无 module 字段落为未归类', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      const existing = await new ModuleService(db).createModule(
+        { projectId, name: '文档解析' },
+        'human',
+      );
+      const runId = await seedDraft(db, projectId, {
+        requirements: [
+          { title: '需求A', summary: '', module: ' 文档解析 ', points: [] },
+          { title: '需求B', summary: '', module: '文档解析', points: [] },
+          { title: '需求C', summary: '', module: '', points: [] },
+          // 旧草稿兼容:无 module 键(undefined)等价未归类
+          { title: '需求D', summary: '', points: [] },
+        ],
+        supplements: [],
+      });
+      const svc = makeService(db, async () => ({}));
+      const created = await svc.applyAnalysisRun(runId, undefined, 'human');
+      expect(created).toHaveLength(4);
+      const byTitle = new Map(created.map((r) => [r.title, r]));
+      expect(byTitle.get('需求A')!.moduleId).toBe(existing.id);
+      expect(byTitle.get('需求B')!.moduleId).toBe(existing.id);
+      expect(byTitle.get('需求C')!.moduleId).toBeNull();
+      expect(byTitle.get('需求D')!.moduleId).toBeNull();
+    });
+  });
+
+  it('apply:module 为新名 → 事务内新建模块并写 create 日志;同批同名复用同一模块', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      const runId = await seedDraft(db, projectId, {
+        requirements: [
+          { title: '需求A', summary: '', module: '报表中心', points: [] },
+          { title: '需求B', summary: '', module: '报表中心', points: [] },
+        ],
+        supplements: [],
+      });
+      const svc = makeService(db, async () => ({}));
+      const created = await svc.applyAnalysisRun(runId, undefined, 'human');
+      expect(created).toHaveLength(2);
+      // 同批同名只建一个模块,两条需求挂同一 id
+      const mods = await db
+        .select()
+        .from(modules)
+        .where(and(eq(modules.projectId, projectId), eq(modules.name, '报表中心')));
+      expect(mods).toHaveLength(1);
+      expect(created.map((r) => r.moduleId)).toEqual([mods[0]!.id, mods[0]!.id]);
+      // module create 日志按新建 id 过滤:恰 1 条
+      const logs = await db
+        .select()
+        .from(changeLogs)
+        .where(
+          and(
+            eq(changeLogs.entityType, 'module'),
+            eq(changeLogs.entityId, mods[0]!.id),
+            eq(changeLogs.changeType, 'create'),
+          ),
+        );
+      expect(logs).toHaveLength(1);
+      expect(logs[0]!.actor).toBe('human');
     });
   });
 });

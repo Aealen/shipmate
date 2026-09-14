@@ -3,6 +3,7 @@ import type { ShipmateDb, ShipmateTx } from '../db/database.js';
 import {
   analysisRuns,
   materials,
+  modules,
   projects,
   requirementPoints,
   requirements,
@@ -17,6 +18,7 @@ import type { Actor } from '../types.js';
 import { DomainError } from '../errors.js';
 import { writeChangeLog } from './change-log.js';
 import { SettingsService } from './settings.service.js';
+import { ModuleService } from './module.service.js';
 import { chatJson, chatJsonStream, type LlmConfig } from '../llm/client.js';
 import {
   analysisResultSchema,
@@ -174,7 +176,11 @@ export class AnalysisService {
     if (mats.length === 0) throw new DomainError('VALIDATION_ERROR', '批次内没有素材,请先添加素材');
 
     const existing = await this.collectExistingDigest(run.projectId);
-    const user = buildUserPrompt(mats, existing);
+    // 注入项目已有模块名供 LLM 归类建议(spec §9 规则 10);无模块时 buildUserPrompt 不注入该段
+    const moduleNames = (await new ModuleService(this.db).listModules(run.projectId)).map(
+      (m) => m.name,
+    );
+    const user = buildUserPrompt(mats, existing, moduleNames);
     const system = buildSystemPrompt();
 
     try {
@@ -306,6 +312,10 @@ export class AnalysisService {
       const created: RequirementRow[] = [];
       // 本次落库的草稿块 → 落库需求 id(修订记录结转用;merge 场景即并入目标需求)
       const applied: { blockIndex: number; requirementId: string }[] = [];
+      // 归类建议 → 模块 id 的批内缓存(spec D9):同批多块同名只查/建一次
+      const moduleCache = new Map<string, string>();
+      const moduleIdFor = (block: DraftRequirement) =>
+        this.resolveModuleId(tx, run.projectId, block.module, moduleCache, actor);
 
       for (const [blockIndex, block] of draft.requirements.entries()) {
         if (!picked(block.title)) continue;
@@ -329,7 +339,13 @@ export class AnalysisService {
             );
             continue;
           }
-          const req = await this.insertDraftRequirement(tx, run, block, actor);
+          const req = await this.insertDraftRequirement(
+            tx,
+            run,
+            block,
+            actor,
+            await moduleIdFor(block),
+          );
           if (resolution === 'keep_both' && target) {
             await this.linkRelations(tx, req.id, target.id, 'conflict', actor);
           }
@@ -357,14 +373,26 @@ export class AnalysisService {
             applied.push({ blockIndex, requirementId: target.id });
             continue;
           }
-          const req = await this.insertDraftRequirement(tx, run, block, actor);
+          const req = await this.insertDraftRequirement(
+            tx,
+            run,
+            block,
+            actor,
+            await moduleIdFor(block),
+          );
           if (target) await this.linkRelations(tx, req.id, target.id, 'duplicate', actor);
           applied.push({ blockIndex, requirementId: req.id });
           created.push(req);
           continue;
         }
 
-        const req = await this.insertDraftRequirement(tx, run, block, actor);
+        const req = await this.insertDraftRequirement(
+          tx,
+          run,
+          block,
+          actor,
+          await moduleIdFor(block),
+        );
         applied.push({ blockIndex, requirementId: req.id });
         created.push(req);
       }
@@ -388,7 +416,13 @@ export class AnalysisService {
             await this.insertDraftRequirement(
               tx,
               run,
-              { title: supp.target_requirement_title, summary: '', points: supp.points },
+              // supplement 无 module 建议字段,按未归类落库
+              {
+                title: supp.target_requirement_title,
+                summary: '',
+                module: '',
+                points: supp.points,
+              },
               actor,
             ),
           );
@@ -693,6 +727,41 @@ export class AnalysisService {
     )[0];
   }
 
+  /**
+   * 归类建议 → 模块 id(spec §9 规则 10):trim 后为空返回 null(未归类);
+   * 按名查项目内模块,命中复用,未命中经 ModuleService.createModule 新建(同名冲突由其校验)。
+   * 传入 apply 落库事务的 tx:drizzle 嵌套事务自动降级 SAVEPOINT,模块创建与需求落库同事务。
+   * cache:块名 → 模块 id 的批内缓存,同批多块同名只查/建一次。
+   */
+  private async resolveModuleId(
+    tx: ShipmateTx,
+    projectId: string,
+    moduleName: string | undefined,
+    cache: Map<string, string>,
+    actor: Actor,
+  ): Promise<string | null> {
+    const name = moduleName?.trim();
+    if (!name) return null;
+    const cached = cache.get(name);
+    if (cached) return cached;
+    const existing = (
+      await tx
+        .select()
+        .from(modules)
+        .where(and(eq(modules.projectId, projectId), eq(modules.name, name)))
+    )[0];
+    if (existing) {
+      cache.set(name, existing.id);
+      return existing.id;
+    }
+    const created = await new ModuleService(tx as unknown as ShipmateDb).createModule(
+      { projectId, name },
+      actor,
+    );
+    cache.set(name, created.id);
+    return created.id;
+  }
+
   private async writeDiscardLog(
     tx: ShipmateTx,
     runId: string,
@@ -715,6 +784,7 @@ export class AnalysisService {
     run: AnalysisRunRow,
     block: DraftRequirement,
     actor: Actor,
+    moduleId?: string | null,
   ): Promise<RequirementRow> {
     const now = Date.now();
     const req = (
@@ -725,6 +795,8 @@ export class AnalysisService {
           projectId: run.projectId,
           title: block.title,
           summary: block.summary || null,
+          // AI 归类建议落库(spec D9);归类本身不写独立 change_log(requirement create 快照已含 module_id)
+          moduleId: moduleId ?? null,
           status: 'draft',
           priority: 'P2',
           createdAt: now,

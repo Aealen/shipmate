@@ -1,8 +1,14 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
-import type { ConflictResolution, RequirementPointRow, RequirementRow } from '@shipmate/core';
+import { useEffect, useRef, useState } from 'react';
+import type {
+  ConflictResolution,
+  ModuleRow,
+  ModuleSummary,
+  RequirementPointRow,
+  RequirementRow,
+} from '@shipmate/core';
 import { StatusBadge } from '@/components/shared/badge';
 
 /**
@@ -53,6 +59,8 @@ export interface DraftBlockState {
   selected: boolean;
   title: string;
   summary: string;
+  /** AI 归类建议(spec §9 规则 10):模块名;空串 = 未归类 */
+  module: string;
   conflict: ConflictView | null;
   /** duplicate 默认 merge;contradiction 为 null 表示未裁决(应用禁用) */
   resolution: BlockResolution | null;
@@ -115,6 +123,7 @@ export function newBlockState(defaultTitle: string, defaultPointTitle: string): 
     selected: true,
     title: defaultTitle,
     summary: '',
+    module: '',
     conflict: null,
     resolution: null,
     points: [toPointState({ title: defaultPointTitle })],
@@ -244,8 +253,175 @@ export function SparkleIcon({ className = 'h-3 w-3' }: { className?: string }) {
   );
 }
 
+/** 立方体图标(模块语义,归类行用,12px) */
+function BoxIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3 w-3 shrink-0 text-accent"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+      <path d="m3.3 7 8.7 5 8.7-5" />
+      <path d="M12 22V12" />
+    </svg>
+  );
+}
+
 const POINT_INPUT =
   'w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-text-primary outline-none transition-colors focus:border-accent';
+
+// ---------- 模块归类 pill + 下拉(spec §9 规则 10 / D9) ----------
+
+/**
+ * 模块归类选择器:模块名 pill(bg-accent-dim / 未归类灰态),点击弹下拉。
+ * 选项 = 未归类 + 项目模块列表 + 「+ 新建模块…」;选中即改块级 module(按名,
+ * apply 时 core 按名匹配/新建)。新建走 onCreateModule(父级负责调 action、
+ * toast 与列表刷新),成功后自动选中新名;失败(如重名)下拉保持打开。
+ * 下拉交互与 ModuleMenu 同模式:点外 / Escape 关闭。
+ */
+function ModulePicker({
+  value,
+  modules,
+  onCreateModule,
+  onChange,
+}: {
+  value: string;
+  modules: ModuleSummary[];
+  onCreateModule: (name: string) => Promise<ModuleRow | null>;
+  onChange: (module: string) => void;
+}) {
+  const t = useTranslations('analysis');
+  const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const rootRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  /** 选中即改块级 module 并收起下拉 */
+  const pick = (name: string) => {
+    onChange(name);
+    setOpen(false);
+    setCreating(false);
+    setNewName('');
+  };
+
+  const handleCreate = async () => {
+    const name = newName.trim();
+    if (!name || submitting) return;
+    setSubmitting(true);
+    try {
+      const row = await onCreateModule(name);
+      if (row) pick(row.name);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const ITEM_CLS =
+    'flex cursor-pointer items-center gap-1.5 px-3 py-1.5 text-left text-xs text-text-primary transition-colors hover:bg-surface-2';
+
+  return (
+    <span ref={rootRef} className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t('module')}
+        className={`inline-flex items-center gap-1 rounded-md px-2 py-[3px] text-[11px] font-medium transition-all duration-[120ms] active:scale-[0.97] ${
+          value
+            ? 'bg-accent-dim text-accent hover:opacity-90'
+            : 'bg-surface-2 text-text-secondary hover:text-text-primary'
+        }`}
+      >
+        <span className="max-w-40 truncate">{value || t('moduleUntagged')}</span>
+        <span aria-hidden className="text-[9px] leading-none">
+          ▾
+        </span>
+      </button>
+      {open && (
+        <span
+          role="menu"
+          className="dropdown-enter absolute left-0 top-[calc(100%+4px)] z-10 flex max-h-64 w-48 flex-col overflow-y-auto rounded-lg border border-border bg-surface py-1 shadow-lg"
+        >
+          <button type="button" role="menuitem" onClick={() => pick('')} className={ITEM_CLS}>
+            <span className="w-3 shrink-0 text-accent">{value === '' ? '✓' : ''}</span>
+            <span className={value === '' ? 'text-text-muted' : ''}>{t('moduleUntagged')}</span>
+          </button>
+          {modules.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              role="menuitem"
+              onClick={() => pick(m.name)}
+              className={ITEM_CLS}
+              title={m.description || undefined}
+            >
+              <span className="w-3 shrink-0 text-accent">{value === m.name ? '✓' : ''}</span>
+              <span className="min-w-0 flex-1 truncate">{m.name}</span>
+            </button>
+          ))}
+          {creating ? (
+            <div className="mt-0.5 flex items-center gap-1 border-t border-border px-2 py-1.5">
+              <input
+                autoFocus
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleCreate();
+                  }
+                }}
+                placeholder={t('moduleNewPh')}
+                className="min-w-0 flex-1 rounded-md border border-border bg-surface px-2 py-1 text-xs text-text-primary outline-none transition-colors focus:border-accent"
+              />
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={!newName.trim() || submitting}
+                className="shrink-0 rounded-md px-1.5 py-1 text-xs text-accent transition-colors hover:bg-accent-dim disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {t('moduleCreate')}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => setCreating(true)}
+              className="mt-0.5 border-t border-border px-3 py-1.5 text-left text-xs text-accent transition-colors hover:bg-accent-dim"
+            >
+              + {t('moduleNew')}
+            </button>
+          )}
+        </span>
+      )}
+    </span>
+  );
+}
 
 // ---------- 需求点行(只读 / 内联编辑) ----------
 
@@ -360,11 +536,17 @@ function PointRow({
 
 export function DraftBlock({
   block,
+  modules,
+  onCreateModule,
   onChange,
   onDelete,
   onRevise,
 }: {
   block: DraftBlockState;
+  /** 项目模块列表(下拉选项;由 workbench 拉取透传) */
+  modules: ModuleSummary[];
+  /** 下拉内新建模块:父级调 createModuleAction + toast + 列表刷新,返回新行/null */
+  onCreateModule: (name: string) => Promise<ModuleRow | null>;
   onChange: (patch: Partial<DraftBlockState>) => void;
   onDelete: () => void;
   /** 打开 AI 修订弹窗:pointIndex 为 null = 整块作用域,否则为点下标 */
@@ -420,6 +602,21 @@ export function DraftBlock({
             <TrashIcon />
           </button>
         </div>
+      </div>
+
+      {/* 模块归类行(D9/AI 建议):pill 可改/新建;未给建议时空串灰态,提示语仅在有建议时展示 */}
+      <div className="mt-3 flex items-center gap-2">
+        <BoxIcon />
+        <span className="shrink-0 text-[11px] text-text-muted">{t('module')}</span>
+        <ModulePicker
+          value={block.module}
+          modules={modules}
+          onCreateModule={onCreateModule}
+          onChange={(module) => onChange({ module })}
+        />
+        {block.module && (
+          <span className="min-w-0 truncate text-[10.5px] text-text-muted">{t('moduleAiHint')}</span>
+        )}
       </div>
 
       {c?.type === 'duplicate' && (

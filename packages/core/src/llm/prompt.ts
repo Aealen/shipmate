@@ -23,9 +23,14 @@ export function buildSystemPrompt(): string {
 5. 只输出 JSON,不输出任何其他文字`;
 }
 
+/**
+ * 构建主分析 user prompt。
+ * moduleNames:项目已有模块名列表(spec §9 规则 10);为空时不注入模块归类段。
+ */
 export function buildUserPrompt(
   materials: MaterialRow[],
   existing: ExistingRequirementDigest[],
+  moduleNames: string[] = [],
 ): string {
   const materialSection = materials
     .map((m) => `【素材 ${m.id}】(${m.type}${m.title ? `,${m.title}` : ''})\n${m.rawContent}`)
@@ -38,7 +43,10 @@ export function buildUserPrompt(
         )
         .join('\n')
     : '(暂无已有需求)';
-  return `## 已有需求(用于判断重复/相悖/补充)\n${existingSection}\n\n## 待分析素材\n${materialSection}`;
+  const moduleSection = moduleNames.length
+    ? `## 模块归类\n项目已有模块:[${moduleNames.join('、')}]。为每个需求块给出 module 归类建议:优先使用已有模块名;确无合适模块时可建议新模块名;确实无法归类则留空字符串。同批素材可归属不同模块。`
+    : '';
+  return `## 已有需求(用于判断重复/相悖/补充)\n${existingSection}\n\n${moduleSection ? `${moduleSection}\n\n` : ''}## 待分析素材\n${materialSection}`;
 }
 
 /** spec §9 AI 修订:按用户批注重写草稿中的需求块或需求点,只输出修订后 JSON */
