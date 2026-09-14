@@ -26,6 +26,7 @@ const CHANGE_TYPE_TEXT: Record<ChangeType, string> = {
   linkage_impact: 'text-danger',
   discard: 'text-draft-gray',
   delete: 'text-danger',
+  revision: 'text-ai',
 };
 
 /** actor 三类分布条着色(原型 P6:human 绿 / ai 紫 / agent 蓝) */
@@ -155,7 +156,7 @@ export function AuditView({ report }: { report: AuditReport }) {
           </div>
 
           {/* 时间线(全宽白卡,行式条目) */}
-          <section className="flex flex-col gap-2.5 rounded-[10px] border border-transparent bg-surface p-[18px]">
+          <section className="flex flex-col gap-2.5 rounded-[10px] border border-border bg-surface p-[18px]">
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center gap-1.5 py-12 text-center">
                 <p className="text-sm text-text-secondary">
@@ -175,7 +176,7 @@ export function AuditView({ report }: { report: AuditReport }) {
 
         {/* 右侧统计列 */}
         <aside className="flex min-w-0 flex-col gap-4">
-          <section className="flex flex-col gap-3 rounded-[10px] border border-transparent bg-surface p-[18px]">
+          <section className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-[18px]">
             <h3 className="text-[13px] font-bold text-text-primary">{t('statsActor')}</h3>
             {(['human', 'ai', 'mcp'] as const).map((kind) => (
               <BarRow
@@ -189,7 +190,7 @@ export function AuditView({ report }: { report: AuditReport }) {
             ))}
           </section>
 
-          <section className="flex flex-col gap-2.5 rounded-[10px] border border-transparent bg-surface p-[18px]">
+          <section className="flex flex-col gap-2.5 rounded-[10px] border border-border bg-surface p-[18px]">
             <h3 className="text-[13px] font-bold text-text-primary">{t('statsEntity')}</h3>
             {Object.keys(report.entityTypeDistribution).length === 0 ? (
               <p className="text-xs text-text-muted">{t('statsEmpty')}</p>
@@ -207,7 +208,7 @@ export function AuditView({ report }: { report: AuditReport }) {
             )}
           </section>
 
-          <section className="flex flex-col gap-2.5 rounded-[10px] border border-transparent bg-surface p-[18px]">
+          <section className="flex flex-col gap-2.5 rounded-[10px] border border-border bg-surface p-[18px]">
             <h3 className="text-[13px] font-bold text-text-primary">{t('statsDaily')}</h3>
             <DailyBars counts={report.dailyCounts} emptyText={t('statsEmpty')} />
           </section>

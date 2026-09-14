@@ -164,7 +164,7 @@ function ProjectCard({
   return (
     <Link
       href={`/project/${id}`}
-      className="group flex flex-col gap-3 rounded-[10px] border border-transparent bg-surface p-5 transition-colors duration-[120ms] hover:border-accent"
+      className="group flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-5 transition-colors duration-[120ms] hover:border-accent"
     >
       <div className="flex items-center gap-2.5">
         <h3 className="min-w-0 truncate text-[15px] font-bold text-text-primary">{name}</h3>

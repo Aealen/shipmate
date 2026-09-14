@@ -130,7 +130,7 @@ export const tasks = pgTable(
   ],
 );
 
-// §3.7 change_logs;change_type 在 spec 5 值基础上补 'delete'(删除实体时的快照留存,已同步 design.md §3.7)
+// §3.7 change_logs;change_type 在 spec 5 值基础上补 'delete'(删除实体时的快照留存)与 'revision'(AI 修订记录于应用时结转,已同步 design.md §3.7)
 export const changeLogs = pgTable(
   'change_logs',
   {
@@ -148,7 +148,15 @@ export const changeLogs = pgTable(
     }).notNull(),
     entityId: text('entity_id').notNull(),
     changeType: text('change_type', {
-      enum: ['create', 'update', 'status_change', 'linkage_impact', 'discard', 'delete'],
+      enum: [
+        'create',
+        'update',
+        'status_change',
+        'linkage_impact',
+        'discard',
+        'delete',
+        'revision',
+      ],
     }).notNull(),
     beforeSnapshot: jsonb('before_snapshot'),
     afterSnapshot: jsonb('after_snapshot').notNull(),

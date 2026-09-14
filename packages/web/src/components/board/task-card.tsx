@@ -51,7 +51,7 @@ export function TaskCard({
           ? () => router.push(`/project/${projectId}/points/${task.requirementPointId}`)
           : undefined
       }
-      className={`relative flex cursor-grab flex-col gap-2 rounded-[9px] border border-transparent bg-surface p-3 shadow-sm transition-all duration-[120ms] active:cursor-grabbing ${
+      className={`relative flex cursor-grab flex-col gap-2 rounded-[9px] border border-border bg-surface p-3 shadow-sm transition-all duration-[120ms] active:cursor-grabbing ${
         dragging ? 'scale-[1.02] opacity-60 shadow-xl' : 'hover:border-accent'
       } ${needsReassess ? 'cursor-pointer' : ''}`}
     >

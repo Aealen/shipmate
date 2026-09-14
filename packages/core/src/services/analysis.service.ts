@@ -304,8 +304,10 @@ export class AnalysisService {
       }
 
       const created: RequirementRow[] = [];
+      // 本次落库的草稿块 → 落库需求 id(修订记录结转用;merge 场景即并入目标需求)
+      const applied: { blockIndex: number; requirementId: string }[] = [];
 
-      for (const block of draft.requirements) {
+      for (const [blockIndex, block] of draft.requirements.entries()) {
         if (!picked(block.title)) continue;
         const conflict = block.conflict;
         const decision = decisionMap.get(block.title);
@@ -334,6 +336,7 @@ export class AnalysisService {
           if (resolution === 'use_new' && target) {
             await this.reassessTargetTasks(tx, target.id, block.title, actor);
           }
+          applied.push({ blockIndex, requirementId: req.id });
           created.push(req);
           continue;
         }
@@ -351,15 +354,19 @@ export class AnalysisService {
           );
           if (resolution === 'merge' && target) {
             await this.mergeIntoRequirement(tx, target.id, block, actor);
+            applied.push({ blockIndex, requirementId: target.id });
             continue;
           }
           const req = await this.insertDraftRequirement(tx, run, block, actor);
           if (target) await this.linkRelations(tx, req.id, target.id, 'duplicate', actor);
+          applied.push({ blockIndex, requirementId: req.id });
           created.push(req);
           continue;
         }
 
-        created.push(await this.insertDraftRequirement(tx, run, block, actor));
+        const req = await this.insertDraftRequirement(tx, run, block, actor);
+        applied.push({ blockIndex, requirementId: req.id });
+        created.push(req);
       }
 
       for (const supp of draft.supplements) {
@@ -386,6 +393,56 @@ export class AnalysisService {
             ),
           );
         }
+      }
+
+      // 修订记录结转(spec §9):本次落库块的 revisions 逐条写入实体变更历史(changeType=revision)。
+      // 点级按 title 匹配落库需求点;匹配不到(已移除/无此点)挂需求并标 removedPointTitle;
+      // 结转后从草稿 JSON 清空已结转的 revisions,防二次 apply 重复结转。
+      // 该草稿簿记更新不另写 change_log——结转明细已逐条入 change_logs。
+      let draftDirty = false;
+      const nextRequirements = [...draft.requirements];
+      for (const { blockIndex, requirementId } of applied) {
+        const block = draft.requirements[blockIndex]!;
+        const revisions = block.revisions ?? [];
+        if (revisions.length === 0) continue;
+        const points = await tx
+          .select()
+          .from(requirementPoints)
+          .where(eq(requirementPoints.requirementId, requirementId));
+        for (const rev of revisions) {
+          const after: { annotation: string; at: number; removedPointTitle?: string } = {
+            annotation: rev.annotation,
+            at: rev.at,
+          };
+          let entityType: 'requirement' | 'requirement_point' = 'requirement';
+          let entityId = requirementId;
+          if (rev.scope === 'point') {
+            const match = points.find((p) => p.title === rev.pointTitle);
+            if (match) {
+              entityType = 'requirement_point';
+              entityId = match.id;
+            } else {
+              after.removedPointTitle = rev.pointTitle;
+            }
+          }
+          // revision.actor 源自 reviseDraft 入参的合法 Actor,此处转回类型
+          await writeChangeLog(tx, {
+            entityType,
+            entityId,
+            changeType: 'revision',
+            after,
+            reason: rev.annotation,
+            actor: rev.actor as Actor,
+          });
+        }
+        nextRequirements[blockIndex] = { ...block, revisions: [] };
+        draftDirty = true;
+      }
+      if (draftDirty) {
+        await tx
+          .update(analysisRuns)
+          .set({ draftResult: { ...draft, requirements: nextRequirements } as never })
+          .where(eq(analysisRuns.id, runId));
       }
 
       return created;
@@ -508,6 +565,12 @@ export class AnalysisService {
     emit({ type: 'stage', message: '终稿生成' });
     const now = Date.now();
     const priorRevisions = block.revisions ?? [];
+    // 块级修订:点列表以 LLM 结果为准——批注要求移除的点(LLM 结果中缺失)真删出点列表,
+    // 并逐点追加「按批注移除」修订记录留痕(spec §9);摘要取批注前 120 字
+    const removedPoints =
+      revisedPoint !== undefined
+        ? []
+        : block.points.filter((p) => !revisedBlock!.points.some((rp) => rp.title === p.title));
     const newBlock: DraftRequirement =
       revisedPoint !== undefined
         ? {
@@ -520,7 +583,17 @@ export class AnalysisService {
           }
         : {
             ...(revisedBlock as DraftRequirement),
-            revisions: [...priorRevisions, { at: now, actor, annotation: annotationText, scope }],
+            revisions: [
+              ...priorRevisions,
+              { at: now, actor, annotation: annotationText, scope },
+              ...removedPoints.map((p) => ({
+                at: now,
+                actor,
+                annotation: `按批注移除:${annotationText.slice(0, 120)}`,
+                scope: 'point' as const,
+                pointTitle: p.title,
+              })),
+            ],
           };
     const newDraft: AnalysisResult = {
       ...draft,

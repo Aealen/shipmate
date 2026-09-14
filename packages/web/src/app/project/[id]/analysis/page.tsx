@@ -1,5 +1,6 @@
 import { AnalysisBrowse, type RunCardData } from '@/components/analysis-browse/analysis-browse';
 import { getShipmate } from '@/lib/core';
+import { listRequirementRevisionCounts } from '@/actions/revisions';
 
 /**
  * P3 需求分析页(Task 6,B 组,纯只读浏览):
@@ -15,6 +16,12 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
     core.requirements.listRequirements(id),
     core.points.listRequirementPoints({ projectId: id }),
   ]);
+
+  // ✨N 修订徽标只需计数(轻量选列);Modal 打开时再经 action 拉全量
+  const revisionCounts = await listRequirementRevisionCounts(
+    requirements.map((r) => r.id),
+    points.map((p) => p.id),
+  );
 
   // P3b 依据弹窗需要素材标题:逐批次取素材建 materialId → title 映射
   // (原型规模批次量小,N+1 可接受;未命名素材由组件回退显示短 id)
@@ -46,6 +53,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
       requirements={requirements}
       points={points}
       materialTitles={materialTitles}
+      revisionCounts={revisionCounts}
     />
   );
 }

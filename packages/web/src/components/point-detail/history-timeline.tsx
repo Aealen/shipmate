@@ -29,6 +29,10 @@ const CHANGE_STYLE: Record<ChangeType, { dot: string; badge: string }> = {
     dot: 'bg-danger',
     badge: 'text-danger bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]',
   },
+  revision: {
+    dot: 'bg-ai',
+    badge: 'text-ai bg-[color-mix(in_srgb,var(--ai)_12%,transparent)]',
+  },
 };
 
 /** Unix 毫秒 → 'YYYY-MM-DD HH:mm'(本地时区;手工 pad 避免 SSR/浏览器 locale 差异) */

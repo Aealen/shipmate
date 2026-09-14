@@ -825,6 +825,158 @@ describe('applyAnalysisRun', () => {
       }
     });
   });
+
+  it('修订记录结转:apply 后 revisions 写为 change_logs 的 revision 条目并从草稿清空', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      // 草稿块带历史修订:块级 1 条 + 点级(可匹配 A1)1 条 + 点级(已移除,匹配不到)1 条
+      const runId = await seedDraft(db, projectId, {
+        requirements: [
+          {
+            title: '全新需求A',
+            summary: '',
+            points: [{ title: 'A1', description: '', confidence: 0.9, evidences: [] }],
+            revisions: [
+              { at: 1000, actor: 'human', annotation: '整块重写批注', scope: 'block' },
+              {
+                at: 2000,
+                actor: 'ai:analysis',
+                annotation: '按批注移除:并入 A1',
+                scope: 'point',
+                pointTitle: 'A1',
+              },
+              {
+                at: 3000,
+                actor: 'human',
+                annotation: '按批注移除:删掉 Excel 点',
+                scope: 'point',
+                pointTitle: '导出 Excel',
+              },
+            ],
+          },
+        ],
+        supplements: [],
+      });
+      const svc = makeService(db, async () => ({}));
+      const created = await svc.applyAnalysisRun(runId, undefined, 'human');
+      const reqId = created[0]!.id;
+      const point = (
+        await db.select().from(requirementPoints).where(eq(requirementPoints.requirementId, reqId))
+      )[0]!;
+
+      // 块级修订 → 挂 requirement;点级匹配不到(已移除)→ 也挂 requirement,带 removedPointTitle
+      const reqLogs = await db
+        .select()
+        .from(changeLogs)
+        .where(
+          and(
+            eq(changeLogs.entityType, 'requirement'),
+            eq(changeLogs.entityId, reqId),
+            eq(changeLogs.changeType, 'revision'),
+          ),
+        );
+      expect(reqLogs).toHaveLength(2);
+      expect(
+        reqLogs.find(
+          (l) => (l.afterSnapshot as { annotation: string }).annotation === '整块重写批注',
+        ),
+      ).toMatchObject({
+        afterSnapshot: { annotation: '整块重写批注', at: 1000 },
+        reason: '整块重写批注',
+        actor: 'human',
+      });
+      expect(
+        reqLogs.find(
+          (l) =>
+            (l.afterSnapshot as { removedPointTitle?: string }).removedPointTitle === '导出 Excel',
+        ),
+      ).toMatchObject({
+        afterSnapshot: {
+          annotation: '按批注移除:删掉 Excel 点',
+          at: 3000,
+          removedPointTitle: '导出 Excel',
+        },
+        reason: '按批注移除:删掉 Excel 点',
+        actor: 'human',
+      });
+
+      // 点级修订 → pointTitle 按 title 匹配到落库点,挂 requirement_point
+      const pointLogs = await db
+        .select()
+        .from(changeLogs)
+        .where(
+          and(
+            eq(changeLogs.entityType, 'requirement_point'),
+            eq(changeLogs.entityId, point.id),
+            eq(changeLogs.changeType, 'revision'),
+          ),
+        );
+      expect(pointLogs).toHaveLength(1);
+      expect(pointLogs[0]).toMatchObject({
+        afterSnapshot: { annotation: '按批注移除:并入 A1', at: 2000 },
+        reason: '按批注移除:并入 A1',
+        actor: 'ai:analysis',
+      });
+
+      // 结转后草稿中已结转的 revisions 清空
+      const draft = (await db.select().from(analysisRuns).where(eq(analysisRuns.id, runId)))[0]!
+        .draftResult as { requirements: { revisions: unknown[] }[] };
+      expect(draft.requirements[0]!.revisions).toEqual([]);
+    });
+  });
+
+  it('二次 apply 不重复结转:首次已清空 revisions,再 apply 不新增 revision 日志', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      const runId = await seedDraft(db, projectId, {
+        requirements: [
+          {
+            title: '全新需求A',
+            summary: '',
+            points: [{ title: 'A1', description: '', confidence: 0.9, evidences: [] }],
+            revisions: [
+              { at: 1000, actor: 'human', annotation: '整块重写批注', scope: 'block' },
+              {
+                at: 2000,
+                actor: 'human',
+                annotation: '按批注移除:点移除',
+                scope: 'point',
+                pointTitle: 'A1',
+              },
+            ],
+          },
+        ],
+        supplements: [],
+      });
+      const svc = makeService(db, async () => ({}));
+      const first = await svc.applyAnalysisRun(runId, undefined, 'human');
+      const second = await svc.applyAnalysisRun(runId, undefined, 'human');
+
+      const revisionLogsOf = async (entityId: string) =>
+        db
+          .select()
+          .from(changeLogs)
+          .where(and(eq(changeLogs.entityId, entityId), eq(changeLogs.changeType, 'revision')));
+      // 首次落库实体上 revision 日志数量保持不变(需求 1 条块级 + 点 1 条点级)
+      expect(await revisionLogsOf(first[0]!.id)).toHaveLength(1);
+      const firstPoint = (
+        await db
+          .select()
+          .from(requirementPoints)
+          .where(eq(requirementPoints.requirementId, first[0]!.id))
+      )[0]!;
+      expect(await revisionLogsOf(firstPoint!.id)).toHaveLength(1);
+      // 二次落库的新实体上无 revision 日志
+      expect(await revisionLogsOf(second[0]!.id)).toHaveLength(0);
+      const secondPoint = (
+        await db
+          .select()
+          .from(requirementPoints)
+          .where(eq(requirementPoints.requirementId, second[0]!.id))
+      )[0]!;
+      expect(await revisionLogsOf(secondPoint!.id)).toHaveLength(0);
+    });
+  });
 });
 
 describe('reviseDraft', () => {
@@ -1044,8 +1196,69 @@ describe('reviseDraft', () => {
           annotation: '整体重写,细化 CSV 并新增 PDF',
           scope: 'block',
         },
+        // LLM 结果缺失「导出 Excel」→ 视为按批注移除,追加移除记录
+        {
+          at: expect.any(Number),
+          actor: 'human',
+          annotation: '按批注移除:整体重写,细化 CSV 并新增 PDF',
+          scope: 'point',
+          pointTitle: '导出 Excel',
+        },
       ]);
       expect(revised.points[0]!.evidences).toEqual([{ material_id: 'm1', quote: '要能导出 CSV' }]);
+    });
+  });
+
+  it('块级修订移除点:LLM 结果缺失的点真删出点列表,revisions 追加「按批注移除」记录', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      const runId = await seedDoneRun(db, projectId, {
+        requirements: [reviseBlock],
+        supplements: [],
+      });
+      // LLM 结果只含 CSV 点——「导出 Excel」被视为按批注移除
+      const llm = vi.fn(async (_system: string, _user: string) => ({
+        title: '导出需求',
+        summary: '仅保留 CSV 导出',
+        points: [
+          { title: '导出 CSV', description: '重写后的 CSV 描述', confidence: 0.9, evidences: [] },
+        ],
+      }));
+      const svc = makeService(db, llm);
+      const { revised: rawRevised } = await svc.reviseDraft(
+        runId,
+        { blockIndex: 0 },
+        'Excel 导出砍掉,不要了',
+        undefined,
+        'human',
+      );
+      expect((rawRevised as DraftRequirement).points.map((p) => p.title)).toEqual(['导出 CSV']);
+
+      const draft = (await getRun(db, runId)).draftResult as {
+        requirements: {
+          points: { title: string }[];
+          revisions: { scope: string; pointTitle?: string; annotation: string }[];
+        }[];
+      };
+      const block = draft.requirements[0]!;
+      // 真删:点列表不残留「导出 Excel」
+      expect(block.points.map((p) => p.title)).toEqual(['导出 CSV']);
+      // 移除留痕:块级修订主记录之后逐点追加「按批注移除」记录
+      expect(block.revisions).toEqual([
+        {
+          at: expect.any(Number),
+          actor: 'human',
+          annotation: 'Excel 导出砍掉,不要了',
+          scope: 'block',
+        },
+        {
+          at: expect.any(Number),
+          actor: 'human',
+          annotation: '按批注移除:Excel 导出砍掉,不要了',
+          scope: 'point',
+          pointTitle: '导出 Excel',
+        },
+      ]);
     });
   });
 
@@ -1326,7 +1539,56 @@ describe('reviseDraftStream', () => {
       expect(block.points.map((p) => p.title)).toEqual(['导出 CSV', '导出 PDF']);
       expect(block.points[0]!.evidences).toEqual([{ material_id: 'm1', quote: '要能导出 CSV' }]);
       expect(block.points[1]!.evidences).toEqual([]);
-      expect(block.revisions).toEqual([expect.objectContaining({ scope: 'block' })]);
+      // LLM 结果缺失「导出 Excel」→ 与 reviseDraft 一致,追加「按批注移除」记录
+      expect(block.revisions).toEqual([
+        expect.objectContaining({ scope: 'block' }),
+        {
+          at: expect.any(Number),
+          actor: 'human',
+          annotation: '按批注移除:整体重写',
+          scope: 'point',
+          pointTitle: '导出 Excel',
+        },
+      ]);
+    });
+  });
+
+  it('块级移除点:与 reviseDraft 一致——点真删 + revisions 追加「按批注移除」记录', async () => {
+    await withDb(async (db) => {
+      const projectId = await seedProject(db);
+      const runId = await seedDoneRun(db, projectId, {
+        requirements: [reviseBlock],
+        supplements: [],
+      });
+      const llmStream = fakeStreamInvoker({
+        title: '导出需求',
+        summary: '仅保留 CSV 导出',
+        points: [
+          { title: '导出 CSV', description: '重写后的 CSV 描述', confidence: 0.9, evidences: [] },
+        ],
+      });
+      const svc = makeService(db, async () => ({}), llmStream);
+      // 传空 handlers 启用流式分支(无 handlers 时实现退化为非流式 invoker)
+      await svc.reviseDraftStream(runId, { blockIndex: 0 }, '删掉 Excel', undefined, 'human', {});
+
+      const draft = (await getRun(db, runId)).draftResult as {
+        requirements: {
+          points: { title: string }[];
+          revisions: { scope: string; pointTitle?: string; annotation: string }[];
+        }[];
+      };
+      const block = draft.requirements[0]!;
+      expect(block.points.map((p) => p.title)).toEqual(['导出 CSV']);
+      expect(block.revisions).toEqual([
+        expect.objectContaining({ scope: 'block', annotation: '删掉 Excel' }),
+        {
+          at: expect.any(Number),
+          actor: 'human',
+          annotation: '按批注移除:删掉 Excel',
+          scope: 'point',
+          pointTitle: '导出 Excel',
+        },
+      ]);
     });
   });
 

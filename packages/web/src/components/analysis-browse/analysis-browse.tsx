@@ -4,9 +4,19 @@ import type { RequirementPointRow, RequirementWithOverdue } from '@shipmate/core
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
+import { getPointRevisionHistory, type RevisionEntry } from '@/actions/revisions';
 import { DueSoonBadge, OverdueBadge, StatusBadge } from '@/components/shared/badge';
 import { EmptyState } from '@/components/shared/empty-state';
+import {
+  ChevronIcon,
+  ClockIcon,
+  RevisionEntryRow,
+  RevisionHistoryModal,
+  formatDate,
+  formatShort,
+} from './revision-history-modal';
+import { RequirementEditModal } from './requirement-edit-modal';
 import { EvidenceModal } from './evidence-modal';
 
 /** 素材分析批次卡数据(服务端已剥掉 draftResult 等重字段) */
@@ -31,6 +41,8 @@ export interface AnalysisBrowseProps {
   points: RequirementPointRow[];
   /** materialId → 素材标题(P3b 依据弹窗展示用) */
   materialTitles: Record<string, string>;
+  /** 修订计数(键为 requirementId / pointId)——✨N 徽标用,0 视为无修订 */
+  revisionCounts: Record<string, number>;
 }
 
 const PRIORITY_ORDER: Record<RequirementWithOverdue['priority'], number> = {
@@ -63,6 +75,7 @@ export function AnalysisBrowse({
   requirements,
   points,
   materialTitles,
+  revisionCounts,
 }: AnalysisBrowseProps) {
   const t = useTranslations('browse');
   const locale = useLocale();
@@ -103,10 +116,28 @@ export function AnalysisBrowse({
     setEvidenceOpen(true);
   };
 
+  // 块级修订历史弹窗(P3j):开关与数据分离,关闭动画期间内容保留
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyRequirement, setHistoryRequirement] = useState<RequirementWithOverdue | null>(null);
+
+  const openRevisionHistory = (req: RequirementWithOverdue) => {
+    setHistoryRequirement(req);
+    setHistoryOpen(true);
+  };
+
+  // 需求编辑弹窗(P3i):开关与数据分离,同上
+  const [editOpen, setEditOpen] = useState(false);
+  const [editRequirement, setEditRequirement] = useState<RequirementWithOverdue | null>(null);
+
+  const openRequirementEdit = (req: RequirementWithOverdue) => {
+    setEditRequirement(req);
+    setEditOpen(true);
+  };
+
   return (
     <div className="flex w-full flex-col gap-4 p-6">
       {/* 上半:素材分析记录(白卡包裹 + 灰底批次卡流) */}
-      <section className="flex flex-col gap-3 rounded-[10px] border border-transparent bg-surface p-[18px]">
+      <section className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-[18px]">
         <div className="flex items-center gap-2.5">
           <h2 className="text-sm font-bold text-text-primary">{t('runsTitle')}</h2>
           <span className="text-[11px] text-text-muted">{t('runsSubtitle')}</span>
@@ -173,7 +204,11 @@ export function AnalysisBrowse({
                 requirement={req}
                 points={pointsByRequirement.get(req.id) ?? []}
                 pointHrefBase={pointHrefBase}
+                revisionCount={revisionCounts[req.id] ?? 0}
+                pointRevisionCounts={revisionCounts}
                 onEvidence={openEvidence}
+                onRevisionHistory={openRevisionHistory}
+                onEdit={openRequirementEdit}
               />
             ))}
           </div>
@@ -187,6 +222,23 @@ export function AnalysisBrowse({
         point={evidencePoint}
         materialTitles={materialTitles}
       />
+
+      {/* P3j 块级修订历史弹窗 */}
+      <RevisionHistoryModal
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        requirement={historyRequirement}
+      />
+
+      {/* P3i 需求编辑弹窗(挂载后 requirement 非空;保存成功后刷新服务端数据) */}
+      {editRequirement && (
+        <RequirementEditModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          requirement={editRequirement}
+          onSaved={() => router.refresh()}
+        />
+      )}
     </div>
   );
 }
@@ -252,17 +304,31 @@ function RunCard({ run, href, locale }: { run: RunCardData; href: string; locale
   );
 }
 
-/** 需求块(原型:白卡;头部 优先级徽章+标题+计划+超期徽+右侧就绪统计),点击折叠 */
+/**
+ * 需求块(原型:白卡;头部 优先级徽章+标题+计划+超期徽+右侧就绪统计),点击折叠。
+ * 头部为 div 容器:左侧 button 覆盖原折叠点击区域,右侧 hover 按钮组
+ * (✨N 徽标 / 🕘 修订历史,预留 ✏ 编辑入口)不触发折叠(HTML 不允许 button 嵌套)。
+ */
 function RequirementBlock({
   requirement: req,
   points,
   pointHrefBase,
+  revisionCount,
+  pointRevisionCounts,
   onEvidence,
+  onRevisionHistory,
+  onEdit,
 }: {
   requirement: RequirementWithOverdue;
   points: RequirementPointRow[];
   pointHrefBase: string;
+  /** 块自身修订计数(>0 显示 ✨N) */
+  revisionCount: number;
+  /** 修订计数映射(透传给点行) */
+  pointRevisionCounts: Record<string, number>;
   onEvidence: (point: RequirementPointRow) => void;
+  onRevisionHistory: (req: RequirementWithOverdue) => void;
+  onEdit: (req: RequirementWithOverdue) => void;
 }) {
   const t = useTranslations('browse');
   const locale = useLocale();
@@ -273,35 +339,78 @@ function RequirementBlock({
 
   return (
     <div
-      className={`flex flex-col gap-3 rounded-[10px] border border-transparent bg-surface p-[18px] transition-colors duration-[120ms] hover:border-accent ${
+      className={`flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-[18px] transition-colors duration-[120ms] hover:border-accent ${
         isDraft ? 'opacity-75' : ''
       }`}
     >
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        title={open ? undefined : t('detail')}
-        className="flex w-full flex-wrap items-center gap-2.5 text-left"
-      >
-        <span
-          className={`inline-flex shrink-0 items-center rounded-[5px] px-[7px] py-[2px] text-[10px] font-bold leading-none ${PRIORITY_BADGE[req.priority]}`}
+      <div className="group flex w-full flex-wrap items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          title={open ? undefined : t('detail')}
+          className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5 text-left"
         >
-          {req.priority}
+          <span
+            className={`inline-flex shrink-0 items-center rounded-[5px] px-[7px] py-[2px] text-[10px] font-bold leading-none ${PRIORITY_BADGE[req.priority]}`}
+          >
+            {req.priority}
+          </span>
+          <span className="min-w-0 truncate text-[15px] font-bold text-text-primary">
+            {req.title}
+          </span>
+          <StatusBadge status={req.status} size="sm" />
+          {isDraft && <span className="shrink-0 text-[11px] text-draft-gray">{t('draftHint')}</span>}
+          <span className="shrink-0 text-[11px] text-text-muted">{planTimeText(req, t, locale)}</span>
+          {req.dueSoon && <DueSoonBadge />}
+          {req.overdue && <OverdueBadge days={req.overdueDays} />}
+          <span className="min-w-0 flex-1" />
+          <span className="shrink-0 text-[11px] text-text-muted">
+            {t('pointsReady', { done: doneCount, total: points.length })}
+          </span>
+        </button>
+        {/* hover 按钮组:修订徽标 + 历史入口 + 编辑入口 */}
+        <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-[120ms] focus-within:opacity-100 group-hover:opacity-100">
+          {revisionCount > 0 && (
+            <button
+              type="button"
+              onClick={() => onRevisionHistory(req)}
+              className="shrink-0 rounded px-1 py-0.5 text-[10.5px] leading-none text-accent transition-opacity duration-[80ms] hover:opacity-80"
+            >
+              ✨{revisionCount}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onRevisionHistory(req)}
+            aria-label={t('revision.historyLabel')}
+            className="flex shrink-0 items-center rounded px-1 py-0.5 text-[11px] text-text-secondary transition-all duration-[80ms] hover:text-accent active:scale-[0.97]"
+          >
+            <ClockIcon className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onEdit(req)}
+            aria-label={t('edit.editTrigger')}
+            title={t('edit.editTrigger')}
+            className="flex shrink-0 items-center rounded px-1 py-0.5 text-[11px] text-text-secondary transition-all duration-[80ms] hover:text-accent active:scale-[0.97]"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-3 w-3"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M14.5 5.5l4 4L8 20H4v-4z" />
+              <path d="M12.5 7.5l4 4" />
+            </svg>
+          </button>
         </span>
-        <span className="min-w-0 truncate text-[15px] font-bold text-text-primary">
-          {req.title}
-        </span>
-        <StatusBadge status={req.status} size="sm" />
-        {isDraft && <span className="shrink-0 text-[11px] text-draft-gray">{t('draftHint')}</span>}
-        <span className="shrink-0 text-[11px] text-text-muted">{planTimeText(req, t, locale)}</span>
-        {req.dueSoon && <DueSoonBadge />}
-        {req.overdue && <OverdueBadge days={req.overdueDays} />}
-        <span className="min-w-0 flex-1" />
-        <span className="shrink-0 text-[11px] text-text-muted">
-          {t('pointsReady', { done: doneCount, total: points.length })}
-        </span>
-      </button>
+      </div>
 
       {open && points.length > 0 && (
         <ul className="flex flex-col gap-2">
@@ -310,6 +419,7 @@ function RequirementBlock({
               key={p.id}
               point={p}
               detailHref={`${pointHrefBase}/${p.id}`}
+              revisionCount={pointRevisionCounts[p.id] ?? 0}
               onEvidence={() => onEvidence(p)}
             />
           ))}
@@ -319,17 +429,39 @@ function RequirementBlock({
   );
 }
 
-/** 需求点行(原型:灰底行卡)状态圆点 + 标题 + 徽章 + AI 徽 + 版本 + 详情入口 */
+/**
+ * 需求点行(原型:灰底行卡)状态圆点 + 标题 + 徽章 + AI 徽 + 版本 + 详情入口。
+ * 有修订(revisionCount>0)时:版本号旁 ✨N 徽标 + hover 🕘 按钮,点击在行下方
+ * 就地下拉展开该点修订历史(P3g),首次展开拉取、切换仅收展不重拉。
+ */
 function PointRow({
   point,
   detailHref,
+  revisionCount,
   onEvidence,
 }: {
   point: RequirementPointRow;
   detailHref: string;
+  /** 该点修订计数(>0 显示 ✨N 与 🕘 入口) */
+  revisionCount: number;
   onEvidence: () => void;
 }) {
   const t = useTranslations('browse');
+  const [expanded, setExpanded] = useState(false);
+  const [entries, setEntries] = useState<RevisionEntry[] | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const hasHistory = revisionCount > 0;
+
+  /** 就地下拉开关:首次展开经 server action 拉取该点修订条目,此后用缓存 */
+  const toggleHistory = () => {
+    if (!expanded && entries === null) {
+      startTransition(async () => {
+        setEntries(await getPointRevisionHistory(point.id));
+      });
+    }
+    setExpanded((v) => !v);
+  };
 
   const dotColor =
     point.status === 'done'
@@ -341,53 +473,77 @@ function PointRow({
           : 'bg-draft-gray';
 
   return (
-    <li className="flex items-center gap-2.5 rounded-[8px] bg-bg px-3 py-3">
-      <span className={`h-[7px] w-[7px] shrink-0 rounded-full ${dotColor}`} />
-      <span className="min-w-0 flex-1 truncate text-[13px] text-text-primary">{point.title}</span>
-      <StatusBadge status={point.status} size="sm" />
-      {point.origin === 'analysis' && (
-        <span className="inline-flex shrink-0 items-center rounded-[4px] bg-surface-2 px-[6px] py-[2px] text-[10px] leading-none text-ai">
-          ai:analysis
-        </span>
+    <li className="group flex flex-col gap-2 rounded-[8px] bg-bg px-3 py-3">
+      <div className="flex items-center gap-2.5">
+        <span className={`h-[7px] w-[7px] shrink-0 rounded-full ${dotColor}`} />
+        <span className="min-w-0 flex-1 truncate text-[13px] text-text-primary">{point.title}</span>
+        <StatusBadge status={point.status} size="sm" />
+        {point.origin === 'analysis' && (
+          <span className="inline-flex shrink-0 items-center rounded-[4px] bg-surface-2 px-[6px] py-[2px] text-[10px] leading-none text-ai">
+            ai:analysis
+          </span>
+        )}
+        {hasHistory && (
+          <button
+            type="button"
+            onClick={toggleHistory}
+            className="shrink-0 text-[10.5px] leading-none text-accent transition-opacity duration-[80ms] hover:opacity-80"
+          >
+            ✨{revisionCount}
+          </button>
+        )}
+        <span className="shrink-0 text-[10px] tabular-nums text-text-muted">v{point.version}</span>
+        {hasHistory && (
+          <button
+            type="button"
+            onClick={toggleHistory}
+            aria-expanded={expanded}
+            aria-label={t('revision.historyLabel')}
+            className="flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-[11px] text-text-secondary opacity-0 transition-all duration-[80ms] hover:text-accent focus-within:opacity-100 group-hover:opacity-100 active:scale-[0.97]"
+          >
+            <ClockIcon className="h-3 w-3" />
+            <ChevronIcon className="h-2.5 w-2.5" expanded={expanded} />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onEvidence}
+          className="shrink-0 rounded px-1 py-0.5 text-[11px] text-text-secondary transition-all duration-[80ms] hover:text-accent active:scale-[0.97]"
+        >
+          📄 {t('evidence')}
+        </button>
+        <Link
+          href={detailHref}
+          className="shrink-0 rounded px-1 py-0.5 text-[11px] font-bold text-accent transition-opacity hover:opacity-80"
+        >
+          {t('detail')} ›
+        </Link>
+      </div>
+
+      {/* P3g 就地修订历史:圆角容器 + 头部 + 条目列表 */}
+      {hasHistory && expanded && (
+        <div className="flex flex-col gap-[6px] rounded-[10px] bg-surface-2 px-[14px] py-[10px]">
+          <div className="flex items-center gap-1.5 text-[12px] font-medium leading-none text-accent">
+            <ClockIcon className="h-3 w-3" />
+            {t('revision.pointTitle')}
+          </div>
+          {pending && entries === null ? (
+            <p className="px-[10px] py-[7px] text-[11px] text-text-muted">
+              {t('revision.loading')}
+            </p>
+          ) : entries && entries.length > 0 ? (
+            entries.map((entry) => (
+              <RevisionEntryRow key={entry.id} entry={entry} variant="inline" />
+            ))
+          ) : (
+            <p className="px-[10px] py-[7px] text-[11px] text-text-muted">
+              {t('revision.noEntries')}
+            </p>
+          )}
+        </div>
       )}
-      <span className="shrink-0 text-[10px] tabular-nums text-text-muted">v{point.version}</span>
-      <button
-        type="button"
-        onClick={onEvidence}
-        className="shrink-0 rounded px-1 py-0.5 text-[11px] text-text-secondary transition-all duration-[80ms] hover:text-accent active:scale-[0.97]"
-      >
-        📄 {t('evidence')}
-      </button>
-      <Link
-        href={detailHref}
-        className="shrink-0 rounded px-1 py-0.5 text-[11px] font-bold text-accent transition-opacity hover:opacity-80"
-      >
-        {t('detail')} ›
-      </Link>
     </li>
   );
-}
-
-function formatDate(ms: number, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { month: '2-digit', day: '2-digit' }).format(ms);
-}
-
-/** 短时间:今天 HH:mm,其余 MM/dd(批次卡 meta 用) */
-function formatShort(ms: number, locale: string): string {
-  const d = new Date(ms);
-  const now = new Date();
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
-  if (sameDay) {
-    return new Intl.DateTimeFormat(locale, {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(ms);
-  }
-  return formatDate(ms, locale);
 }
 
 /** 计划时间文案:双时间显示区间,仅有截止显示「截止 x」,都无显示「未排期」 */

@@ -160,17 +160,17 @@ AI 从素材归纳出的需求主题。
 
 ### 3.7 change_logs(变更记录)
 
-| 字段            | 类型                | 说明                                                                                                                           |
-| --------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| id              | text PK             | UUID v7                                                                                                                        |
-| entity_type     | text NOT NULL, enum | `group` / `project` / `analysis_run` / `material` / `requirement` / `requirement_point` / `task`                               |
-| entity_id       | text NOT NULL       | 对应实体 id(多态引用,不设外键)                                                                                                 |
-| change_type     | text NOT NULL, enum | `create` / `update` / `status_change` / `linkage_impact` / `discard`(作废 draft 时的快照留存) / `delete`(实体删除时的快照留存) |
-| before_snapshot | text(JSON), 可空    | 变更前实体快照;`create` 时为 null                                                                                              |
-| after_snapshot  | text(JSON)          | 变更后实体快照                                                                                                                 |
-| reason          | text                | 变更原因,可空(工具入参可选传入)                                                                                                |
-| actor           | text NOT NULL       | 见 §5.1                                                                                                                        |
-| created_at      | bigint NOT NULL     |                                                                                                                                |
+| 字段            | 类型                | 说明                                                                                                                                                                               |
+| --------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id              | text PK             | UUID v7                                                                                                                                                                            |
+| entity_type     | text NOT NULL, enum | `group` / `project` / `analysis_run` / `material` / `requirement` / `requirement_point` / `task`                                                                                   |
+| entity_id       | text NOT NULL       | 对应实体 id(多态引用,不设外键)                                                                                                                                                     |
+| change_type     | text NOT NULL, enum | `create` / `update` / `status_change` / `linkage_impact` / `discard`(作废 draft 时的快照留存) / `delete`(实体删除时的快照留存) / `revision`(AI 修订记录于应用时结转至实体变更历史) |
+| before_snapshot | text(JSON), 可空    | 变更前实体快照;`create` 时为 null                                                                                                                                                  |
+| after_snapshot  | text(JSON)          | 变更后实体快照                                                                                                                                                                     |
+| reason          | text                | 变更原因,可空(工具入参可选传入)                                                                                                                                                    |
+| actor           | text NOT NULL       | 见 §5.1                                                                                                                                                                            |
+| created_at      | bigint NOT NULL     |                                                                                                                                                                                    |
 
 索引:`(entity_type, entity_id, created_at)`、`(entity_id)`。
 
@@ -414,7 +414,7 @@ AnalysisRun(pending)
    - **contradiction 相悖**:**强制人工裁决**,未裁决不能应用该块 — 用新(旧点自动打 `needs_reassessment`,写 conflict ChangeLog)/ 用旧(草稿丢弃)/ 都保留(双向 relations 记 conflict_with)
    - **supplement 补充**:草稿中把匹配到的**已有需求块整体带出** — 已有需求点按实时状态展示(done/developing/…),新增点打「补充」标(origin=supplement);应用时仅追加新点到已有需求下,已有点不动
    - 注:本条所述「conflict ChangeLog」落地为任务 status_change + 需求点 update 两种既有类型(ChangeType 枚举无 conflict 专用值),冲突语境经 reason 字段标注
-9. **AI 修订(草稿阶段)**:对未应用的草稿块/需求点,用户可输入批注让 LLM 重写(reviseDraft)。修订保 spec §5.4(draft 态)与 evidences 溯源规则;每次修订写 change_logs(actor+批注+前后快照)并追加块级 revisions 摘要;mcp `revise_draft` 工具使 agent 可发起修订
+9. **AI 修订(草稿阶段)**:对未应用的草稿块/需求点,用户可输入批注让 LLM 重写(reviseDraft)。修订保 spec §5.4(draft 态)与 evidences 溯源规则;每次修订写 change_logs(actor+批注+前后快照)并追加块级 revisions 摘要;mcp `revise_draft` 工具使 agent 可发起修订。修订结果中缺失的点视为按批注移除:真删出草稿点列表并逐点追加移除记录;修订记录于应用时结转至实体变更历史(apply 落库后写 `change_type='revision'` 的 ChangeLog,并清空草稿已结转的 revisions 防重复结转)
 
 ## 10. 配置
 

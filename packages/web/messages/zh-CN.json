@@ -73,7 +73,8 @@
       "status_change": "状态流转",
       "linkage_impact": "联动影响",
       "discard": "废弃",
-      "delete": "删除"
+      "delete": "删除",
+      "revision": "AI 修订"
     },
     "entityType": {
       "group": "分组",
@@ -162,7 +163,8 @@
       "status_change": "状态变更",
       "linkage_impact": "联动影响",
       "discard": "废弃",
-      "delete": "删除"
+      "delete": "删除",
+      "revision": "AI 修订"
     },
     "reason": "原因",
     "emptyTimeline": "暂无变更记录",
@@ -284,7 +286,8 @@
       "status_change": "状态流转",
       "linkage_impact": "联动影响",
       "discard": "废弃",
-      "delete": "删除"
+      "delete": "删除",
+      "revision": "AI 修订"
     },
     "edit": "编辑",
     "editModal": {
@@ -515,6 +518,45 @@
     "continueAnalysis": "继续分析",
     "retryAnalysis": "↻ 重试分析",
     "pointsReady": "{done}/{total} 需求点就绪",
-    "originAi": "AI 产出"
+    "originAi": "AI 产出",
+    "revision": {
+      "modalTitle": "修订历史 · 需求块",
+      "contextLine": "共 {count} 条修订",
+      "pointTitle": "本需求点的修订历史",
+      "historyLabel": "修订历史",
+      "blockBadge": "需求块",
+      "pointBadge": "需求点",
+      "removedBadge": "已移除需求点",
+      "entryBadge": "修订",
+      "count": "{count} 条修订",
+      "collapsedCount": "{count} 条修订 · 已收起",
+      "noEntries": "无修订记录",
+      "empty": "暂无修订记录",
+      "loading": "加载中…",
+      "noAnnotation": "内容更新",
+      "close": "关闭"
+    },
+    "edit": {
+      "title": "编辑需求",
+      "editTrigger": "编辑",
+      "titleLabel": "标题",
+      "summary": "摘要",
+      "priority": "优先级",
+      "status": "状态",
+      "planStart": "计划开始",
+      "planDue": "计划结束",
+      "statusDraft": "草稿",
+      "statusConfirmed": "已确认",
+      "statusDone": "已完成",
+      "statusArchived": "已归档",
+      "priorityP0": "P0",
+      "priorityP1": "P1",
+      "priorityP2": "P2",
+      "priorityP3": "P3",
+      "revisionHint": "保存后本次修改将记入修订历史,可随时追溯",
+      "cancel": "取消",
+      "save": "保存",
+      "saving": "保存中…"
+    }
   }
 }

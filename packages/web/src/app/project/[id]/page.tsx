@@ -61,7 +61,7 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
         />
       </div>
 
-      <section className="flex w-full flex-col gap-2.5 rounded-[10px] border border-transparent bg-surface p-[18px]">
+      <section className="flex w-full flex-col gap-2.5 rounded-[10px] border border-border bg-surface p-[18px]">
         <div className="flex w-full items-center gap-2">
           <h2 className="text-sm font-bold text-text-primary">{t('recentChanges')}</h2>
           <span className="min-w-0 flex-1" />
@@ -102,6 +102,7 @@ const CHANGE_TYPE_COLORS: Record<ChangeLogRow['changeType'], string> = {
   linkage_impact: 'text-danger',
   discard: 'text-draft-gray',
   delete: 'text-danger',
+  revision: 'text-ai',
 };
 
 /** actor → 文字色(原型:human 绿 / ai 紫 / mcp 蓝) */

@@ -40,7 +40,7 @@ export default async function McpSettingsPage() {
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         {/* HTTP streamable */}
-        <section className="flex flex-col gap-3 rounded-[10px] border border-transparent bg-surface p-[18px]">
+        <section className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-[18px]">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold text-text-primary">{t('httpTitle')}</h2>
             <span className="inline-flex shrink-0 items-center rounded-[4px] bg-accent-dim px-[7px] py-[2px] text-[10px] font-bold leading-none text-accent">
@@ -61,7 +61,7 @@ export default async function McpSettingsPage() {
         </section>
 
         {/* stdio 传输 */}
-        <section className="flex flex-col gap-3 rounded-[10px] border border-transparent bg-surface p-[18px]">
+        <section className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-[18px]">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold text-text-primary">{t('stdioTitle')}</h2>
             <span className="min-w-0 flex-1" />
@@ -75,7 +75,7 @@ export default async function McpSettingsPage() {
       </div>
 
       {/* Claude Code 快捷命令(计划补充项) */}
-      <section className="flex flex-col gap-3 rounded-[10px] border border-transparent bg-surface p-[18px]">
+      <section className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-[18px]">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-bold text-text-primary">{t('cliTitle')}</h2>
           <span className="min-w-0 flex-1" />

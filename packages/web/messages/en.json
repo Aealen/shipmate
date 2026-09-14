@@ -73,7 +73,8 @@
       "status_change": "Status",
       "linkage_impact": "Linkage impact",
       "discard": "Discarded",
-      "delete": "Deleted"
+      "delete": "Deleted",
+      "revision": "AI revision"
     },
     "entityType": {
       "group": "Group",
@@ -162,7 +163,8 @@
       "status_change": "Status change",
       "linkage_impact": "Linkage impact",
       "discard": "Discard",
-      "delete": "Delete"
+      "delete": "Delete",
+      "revision": "AI revision"
     },
     "reason": "Reason",
     "emptyTimeline": "No changes yet",
@@ -284,7 +286,8 @@
       "status_change": "Status",
       "linkage_impact": "Linkage",
       "discard": "Discarded",
-      "delete": "Deleted"
+      "delete": "Deleted",
+      "revision": "AI revision"
     },
     "edit": "Edit",
     "editModal": {
@@ -515,6 +518,45 @@
     "continueAnalysis": "Continue",
     "retryAnalysis": "↻ Retry",
     "pointsReady": "{done}/{total} points ready",
-    "originAi": "AI"
+    "originAi": "AI",
+    "revision": {
+      "modalTitle": "Revision history · Requirement block",
+      "contextLine": "{count} revisions in total",
+      "pointTitle": "Revision history for this point",
+      "historyLabel": "Revision history",
+      "blockBadge": "Block",
+      "pointBadge": "Point",
+      "removedBadge": "Removed points",
+      "entryBadge": "Revision",
+      "count": "{count} revisions",
+      "collapsedCount": "{count} revisions · collapsed",
+      "noEntries": "No revisions",
+      "empty": "No revisions yet",
+      "loading": "Loading…",
+      "noAnnotation": "Content updated",
+      "close": "Close"
+    },
+    "edit": {
+      "title": "Edit Requirement",
+      "editTrigger": "Edit",
+      "titleLabel": "Title",
+      "summary": "Summary",
+      "priority": "Priority",
+      "status": "Status",
+      "planStart": "Planned start",
+      "planDue": "Planned due",
+      "statusDraft": "Draft",
+      "statusConfirmed": "Confirmed",
+      "statusDone": "Done",
+      "statusArchived": "Archived",
+      "priorityP0": "P0",
+      "priorityP1": "P1",
+      "priorityP2": "P2",
+      "priorityP3": "P3",
+      "revisionHint": "Your change is recorded in the revision history for full traceability",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…"
+    }
   }
 }
