@@ -441,6 +441,7 @@
       "edit": "编辑",
       "save": "保存",
       "evidenceCount": "依据 {count} 条",
+      "sourceMaterials": "来源:{names}",
       "noEvidence": "无原文依据,需人工校验"
     },
     "supplement": {

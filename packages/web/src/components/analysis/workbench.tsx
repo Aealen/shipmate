@@ -211,6 +211,11 @@ export function AnalysisWorkbench({
   const [confirmOpen, setConfirmOpen] = useState(false);
   /** 项目模块列表(归类下拉选项);进工作台拉一次,新建后本地追加 */
   const [modules, setModules] = useState<ModuleSummary[]>([]);
+  /** materialId → 素材标题(块/点源头素材展示) */
+  const materialTitles = useMemo(
+    () => Object.fromEntries(materials.map((m) => [m.id, m.title ?? ''])),
+    [materials],
+  );
   /** AI 修订弹窗目标(null = 关闭);blockIndex 定位本地块,pointIndex null = 整块 */
   const [reviseTarget, setReviseTarget] = useState<ReviseTarget | null>(null);
 
@@ -475,6 +480,7 @@ export function AnalysisWorkbench({
           existingByTitle={existingByTitle}
           modules={modules}
           onCreateModule={handleCreateModule}
+          materialTitles={materialTitles}
           analyzing={analyzing}
           applying={applying}
           applyDisabled={applyDisabled}

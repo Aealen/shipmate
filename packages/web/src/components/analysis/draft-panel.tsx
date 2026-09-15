@@ -24,6 +24,7 @@ export function DraftPanel({
   existingByTitle,
   modules,
   onCreateModule,
+  materialTitles,
   analyzing,
   applying,
   applyDisabled,
@@ -40,6 +41,8 @@ export function DraftPanel({
   modules: ModuleSummary[];
   /** 归类下拉内新建模块(workbench 处理 action/toast/列表刷新) */
   onCreateModule: (name: string) => Promise<ModuleRow | null>;
+  /** materialId → 素材标题(块/点源头素材展示) */
+  materialTitles: Record<string, string>;
   analyzing: boolean;
   applying: boolean;
   applyDisabled: boolean;
@@ -111,6 +114,7 @@ export function DraftPanel({
                   block={b}
                   modules={modules}
                   onCreateModule={onCreateModule}
+                  materialTitles={materialTitles}
                   onChange={(patch) =>
                     onBlocksChange(blocks.map((q) => (q.key === b.key ? { ...q, ...patch } : q)))
                   }
@@ -128,6 +132,7 @@ export function DraftPanel({
                 <SupplementBlock
                   supp={s}
                   existing={existingByTitle.get(s.targetTitle)}
+                  materialTitles={materialTitles}
                   onChange={(patch) =>
                     onSuppsChange(supps.map((q) => (q.key === s.key ? { ...q, ...patch } : q)))
                   }

@@ -441,6 +441,7 @@
       "edit": "Edit",
       "save": "Save",
       "evidenceCount": "{count} evidence quotes",
+      "sourceMaterials": "Sources: {names}",
       "noEvidence": "No source evidence; manual verification required"
     },
     "supplement": {

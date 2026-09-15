@@ -276,6 +276,26 @@ function BoxIcon() {
 const POINT_INPUT =
   'w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-text-primary outline-none transition-colors focus:border-accent';
 
+/** evidences → 去重来源素材名(缺失标题回退「未命名素材」;单条直出,多条「A、B +N」) */
+function sourceNames(
+  evidences: { material_id: string; quote: string }[],
+  materialTitles: Record<string, string>,
+): string {
+  const seen = new Set<string>();
+  for (const e of evidences) seen.add(e.material_id);
+  const names = [...seen].map((id) => materialTitles[id] || '未命名素材');
+  return names.length <= 2 ? names.join('、') : `${names[0]}、${names[1]} +${names.length - 2}`;
+}
+
+/** 块级聚合来源(各点 evidences 的 material_id 并集) */
+function blockSourceNames(
+  points: { evidences: { material_id: string; quote: string }[] }[],
+  materialTitles: Record<string, string>,
+): string {
+  const all = points.flatMap((p) => p.evidences);
+  return all.length > 0 ? sourceNames(all, materialTitles) : '';
+}
+
 // ---------- 模块归类 pill + 下拉(spec §9 规则 10 / D9) ----------
 
 /**
@@ -430,12 +450,15 @@ function PointRow({
   onChange,
   onDelete,
   deleteLabel,
+  materialTitles,
   onRevise,
 }: {
   point: DraftPointState;
   onChange: (patch: Partial<DraftPointState>) => void;
   onDelete: () => void;
   deleteLabel: string;
+  /** materialId → 素材标题(源头素材展示;缺失回退「未命名素材」) */
+  materialTitles: Record<string, string>;
   /** 打开 AI 修订弹窗(单点作用域);补充块的点不参与修订(core 仅支持 requirements),不传则不渲染入口 */
   onRevise?: () => void;
 }) {
@@ -490,8 +513,11 @@ function PointRow({
           <p className="mt-0.5 line-clamp-2 text-xs text-text-secondary">{point.description}</p>
         )}
         {point.evidences.length > 0 ? (
-          <p className="mt-1 text-[11px] text-text-muted">
-            {t('block.evidenceCount', { count: point.evidences.length })}
+          <p className="mt-1 truncate text-[11px] text-text-muted">
+            <span aria-hidden>📄 </span>
+            <span title={point.evidences.map((e) => `「${e.quote}」`).join('\n')}>
+              {sourceNames(point.evidences, materialTitles)}
+            </span>
           </p>
         ) : (
           <p className="mt-1 text-[11px] text-warning">{t('block.noEvidence')}</p>
@@ -538,6 +564,7 @@ export function DraftBlock({
   block,
   modules,
   onCreateModule,
+  materialTitles,
   onChange,
   onDelete,
   onRevise,
@@ -547,6 +574,8 @@ export function DraftBlock({
   modules: ModuleSummary[];
   /** 下拉内新建模块:父级调 createModuleAction + toast + 列表刷新,返回新行/null */
   onCreateModule: (name: string) => Promise<ModuleRow | null>;
+  /** materialId → 素材标题(块/点源头素材展示) */
+  materialTitles: Record<string, string>;
   onChange: (patch: Partial<DraftBlockState>) => void;
   onDelete: () => void;
   /** 打开 AI 修订弹窗:pointIndex 为 null = 整块作用域,否则为点下标 */
@@ -619,6 +648,19 @@ export function DraftBlock({
         )}
       </div>
 
+      {/* 块级来源素材(各点 evidences 聚合,悬停看各点引用原文) */}
+      {(() => {
+        const src = blockSourceNames(block.points, materialTitles);
+        return src ? (
+          <p className="mt-2 truncate text-[10.5px] text-text-muted">
+            <span aria-hidden>📄 </span>
+            <span title={block.points.flatMap((p) => p.evidences).map((e) => `「${e.quote}」`).join('\n')}>
+              {t('block.sourceMaterials', { names: src })}
+            </span>
+          </p>
+        ) : null;
+      })()}
+
       {c?.type === 'duplicate' && (
         <div className="mt-3 rounded-lg bg-[color-mix(in_srgb,var(--draft-gray)_10%,transparent)] p-2.5">
           <div className="flex items-center gap-1.5 text-xs font-medium text-draft-gray">
@@ -684,6 +726,7 @@ export function DraftBlock({
               key={p.key}
               point={p}
               deleteLabel={t('block.delete')}
+              materialTitles={materialTitles}
               onRevise={() => onRevise(pi)}
               onChange={(patch) =>
                 onChange({
@@ -715,11 +758,14 @@ export function DraftBlock({
 export function SupplementBlock({
   supp,
   existing,
+  materialTitles,
   onChange,
   onDelete,
 }: {
   supp: SupplementBlockState;
   existing?: ExistingRequirementView;
+  /** materialId → 素材标题(新增点源头素材展示) */
+  materialTitles: Record<string, string>;
   onChange: (patch: Partial<SupplementBlockState>) => void;
   onDelete: () => void;
 }) {
@@ -797,6 +843,7 @@ export function SupplementBlock({
               key={p.key}
               point={p}
               deleteLabel={t('block.delete')}
+              materialTitles={materialTitles}
               onChange={(patch) =>
                 onChange({
                   points: supp.points.map((q) => (q.key === p.key ? { ...q, ...patch } : q)),
