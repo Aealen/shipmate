@@ -82,7 +82,7 @@ function TaskRowItem({ task }: { task: TaskRow }) {
           <button
             type="button"
             onClick={() => openReassess(task)}
-            className="shrink-0 rounded-md border border-danger/60 px-2.5 py-1 text-xs font-medium text-danger transition-transform duration-[80ms] hover:bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] active:scale-[0.97]"
+            className="shrink-0 rounded-lg border border-danger/60 px-2.5 py-1 text-xs font-medium text-danger transition-transform duration-[80ms] hover:bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] active:scale-[0.97]"
           >
             {t('confirmReassessment')}
           </button>
@@ -103,7 +103,7 @@ function TaskRowItem({ task }: { task: TaskRow }) {
               <button
                 type="button"
                 onClick={() => setTarget(null)}
-                className="h-8 rounded-md border border-border px-3 text-sm text-text-secondary transition-colors hover:bg-surface-2"
+                className="h-8 rounded-lg border border-border px-3 text-sm text-text-secondary transition-colors hover:bg-surface-2"
               >
                 {t('reassessCancel')}
               </button>

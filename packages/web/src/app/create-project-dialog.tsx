@@ -77,7 +77,7 @@ export function CreateProjectDialog({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-accent px-4 text-sm font-medium text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97]"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97]"
         >
           <IconPlus className="h-4 w-4" />
           {t('createProject')}
@@ -133,14 +133,14 @@ export function CreateProjectDialog({
             <button
               type="button"
               onClick={close}
-              className="inline-flex h-9 items-center rounded-md border border-border px-4 text-sm text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+              className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-sm text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
             >
               {t('cancel')}
             </button>
             <button
               type="submit"
               disabled={pending || !name.trim()}
-              className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm font-medium text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {pending ? t('submitting') : t('submit')}
             </button>

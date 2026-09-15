@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import type { ChangeLogRow, ChangeType } from '@shipmate/core';
 
-/** changeType → 圆点/徽章配色(计划:P2/P4 时间线,linkage_impact 用 AI 紫微光) */
+/** changeType → 左侧色条/徽章配色(原型 P4 加强:卡片流左侧竖色条,linkage_impact 用 AI 紫微光) */
 const CHANGE_STYLE: Record<ChangeType, { dot: string; badge: string }> = {
   create: {
     dot: 'bg-success',
@@ -52,8 +52,9 @@ function snapshotField(snapshot: unknown, field: string): string | undefined {
 }
 
 /**
- * P4 变更历史时间线:竖线 + 类型圆点,每条 = changeType 徽章 + 快照标题 +
- * 状态流转(from → to)+ reason + 时间;linkage_impact 条目带紫色微光。
+ * P4 变更历史(原型 P4 加强):卡片流,每条 = 白卡 + 左侧类型色条 +
+ * changeType 徽章 + 快照标题 + 状态流转(from → to)+ reason + 时间;
+ * linkage_impact 条目色条带紫色微光。
  */
 export function HistoryTimeline({ changeLogs }: { changeLogs: ChangeLogRow[] }) {
   const t = useTranslations('pointDetail');
@@ -64,7 +65,7 @@ export function HistoryTimeline({ changeLogs }: { changeLogs: ChangeLogRow[] }) 
   }
 
   return (
-    <ol className="relative space-y-5 border-l border-border pl-5">
+    <ol className="flex flex-col gap-3">
       {changeLogs.map((log) => {
         const style = CHANGE_STYLE[log.changeType] ?? CHANGE_STYLE.update;
         const title = snapshotField(log.afterSnapshot, 'title');
@@ -77,7 +78,7 @@ export function HistoryTimeline({ changeLogs }: { changeLogs: ChangeLogRow[] }) 
         const isLinkage = log.changeType === 'linkage_impact';
 
         return (
-          <li key={log.id} className="relative">
+          <li key={log.id} className="flex gap-2.5 rounded-[14px] bg-surface p-4">
             <span
               aria-hidden
               style={
@@ -85,42 +86,44 @@ export function HistoryTimeline({ changeLogs }: { changeLogs: ChangeLogRow[] }) 
                   ? { boxShadow: '0 0 6px 1px color-mix(in srgb, var(--ai) 55%, transparent)' }
                   : undefined
               }
-              className={`absolute -left-[26px] top-1 h-2.5 w-2.5 rounded-full ring-4 ring-surface ${style.dot}`}
+              className={`w-1 shrink-0 self-stretch rounded-full ${style.dot}`}
             />
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${style.badge}`}
-              >
-                {t(`changeType.${log.changeType}`)}
-              </span>
-              {title && <span className="text-sm text-text-primary">{title}</span>}
-              <time className="ml-auto text-xs tabular-nums text-text-muted">
-                {formatTime(log.createdAt)}
-              </time>
-            </div>
-            {statusFlow && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-text-secondary">
-                {tBadge(statusFlow.from)}
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-3 w-3 text-text-muted"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${style.badge}`}
                 >
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
-                {tBadge(statusFlow.to)}
-              </p>
-            )}
-            {log.reason && (
-              <p className="mt-1 text-xs leading-relaxed text-text-muted">
-                {t('historyReason', { reason: log.reason })}
-              </p>
-            )}
+                  {t(`changeType.${log.changeType}`)}
+                </span>
+                {title && <span className="text-sm text-text-primary">{title}</span>}
+                <time className="ml-auto text-xs tabular-nums text-text-muted">
+                  {formatTime(log.createdAt)}
+                </time>
+              </div>
+              {statusFlow && (
+                <p className="mt-1 flex items-center gap-1 text-xs text-text-secondary">
+                  {tBadge(statusFlow.from)}
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-3 w-3 text-text-muted"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                  {tBadge(statusFlow.to)}
+                </p>
+              )}
+              {log.reason && (
+                <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                  {t('historyReason', { reason: log.reason })}
+                </p>
+              )}
+            </div>
           </li>
         );
       })}

@@ -336,7 +336,7 @@ export function RevisionHistoryModal({
         {/* 头部:图标块 + 标题 + 关闭圆钮 */}
         <div className="flex shrink-0 items-center gap-2.5">
           <HeaderIcon />
-          <h2 className="min-w-0 truncate text-base font-bold text-text-primary">
+          <h2 className="min-w-0 truncate text-[17px] font-bold tracking-tight text-text-primary">
             {t('revision.modalTitle')}
           </h2>
           <span className="min-w-0 flex-1" />

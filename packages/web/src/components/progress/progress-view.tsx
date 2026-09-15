@@ -148,8 +148,10 @@ export function ProgressView({
       </div>
 
       {/* 点状态分布 */}
-      <section className="rounded-xl border border-border bg-surface p-4">
-        <h2 className="text-sm font-semibold text-text-primary">{t('pointDistribution')}</h2>
+      <section className="rounded-[14px] bg-surface p-6">
+        <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
+          {t('pointDistribution')}
+        </h2>
         {distTotal === 0 ? (
           <p className="mt-3 text-xs text-text-muted">{t('noPoints')}</p>
         ) : (
@@ -188,9 +190,11 @@ export function ProgressView({
 
       {/* 按需求聚合完成度 */}
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-text-primary">{t('byRequirement')}</h2>
+        <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
+          {t('byRequirement')}
+        </h2>
         {filteredReqs.length === 0 ? (
-          <p className="rounded-xl border border-border bg-surface p-4 text-xs text-text-muted">
+          <p className="rounded-[14px] bg-surface p-6 text-xs text-text-muted">
             {t('noRequirements')}
           </p>
         ) : (
@@ -204,7 +208,7 @@ export function ProgressView({
               return (
                 <article
                   key={req.id}
-                  className="rounded-xl border border-border bg-surface p-4 transition-colors duration-[120ms] hover:border-accent"
+                  className="rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm"
                 >
                   <div className="flex items-center gap-2">
                     <span
@@ -256,8 +260,8 @@ export function ProgressView({
 
       {/* 超期 / 临期清单 */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <section className="rounded-xl border border-border bg-surface p-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+        <section className="rounded-[14px] bg-surface p-6">
+          <h2 className="flex items-center gap-2 text-[15px] font-bold tracking-tight text-text-primary">
             <span className="h-2 w-2 rounded-full bg-danger" aria-hidden />
             {t('overdueList')}
             <span className="text-xs tabular-nums text-text-muted">{overdueReqs.length}</span>
@@ -287,8 +291,8 @@ export function ProgressView({
           )}
         </section>
 
-        <section className="rounded-xl border border-border bg-surface p-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+        <section className="rounded-[14px] bg-surface p-6">
+          <h2 className="flex items-center gap-2 text-[15px] font-bold tracking-tight text-text-primary">
             <span className="h-2 w-2 rounded-full bg-warning" aria-hidden />
             {t('dueSoonList')}
             <span className="text-xs tabular-nums text-text-muted">{dueSoonReqs.length}</span>

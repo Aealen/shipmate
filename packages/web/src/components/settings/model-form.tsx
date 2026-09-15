@@ -89,7 +89,7 @@ export function ModelForm({ initial }: { initial: ModelFormInitial }) {
       }}
       className="space-y-4"
     >
-      <div className="space-y-4 rounded-xl border border-border bg-surface p-5 transition-colors duration-[120ms] hover:border-accent">
+      <div className="space-y-4 rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
         <Field label={t('baseUrl')}>
           <input
             type="text"
@@ -154,7 +154,7 @@ export function ModelForm({ initial }: { initial: ModelFormInitial }) {
         <button
           type="submit"
           disabled={isSaving || isTesting}
-          className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm font-medium text-white transition-[transform,opacity] duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-[transform,opacity] duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSaving ? t('saving') : t('save')}
         </button>
@@ -162,7 +162,7 @@ export function ModelForm({ initial }: { initial: ModelFormInitial }) {
           type="button"
           onClick={handleTest}
           disabled={isSaving || isTesting}
-          className="inline-flex h-9 items-center rounded-md border border-border px-4 text-sm text-text-secondary transition-[transform,border-color,color] duration-[80ms] hover:border-accent hover:text-accent active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center rounded-lg border border-border px-4 py-2 text-sm text-text-secondary transition-[transform,border-color,color] duration-[80ms] hover:border-accent hover:text-accent active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isTesting ? t('testing') : t('test')}
         </button>

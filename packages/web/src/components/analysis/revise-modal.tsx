@@ -449,7 +449,7 @@ export function ReviseModal({
         role="dialog"
         aria-modal="true"
         aria-label={phase === 'preview' ? t('revise.previewTitle') : t('revise.title')}
-        className={`relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-xl transition-all duration-[120ms] ${
+        className={`relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-[14px] bg-surface shadow-xl transition-all duration-[120ms] ${
           shown ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
         } ${phase === 'preview' ? 'max-w-[760px]' : 'max-w-[640px]'}`}
       >
@@ -459,7 +459,7 @@ export function ReviseModal({
             ✨
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold text-text-primary">
+            <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
               {phase === 'preview' ? t('revise.previewTitle') : t('revise.title')}
             </h2>
             <p className="mt-0.5 truncate text-xs text-text-secondary">{subtitle}</p>
@@ -734,7 +734,7 @@ export function ReviseModal({
               <button
                 type="button"
                 disabled
-                className="flex h-9 cursor-not-allowed items-center gap-1.5 rounded-lg bg-accent px-[18px] text-[13.5px] font-medium text-white opacity-60"
+                className="flex h-9 cursor-not-allowed items-center gap-1.5 rounded-full bg-accent px-[18px] text-[13.5px] font-medium text-white opacity-60"
               >
                 <span className="text-sm leading-none" aria-hidden>
                   ✦
@@ -757,7 +757,7 @@ export function ReviseModal({
                   type="button"
                   onClick={start}
                   disabled={startDisabled}
-                  className="flex h-9 items-center gap-1.5 rounded-lg bg-accent px-[18px] text-[13.5px] font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-9 items-center gap-1.5 rounded-full bg-accent px-[18px] text-[13.5px] font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {starting ? (
                     <SparkIcon spinning />
@@ -773,7 +773,7 @@ export function ReviseModal({
                   type="button"
                   onClick={apply}
                   disabled={applying}
-                  className="flex h-9 items-center gap-1.5 rounded-lg bg-accent px-[18px] text-[13.5px] font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-9 items-center gap-1.5 rounded-full bg-accent px-[18px] text-[13.5px] font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span aria-hidden>✓</span>
                   {applying ? t('revise.applying') : t('revise.apply')}

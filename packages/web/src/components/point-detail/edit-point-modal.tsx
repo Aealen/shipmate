@@ -154,7 +154,7 @@ export function EditPointModal({
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-md border border-border px-3 text-sm text-text-secondary transition-colors hover:bg-surface-2"
+            className="h-8 rounded-lg border border-border px-3 text-sm text-text-secondary transition-colors hover:bg-surface-2"
           >
             {t('cancel')}
           </button>
@@ -162,7 +162,7 @@ export function EditPointModal({
             type="button"
             onClick={submit}
             disabled={!canSubmit}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-accent px-3.5 text-sm font-medium text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-accent px-3.5 text-sm font-medium text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? t('submitting') : t('submit')}
           </button>

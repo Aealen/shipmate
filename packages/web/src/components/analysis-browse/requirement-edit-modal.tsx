@@ -180,7 +180,9 @@ export function RequirementEditModal({
           >
             ✏
           </span>
-          <h2 className="min-w-0 flex-1 text-base font-bold text-text-primary">{t('title')}</h2>
+          <h2 className="min-w-0 flex-1 text-[17px] font-bold tracking-tight text-text-primary">
+            {t('title')}
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -310,7 +312,7 @@ export function RequirementEditModal({
             type="button"
             onClick={submit}
             disabled={!canSubmit}
-            className="rounded-lg bg-accent px-4 py-[9px] text-[13px] font-bold text-white transition-opacity duration-[120ms] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full bg-accent px-4 py-[9px] text-[13px] font-bold text-white transition-opacity duration-[120ms] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? t('saving') : t('save')}
           </button>

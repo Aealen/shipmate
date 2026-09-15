@@ -63,9 +63,11 @@ export function ProjectTabs({ id }: { id: string }) {
 }
 
 /**
- * 项目上下文头部,双形态对齐原型:
- * - 概览路由(P2 帧):项目名 24px bold + active 徽章 + 右侧 MCP 提示 + 描述 13px;
- * - 其余路由(P3-P7 帧):紧凑条——项目名 15px bold + active 徽章 + 「项目概览 ›」。
+ * 项目上下文头部,双形态对齐原型(Notion 化):
+ * - 概览路由(P2x 帧):项目名 26px bold tracking-tight + active 徽章 + 右侧
+ *   MCP 提示 + 描述 13px;
+ * - 其余路由(P3-P7 帧):紧凑条——项目名 17px bold tracking-tight + active
+ *   徽章 + 「项目概览 ›」。
  * 两种形态下方均为均分 Tab 组;紧凑形态带底边框线。
  */
 export function ProjectHeader({
@@ -87,7 +89,7 @@ export function ProjectHeader({
     return (
       <div className="flex w-full flex-col gap-2.5 bg-surface px-8 pt-6">
         <div className="flex w-full items-center gap-3">
-          <h1 className="min-w-0 truncate text-2xl font-bold leading-tight text-text-primary">
+          <h1 className="min-w-0 truncate text-[26px] font-bold leading-tight tracking-tight text-text-primary">
             {name}
           </h1>
           <StatusBadge status={status} />
@@ -109,7 +111,7 @@ export function ProjectHeader({
   return (
     <div className="flex w-full flex-col gap-2 bg-surface px-6 pt-3">
       <div className="flex w-full items-center gap-2.5">
-        <h1 className="min-w-0 truncate text-[15px] font-bold leading-tight text-text-primary">
+        <h1 className="min-w-0 truncate text-[17px] font-bold leading-tight tracking-tight text-text-primary">
           {name}
         </h1>
         <StatusBadge status={status} size="sm" />

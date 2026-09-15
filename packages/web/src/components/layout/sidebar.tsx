@@ -261,7 +261,7 @@ function NewGroupModal({ open, onClose }: { open: boolean; onClose: () => void }
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-md border border-border px-3 text-sm text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+            className="rounded-lg border border-border px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
           >
             {tHome('cancel')}
           </button>
@@ -269,7 +269,7 @@ function NewGroupModal({ open, onClose }: { open: boolean; onClose: () => void }
             type="button"
             onClick={submit}
             disabled={!name.trim() || pending}
-            className="h-8 rounded-md bg-accent px-3 text-sm font-medium text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
+            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
           >
             {t('create')}
           </button>

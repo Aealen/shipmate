@@ -64,7 +64,7 @@ export function PointDetailView({
   };
 
   return (
-    <div className="flex w-full flex-col gap-4 p-6">
+    <div className="flex w-full flex-col gap-6 p-6">
       {/* 面包屑:项目 › 模块(只读,未挂模块不渲染) › 需求 › 需求点(需求列表在 P3 分析页) */}
       <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-[13px]">
         <Link
@@ -96,7 +96,7 @@ export function PointDetailView({
         {/* 左栏:标题 + 操作 + 描述 + 溯源 */}
         <div className="flex min-w-0 flex-col gap-5">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="min-w-0 flex-1 text-base font-bold leading-snug text-text-primary">
+            <h1 className="min-w-0 flex-1 text-[20px] font-bold leading-snug tracking-tight text-text-primary">
               {point.title}
             </h1>
             <StatusBadge status={point.status} />
@@ -114,7 +114,7 @@ export function PointDetailView({
                 type="button"
                 onClick={runTransition}
                 disabled={pending}
-                className={`inline-flex h-8 items-center gap-1.5 rounded-[7px] px-3 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:opacity-60 ${transition.btn}`}
+                className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:opacity-60 ${transition.btn}`}
               >
                 ✓ {t(`transition.${transition.labelKey}`)}
               </button>
@@ -122,7 +122,7 @@ export function PointDetailView({
             <button
               type="button"
               onClick={() => setEditOpen(true)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-[7px] bg-accent px-3 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97]"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full bg-accent px-3 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97]"
             >
               ✎ {t('edit')}
             </button>
@@ -135,7 +135,7 @@ export function PointDetailView({
 
           {/* 描述 */}
           <section className="flex flex-col gap-2">
-            <h2 className="text-[13px] font-bold text-text-primary">{t('description')}</h2>
+            <h2 className="text-[15px] font-bold tracking-tight text-text-primary">{t('description')}</h2>
             <p className="whitespace-pre-wrap text-xs leading-relaxed text-text-secondary">
               {point.description || (
                 <span className="text-text-muted">{t('descriptionEmpty')}</span>
@@ -145,7 +145,7 @@ export function PointDetailView({
 
           {/* 溯源依据 */}
           <section className="flex flex-col gap-2">
-            <h2 className="text-[13px] font-bold text-text-primary">{t('evidences')}</h2>
+            <h2 className="text-[15px] font-bold tracking-tight text-text-primary">{t('evidences')}</h2>
             <Evidences evidences={point.evidences ?? []} materialTitles={data.materialTitles} />
           </section>
         </div>
@@ -154,7 +154,7 @@ export function PointDetailView({
         <div className="flex min-w-0 flex-col gap-5">
           <section className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-[13px] font-bold text-text-primary">{t('tasks')}</h2>
+              <h2 className="text-[15px] font-bold tracking-tight text-text-primary">{t('tasks')}</h2>
               {data.tasks.length > 0 && (
                 <span className="text-[11px] text-text-muted">
                   {t('tasksCount', { count: data.tasks.length })}
@@ -165,7 +165,7 @@ export function PointDetailView({
           </section>
 
           <section className="flex flex-col gap-2">
-            <h2 className="text-[13px] font-bold text-text-primary">{t('history')}</h2>
+            <h2 className="text-[15px] font-bold tracking-tight text-text-primary">{t('history')}</h2>
             <HistoryTimeline changeLogs={data.changeLogs} />
           </section>
         </div>

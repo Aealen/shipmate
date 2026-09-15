@@ -242,16 +242,18 @@ export function AnalysisBrowse({
   };
 
   return (
-    <div className="flex w-full flex-col gap-4 p-6">
+    <div className="flex w-full flex-col gap-6 p-6">
       {/* 上半:素材分析记录(白卡包裹 + 灰底批次卡流) */}
-      <section className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-[18px]">
+      <section className="flex flex-col gap-3 rounded-[14px] bg-surface p-6">
         <div className="flex items-center gap-2.5">
-          <h2 className="text-sm font-bold text-text-primary">{t('runsTitle')}</h2>
+          <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
+            {t('runsTitle')}
+          </h2>
           <span className="text-[11px] text-text-muted">{t('runsSubtitle')}</span>
           <span className="min-w-0 flex-1" />
           <Link
             href={newAnalysisHref}
-            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-[7px] bg-ai px-3 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97]"
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-ai px-4 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97]"
           >
             <svg
               viewBox="0 0 24 24"
@@ -292,7 +294,9 @@ export function AnalysisBrowse({
       {/* 下半:需求产出(draft 置灰置顶;有模块时按模块分组,未归类置底) */}
       <section className="flex flex-col gap-3.5">
         <div className="flex items-center gap-2.5">
-          <h2 className="text-sm font-bold text-text-primary">{t('requirementsTitle')}</h2>
+          <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
+            {t('requirementsTitle')}
+          </h2>
           <span className="text-[11px] text-text-muted">{t('reqsSubtitle')}</span>
           <span className="min-w-0 flex-1" />
           {/* P3k:section 行右侧「+ 新建模块」幽灵按钮 */}
@@ -523,7 +527,7 @@ function RequirementBlock({
 
   return (
     <div
-      className={`flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-[18px] transition-colors duration-[120ms] hover:border-accent ${
+      className={`flex flex-col gap-3 rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm ${
         isDraft ? 'opacity-75' : ''
       }`}
     >
@@ -540,7 +544,7 @@ function RequirementBlock({
           >
             {req.priority}
           </span>
-          <span className="min-w-0 truncate text-[15px] font-bold text-text-primary">
+          <span className="min-w-0 truncate text-[17px] font-bold tracking-tight text-text-primary">
             {req.title}
           </span>
           <StatusBadge status={req.status} size="sm" />
@@ -1094,7 +1098,9 @@ function ModuleFormModal({
         >
           <BoxIcon />
         </span>
-        <h2 className="min-w-0 flex-1 text-base font-bold text-text-primary">{title}</h2>
+        <h2 className="min-w-0 flex-1 text-[17px] font-bold tracking-tight text-text-primary">
+          {title}
+        </h2>
         <button
           type="button"
           onClick={onClose}
@@ -1152,7 +1158,7 @@ function ModuleFormModal({
           type="button"
           onClick={submit}
           disabled={!canSubmit}
-          className="rounded-lg bg-accent px-4 py-[9px] text-[13px] font-bold text-white transition-opacity duration-[120ms] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-full bg-accent px-4 py-[9px] text-[13px] font-bold text-white transition-opacity duration-[120ms] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? tm(mode === 'create' ? 'creating' : 'saving') : tm(mode === 'create' ? 'create' : 'save')}
         </button>
@@ -1207,7 +1213,7 @@ function ModuleDeleteDialog({
           🗑
         </span>
         <span className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-base font-semibold leading-tight text-danger">
+          <span className="text-[17px] font-semibold leading-tight tracking-tight text-danger">
             {tm('deleteTitle')}
           </span>
           <span className="truncate text-xs leading-tight text-text-secondary">{module.name}</span>

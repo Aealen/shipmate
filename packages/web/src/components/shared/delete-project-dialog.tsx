@@ -21,10 +21,10 @@ interface CascadeStats {
 const ANIM_MS = 120;
 
 /**
- * 删除项目确认弹窗(P2c 帧 OGmiv):红系头部(🗑/标题/副题)→ 红色警示条
- * (项目名 + 五项统计红色大数字)→ 蓝色审计保障条 → 「输入项目名称以确认」
- * 精确匹配解锁删除按钮 → 取消 / 🗑 永久删除。
- * 打开时才并行取数(getProject / listTasks / listAnalysisRuns)。
+ * 删除项目确认弹窗(P2c 加强帧,Notion 化标题层级):红系头部(🗑/标题 17px
+ * bold tracking-tight/副题)→ 红色警示条(项目名 + 五项统计红色大数字)→
+ * 蓝色审计保障条 → 「输入项目名称以确认」精确匹配解锁删除按钮 →
+ * 取消 / 🗑 永久删除。打开时才并行取数(getProject / listTasks / listAnalysisRuns)。
  */
 export function DeleteProjectDialog({
   projectId,
@@ -132,7 +132,7 @@ export function DeleteProjectDialog({
         role="dialog"
         aria-modal="true"
         aria-label={t('title')}
-        className={`relative flex max-h-[80vh] w-full max-w-[560px] flex-col overflow-hidden rounded-2xl bg-surface shadow-xl transition-all duration-[120ms] ${
+        className={`relative flex max-h-[80vh] w-full max-w-[560px] flex-col overflow-hidden rounded-[14px] bg-surface shadow-xl transition-all duration-[120ms] ${
           shown ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
         }`}
       >
@@ -142,7 +142,9 @@ export function DeleteProjectDialog({
             🗑
           </span>
           <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-base font-semibold leading-tight text-danger">{t('title')}</span>
+            <span className="text-[17px] font-bold leading-tight tracking-tight text-danger">
+              {t('title')}
+            </span>
             <span className="text-xs leading-tight text-text-secondary">{t('subtitle')}</span>
           </span>
         </div>

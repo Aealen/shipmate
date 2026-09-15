@@ -21,9 +21,9 @@ export default async function ModelSettingsPage() {
   const all = await getSettings().catch(() => ({}) as Record<string, unknown>);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <header>
-        <h1 className="text-lg font-semibold text-text-primary">{t('title')}</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-text-primary">{t('title')}</h1>
         <p className="mt-1 text-sm text-text-secondary">{t('description')}</p>
       </header>
       <ModelForm initial={toInitial(all)} />

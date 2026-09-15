@@ -6,10 +6,10 @@ import { getProject } from '@/actions/projects';
 import { StatCard } from '@/components/shared/stat-card';
 
 /**
- * P2 项目概览(对齐原型帧):五张统计卡一行(需求/需求点/已确认/开发中/
- * 已超期)+ 整宽「最近动态」卡——行式条目(类型圆点 + 类型徽章 + 详情 +
- * actor + 时间四要素同行)。时间线:linkage_impact 徽章微光警示;条目
- * stagger 40ms 滑入 180ms(spec §14)。
+ * P2 项目概览(Notion 化,对齐原型加强帧 P2x):五张统计卡一行(需求/需求点/
+ * 已确认/开发中/已超期)+ 整宽「最近动态」卡(圆角 14 无边框)——行式条目
+ * (类型圆点 + 类型徽章 + 详情 + actor + 时间四要素同行)。时间线:linkage_impact
+ * 徽章微光警示;条目 stagger 40ms 滑入 180ms(spec §14)。
  */
 export default async function ProjectOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -28,7 +28,7 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
   const pointTotal = Object.values(pointStatusCounts).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="flex w-full flex-col gap-4 p-8">
+    <div className="flex w-full flex-col gap-6 p-8">
       {/* spec §14 时间线动画 keyframes(仅本页使用,随页面注入) */}
       <style href="project-overview-anim" precedence="default">{`
         @keyframes timeline-enter {
@@ -61,9 +61,11 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
         />
       </div>
 
-      <section className="flex w-full flex-col gap-2.5 rounded-[10px] border border-border bg-surface p-[18px]">
+      <section className="flex w-full flex-col gap-2.5 rounded-[14px] bg-surface p-6">
         <div className="flex w-full items-center gap-2">
-          <h2 className="text-sm font-bold text-text-primary">{t('recentChanges')}</h2>
+          <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
+            {t('recentChanges')}
+          </h2>
           <span className="min-w-0 flex-1" />
           {recentChanges.length > 0 && (
             <Link

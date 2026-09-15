@@ -585,9 +585,10 @@ export function DraftBlock({
   const c = block.conflict;
 
   return (
+    // 白卡容器(原型 P3c 加强:无框白卡坐暖纸底;未勾选保留虚线 + 半透明)
     <div
-      className={`group rounded-xl border bg-surface p-4 transition-all duration-[120ms] hover:border-accent ${
-        block.selected ? 'border-border' : 'border-dashed border-border opacity-55'
+      className={`group rounded-[14px] bg-surface p-5 transition-shadow duration-[120ms] hover:shadow-sm ${
+        block.selected ? 'border border-transparent' : 'border border-dashed border-border opacity-55'
       }`}
     >
       <div className="flex items-start gap-2.5">
@@ -601,7 +602,7 @@ export function DraftBlock({
             value={block.title}
             onChange={(e) => onChange({ title: e.target.value })}
             placeholder={t('block.titleLabel')}
-            className="w-full rounded-md bg-transparent text-[15px] font-medium text-text-primary outline-none transition-colors placeholder:text-text-muted hover:bg-surface-2/60 focus:bg-surface-2/60"
+            className="w-full rounded-md bg-transparent text-[17px] font-bold tracking-tight text-text-primary outline-none transition-colors placeholder:text-text-muted hover:bg-surface-2/60 focus:bg-surface-2/60"
           />
           <input
             value={block.summary}
@@ -717,7 +718,7 @@ export function DraftBlock({
       )}
 
       <div className="mt-3">
-        <p className="text-xs font-medium text-text-muted">
+        <p className="text-[15px] font-bold tracking-tight text-text-muted">
           {t('block.pointsTitle')} ({block.points.length})
         </p>
         <div className="mt-1 space-y-0.5">
@@ -772,9 +773,10 @@ export function SupplementBlock({
   const t = useTranslations('analysis');
 
   return (
+    // 白卡容器(原型 P3c 加强:无框白卡坐暖纸底;未勾选保留虚线 + 半透明)
     <div
-      className={`rounded-xl border bg-surface p-4 transition-all duration-[120ms] hover:border-accent ${
-        supp.selected ? 'border-border' : 'border-dashed border-border opacity-55'
+      className={`rounded-[14px] bg-surface p-5 transition-shadow duration-[120ms] hover:shadow-sm ${
+        supp.selected ? 'border border-transparent' : 'border border-dashed border-border opacity-55'
       }`}
     >
       <div className="flex items-start gap-2.5">
@@ -788,7 +790,7 @@ export function SupplementBlock({
             <span className="inline-flex shrink-0 items-center rounded-full bg-[color-mix(in_srgb,var(--ai)_12%,transparent)] px-2 py-0.5 text-[11px] font-medium text-ai">
               {t('conflict.supplement')}
             </span>
-            <span className="min-w-0 truncate text-[15px] font-medium text-text-primary">
+            <span className="min-w-0 truncate text-[17px] font-bold tracking-tight text-text-primary">
               {supp.targetTitle}
             </span>
             {existing && <StatusBadge status={existing.status} size="sm" />}
@@ -814,7 +816,7 @@ export function SupplementBlock({
 
       {existing && existing.points.length > 0 && (
         <div className="mt-3">
-          <p className="text-xs font-medium text-text-muted">
+          <p className="text-[15px] font-bold tracking-tight text-text-muted">
             {t('supplement.existingPoints')} ({existing.points.length})
           </p>
           <ul className="mt-1 space-y-0.5">
@@ -834,7 +836,7 @@ export function SupplementBlock({
       )}
 
       <div className="mt-3">
-        <p className="text-xs font-medium text-text-muted">
+        <p className="text-[15px] font-bold tracking-tight text-text-muted">
           {t('supplement.newPoints')} ({supp.points.length})
         </p>
         <div className="mt-1 space-y-0.5">

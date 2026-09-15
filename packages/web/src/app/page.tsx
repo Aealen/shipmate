@@ -11,7 +11,7 @@ const MS_PER_HOUR = 3_600_000;
 const MS_PER_DAY = 86_400_000;
 
 /**
- * P1 项目首页(对齐原型):页头(标题 22px + 「N 个项目 · M 个分组」统计 +
+ * P1 项目首页(对齐原型):页头(标题 26px + 「N 个项目 · M 个分组」统计 +
  * 新建项目)+ 全宽两列卡片栅格。卡片:名称 + 分组徽章 / 描述 / 需求完成度
  * 进度条 / 需求点状态圆点行 / 相对时间 + 「进入项目 ›」。
  * 侧栏分组行经 /?group=<id>|none 过滤;全局无项目时空状态引导 + 创建弹窗。
@@ -74,7 +74,7 @@ export default async function HomePage({
   return (
     <div className="flex w-full flex-col gap-5 p-8">
       <div className="flex items-center gap-3">
-        <h1 className="text-[22px] font-bold leading-tight text-text-primary">{heading}</h1>
+        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-text-primary">{heading}</h1>
         <span className="text-[13px] text-text-muted">{groupCountLabel}</span>
         <span className="min-w-0 flex-1" />
         {allProjects.length > 0 && <CreateProjectDialog groups={groupOptions} />}
@@ -125,7 +125,7 @@ export default async function HomePage({
   );
 }
 
-/** 项目卡片(原型 P1):整卡可点;完成度条 accent 填充;hover 边框 accent 120ms */
+/** 项目卡片(Notion 化):整卡可点;完成度条 accent 填充;hover 阴影 120ms */
 function ProjectCard({
   id,
   name,
@@ -164,10 +164,10 @@ function ProjectCard({
   return (
     <Link
       href={`/project/${id}`}
-      className="group flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-5 transition-colors duration-[120ms] hover:border-accent"
+      className="group flex flex-col gap-3 rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm"
     >
       <div className="flex items-center gap-2.5">
-        <h3 className="min-w-0 truncate text-[15px] font-bold text-text-primary">{name}</h3>
+        <h3 className="min-w-0 truncate text-[17px] font-bold tracking-tight text-text-primary">{name}</h3>
         <span className="min-w-0 flex-1" />
         {groupName && (
           <span className="shrink-0 rounded-[5px] bg-surface-2 px-2 py-[3px] text-[11px] leading-none text-text-secondary">

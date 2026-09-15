@@ -5,13 +5,13 @@ export default async function ProfileSettingsPage() {
   const t = await getTranslations('settings.profile');
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <header>
-        <h1 className="text-lg font-semibold text-text-primary">{t('title')}</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-text-primary">{t('title')}</h1>
         <p className="mt-1 text-sm text-text-secondary">{t('description')}</p>
       </header>
 
-      <section className="rounded-xl border border-border bg-surface p-5 transition-colors duration-[120ms] hover:border-accent">
+      <section className="rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
         <div className="flex items-center gap-4">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-dim text-lg font-semibold text-accent">
             S

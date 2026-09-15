@@ -14,16 +14,16 @@ export default async function DataSettingsPage() {
   const t = await getTranslations('settings.data');
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <header>
-        <h1 className="text-lg font-semibold text-text-primary">{t('title')}</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-text-primary">{t('title')}</h1>
         <p className="mt-1 text-sm text-text-secondary">{t('description')}</p>
       </header>
 
       {/* 备份 */}
-      <section className="rounded-xl border border-border bg-surface p-5 transition-colors duration-[120ms] hover:border-accent">
+      <section className="rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-medium text-text-primary">{t('backupTitle')}</h2>
+          <h2 className="text-[15px] font-bold tracking-tight text-text-primary">{t('backupTitle')}</h2>
           <CopyButton text={BACKUP_COMMAND} />
         </div>
         <p className="mt-2 text-xs leading-relaxed text-text-secondary">{t('backupDesc')}</p>
@@ -33,15 +33,15 @@ export default async function DataSettingsPage() {
       </section>
 
       {/* 导出 */}
-      <section className="rounded-xl border border-border bg-surface p-5 transition-colors duration-[120ms] hover:border-accent">
-        <h2 className="text-sm font-medium text-text-primary">{t('exportTitle')}</h2>
+      <section className="rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
+        <h2 className="text-[15px] font-bold tracking-tight text-text-primary">{t('exportTitle')}</h2>
         <p className="mt-2 text-xs leading-relaxed text-text-secondary">{t('exportDesc')}</p>
       </section>
 
       {/* 危险区:置灰占位,操作未开放 */}
-      <section className="rounded-xl border border-danger/40 bg-surface p-5">
+      <section className="rounded-[14px] border border-danger/40 bg-surface p-6">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-medium text-danger">{t('dangerTitle')}</h2>
+          <h2 className="text-[15px] font-bold tracking-tight text-danger">{t('dangerTitle')}</h2>
           <span className="inline-flex items-center rounded-full bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] px-2 py-0.5 text-[11px] font-medium text-danger">
             {t('comingSoon')}
           </span>
@@ -73,7 +73,7 @@ function DangerRow({ label, comingSoon }: { label: string; comingSoon: string })
         type="button"
         disabled
         title={comingSoon}
-        className="inline-flex h-7 shrink-0 cursor-not-allowed items-center rounded-md border border-border bg-surface px-2.5 text-xs text-text-muted opacity-60"
+        className="inline-flex h-7 shrink-0 cursor-not-allowed items-center rounded-lg border border-border bg-surface px-2.5 text-xs text-text-muted opacity-60"
       >
         {comingSoon}
       </button>

@@ -72,9 +72,12 @@ export function MaterialPanel({
   }
 
   return (
-    <section className="flex min-h-0 w-[380px] shrink-0 flex-col rounded-xl border border-border bg-surface">
+    // 面板外壳透明(原型 P3c 加强:左右栏为暖纸底上的透明分区,内容卡为白卡)
+    <section className="flex min-h-0 w-[380px] shrink-0 flex-col">
       <header className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold text-text-primary">{t('materialSection')}</h2>
+        <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
+          {t('materialSection')}
+        </h2>
         <span className="text-xs text-text-muted">
           {t('materialCount', { count: materials.length })}
         </span>
@@ -141,7 +144,7 @@ export function MaterialPanel({
               type="button"
               onClick={submit}
               disabled={!content.trim() || adding}
-              className="h-8 rounded-md bg-accent px-3.5 text-xs font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-8 rounded-full bg-accent px-3.5 text-xs font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {adding ? t('addMaterial.submitting') : t('addMaterial.submit')}
             </button>
@@ -154,7 +157,7 @@ export function MaterialPanel({
           type="button"
           onClick={onStart}
           disabled={!canStart}
-          className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-ai text-sm font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-ai text-sm font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <SparkIcon spinning={analyzing} />
           {analyzing ? t('analyzing') : t('startAnalysis')}
@@ -262,7 +265,7 @@ function MaterialCard({
           type="button"
           onClick={() => setEditing(false)}
           disabled={saving}
-          className="h-7 rounded-md border border-border px-3 text-xs text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-7 rounded-lg border border-border px-3 text-xs text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t('cancel')}
         </button>
@@ -270,7 +273,7 @@ function MaterialCard({
           type="button"
           onClick={save}
           disabled={contentEmpty || saving}
-          className="h-7 rounded-md bg-accent px-3.5 text-xs font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-7 rounded-full bg-accent px-3.5 text-xs font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? t('materialSaving') : t('block.save')}
         </button>

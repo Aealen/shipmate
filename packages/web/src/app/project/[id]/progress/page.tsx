@@ -24,10 +24,10 @@ export default async function ProgressPage({ params }: { params: Promise<{ id: s
   if (!summary) notFound();
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
       <header className="flex flex-col gap-0.5">
         <p className="text-xs text-text-muted">{summary.project.name}</p>
-        <h1 className="text-lg font-semibold text-text-primary">{t('title')}</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-text-primary">{t('title')}</h1>
       </header>
       <ProgressView modules={modules} reqs={reqs} points={points} />
     </div>

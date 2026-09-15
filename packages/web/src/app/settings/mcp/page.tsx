@@ -23,26 +23,30 @@ const CLI_COMMAND = 'claude mcp add shipmate -- node --import tsx packages/mcp/s
 const HTTP_ENDPOINT = 'http://localhost:47610/api/mcp';
 
 /**
- * P7 MCP 接入页(对齐原型帧):页头大标题 + HTTP / stdio 双卡并排
- * (HTTP 带推荐徽章与端点框;stdio 深底 JSON 块),均带复制按钮
- * (「已复制 ✓」1.5s 回落)。CLI 快捷命令为计划补充项,置于双卡下方。
- * 静态展示页,不取数。
+ * P7 MCP 接入页(Notion 化,对齐原型加强帧):页头大标题 26px + HTTP / stdio
+ * 双卡并排(圆角 14 无边框;HTTP 带推荐徽章与端点框;stdio 深底 JSON 块),
+ * 均带复制按钮(「已复制 ✓」1.5s 回落)。CLI 快捷命令为计划补充项,置于双卡
+ * 下方。静态展示页,不取数。
  */
 export default async function McpSettingsPage() {
   const t = await getTranslations('settings.mcp');
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
-        <h1 className="text-[22px] font-bold leading-tight text-text-primary">{t('title')}</h1>
+        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-text-primary">
+          {t('title')}
+        </h1>
         <p className="text-[13px] leading-snug text-text-secondary">{t('description')}</p>
       </header>
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         {/* HTTP streamable */}
-        <section className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-[18px]">
+        <section className="flex flex-col gap-3 rounded-[14px] bg-surface p-6">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-text-primary">{t('httpTitle')}</h2>
+            <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
+              {t('httpTitle')}
+            </h2>
             <span className="inline-flex shrink-0 items-center rounded-[4px] bg-accent-dim px-[7px] py-[2px] text-[10px] font-bold leading-none text-accent">
               {t('httpRecommended')}
             </span>
@@ -61,9 +65,11 @@ export default async function McpSettingsPage() {
         </section>
 
         {/* stdio 传输 */}
-        <section className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-[18px]">
+        <section className="flex flex-col gap-3 rounded-[14px] bg-surface p-6">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-text-primary">{t('stdioTitle')}</h2>
+            <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
+              {t('stdioTitle')}
+            </h2>
             <span className="min-w-0 flex-1" />
             <CopyButton text={STDIO_CONFIG} />
           </div>
@@ -75,9 +81,11 @@ export default async function McpSettingsPage() {
       </div>
 
       {/* Claude Code 快捷命令(计划补充项) */}
-      <section className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-[18px]">
+      <section className="flex flex-col gap-3 rounded-[14px] bg-surface p-6">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-bold text-text-primary">{t('cliTitle')}</h2>
+          <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
+            {t('cliTitle')}
+          </h2>
           <span className="min-w-0 flex-1" />
           <CopyButton text={CLI_COMMAND} />
         </div>

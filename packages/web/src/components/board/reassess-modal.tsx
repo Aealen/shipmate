@@ -102,7 +102,7 @@ export function ReassessModal({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm text-text-secondary transition-colors duration-[120ms] hover:bg-surface-2"
+            className="inline-flex h-8 items-center rounded-lg border border-border px-3 text-sm text-text-secondary transition-colors duration-[120ms] hover:bg-surface-2"
           >
             {t('reassessCancel')}
           </button>
@@ -110,7 +110,7 @@ export function ReassessModal({
             type="button"
             onClick={handleConfirm}
             disabled={submitting}
-            className="inline-flex h-8 items-center rounded-md bg-accent px-3.5 text-sm font-medium text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:opacity-60"
+            className="inline-flex h-8 items-center rounded-full bg-accent px-4 text-sm font-medium text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:opacity-60"
           >
             {t('confirmReassess')}
           </button>

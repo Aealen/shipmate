@@ -69,12 +69,12 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`relative flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl border border-border bg-surface shadow-xl transition-all duration-[120ms] ${
+        className={`relative flex max-h-[85vh] w-full max-w-lg flex-col rounded-[14px] bg-surface shadow-xl transition-all duration-[120ms] ${
           shown ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
         }`}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-          <h2 className="text-[15px] font-semibold text-text-primary">{title}</h2>
+          <h2 className="text-[15px] font-bold tracking-tight text-text-primary">{title}</h2>
           <button
             type="button"
             onClick={onClose}

@@ -55,9 +55,10 @@ function actorKindOf(actor: string): ActorKind {
 }
 
 /**
- * P6 审计页(对齐原型帧):四统计卡一行 + 操作者分布(行式条形)+
- * 实体分布 + 每日趋势(纯 div 柱图)+ 筛选 + 全宽行式时间线。
- * 数据由服务端 getProjectAuditReport 一次性取回,筛选纯客户端完成。
+ * P6 审计页(Notion 化,对齐原型加强帧 P6x):四统计卡一行 + 操作者分布
+ * (行式条形)+ 实体分布 + 每日趋势(纯 div 柱图)+ 筛选 + 全宽行式时间线,
+ * 卡片统一圆角 14 无边框。数据由服务端 getProjectAuditReport 一次性取回,
+ * 筛选纯客户端完成。
  */
 export function AuditView({ report }: { report: AuditReport }) {
   const t = useTranslations('audit');
@@ -98,7 +99,7 @@ export function AuditView({ report }: { report: AuditReport }) {
   );
 
   return (
-    <div className="flex w-full flex-col gap-4 p-6">
+    <div className="flex w-full flex-col gap-6 p-6">
       {/* 四统计卡 */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard label={t('statTotalChanges')} value={total} />
@@ -116,7 +117,7 @@ export function AuditView({ report }: { report: AuditReport }) {
         />
       </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="flex min-w-0 flex-col gap-4">
           {/* 筛选:实体类型 / 操作者 */}
           <div className="flex flex-wrap items-center gap-3">
@@ -156,7 +157,7 @@ export function AuditView({ report }: { report: AuditReport }) {
           </div>
 
           {/* 时间线(全宽白卡,行式条目) */}
-          <section className="flex flex-col gap-2.5 rounded-[10px] border border-border bg-surface p-[18px]">
+          <section className="flex flex-col gap-2.5 rounded-[14px] bg-surface p-6">
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center gap-1.5 py-12 text-center">
                 <p className="text-sm text-text-secondary">
@@ -176,8 +177,10 @@ export function AuditView({ report }: { report: AuditReport }) {
 
         {/* 右侧统计列 */}
         <aside className="flex min-w-0 flex-col gap-4">
-          <section className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-[18px]">
-            <h3 className="text-[13px] font-bold text-text-primary">{t('statsActor')}</h3>
+          <section className="flex flex-col gap-3 rounded-[14px] bg-surface p-6">
+            <h3 className="text-[15px] font-bold tracking-tight text-text-primary">
+              {t('statsActor')}
+            </h3>
             {(['human', 'ai', 'mcp'] as const).map((kind) => (
               <BarRow
                 key={kind}
@@ -190,8 +193,10 @@ export function AuditView({ report }: { report: AuditReport }) {
             ))}
           </section>
 
-          <section className="flex flex-col gap-2.5 rounded-[10px] border border-border bg-surface p-[18px]">
-            <h3 className="text-[13px] font-bold text-text-primary">{t('statsEntity')}</h3>
+          <section className="flex flex-col gap-2.5 rounded-[14px] bg-surface p-6">
+            <h3 className="text-[15px] font-bold tracking-tight text-text-primary">
+              {t('statsEntity')}
+            </h3>
             {Object.keys(report.entityTypeDistribution).length === 0 ? (
               <p className="text-xs text-text-muted">{t('statsEmpty')}</p>
             ) : (
@@ -208,8 +213,10 @@ export function AuditView({ report }: { report: AuditReport }) {
             )}
           </section>
 
-          <section className="flex flex-col gap-2.5 rounded-[10px] border border-border bg-surface p-[18px]">
-            <h3 className="text-[13px] font-bold text-text-primary">{t('statsDaily')}</h3>
+          <section className="flex flex-col gap-2.5 rounded-[14px] bg-surface p-6">
+            <h3 className="text-[15px] font-bold tracking-tight text-text-primary">
+              {t('statsDaily')}
+            </h3>
             <DailyBars counts={report.dailyCounts} emptyText={t('statsEmpty')} />
           </section>
         </aside>

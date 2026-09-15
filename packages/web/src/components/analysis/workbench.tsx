@@ -435,7 +435,7 @@ export function AnalysisWorkbench({
   const reviseBlock = reviseTarget ? blocks[reviseTarget.blockIndex] : undefined;
 
   return (
-    <div className="flex h-full flex-col gap-4 p-6">
+    <div className="flex h-full flex-col gap-6 p-6">
       <style>{WORKBENCH_CSS}</style>
 
       <header className="flex shrink-0 items-center gap-3">
@@ -457,14 +457,16 @@ export function AnalysisWorkbench({
           </svg>
           {t('back')}
         </Link>
-        <h1 className="text-lg font-semibold text-text-primary">{t('title')}</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-text-primary">
+          {t('title')}
+        </h1>
         {runStatus && <RunStatusBadge status={runStatus} />}
         {run?.run.title && (
           <span className="min-w-0 truncate text-xs text-text-muted">{run.run.title}</span>
         )}
       </header>
 
-      <div className="flex min-h-0 flex-1 gap-4">
+      <div className="flex min-h-0 flex-1 gap-6">
         <MaterialPanel
           materials={materials}
           runStatus={runStatus}
@@ -517,7 +519,7 @@ export function AnalysisWorkbench({
           <button
             type="button"
             onClick={() => setConfirmOpen(false)}
-            className="h-8 rounded-md border border-border px-3 text-xs text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+            className="h-8 rounded-lg border border-border px-3 text-xs text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
           >
             {t('cancel')}
           </button>
@@ -525,7 +527,7 @@ export function AnalysisWorkbench({
             type="button"
             onClick={handleConfirmApply}
             disabled={applying}
-            className="h-8 rounded-md bg-accent px-3 text-xs font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
+            className="h-8 rounded-full bg-accent px-3 text-xs font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
           >
             {applying ? t('applying') : t('confirmApply')}
           </button>

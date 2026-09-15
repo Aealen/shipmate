@@ -51,8 +51,8 @@ export function TaskCard({
           ? () => router.push(`/project/${projectId}/points/${task.requirementPointId}`)
           : undefined
       }
-      className={`relative flex cursor-grab flex-col gap-2 rounded-[9px] border border-border bg-surface p-3 shadow-sm transition-all duration-[120ms] active:cursor-grabbing ${
-        dragging ? 'scale-[1.02] opacity-60 shadow-xl' : 'hover:border-accent'
+      className={`relative flex cursor-grab flex-col gap-2 rounded-[9px] bg-surface p-3 transition-all duration-[120ms] active:cursor-grabbing ${
+        dragging ? 'scale-[1.02] opacity-60 shadow-xl' : 'hover:shadow-sm'
       } ${needsReassess ? 'cursor-pointer' : ''}`}
     >
       {/* 原型 P5:重估卡顶部 2px 橙色警示条 */}
@@ -81,7 +81,7 @@ export function TaskCard({
             e.stopPropagation();
             onConfirmReassess(task);
           }}
-          className="mt-0.5 inline-flex h-7 w-full shrink-0 items-center justify-center rounded-[6px] bg-accent px-2 text-[11px] font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97]"
+          className="mt-0.5 inline-flex h-7 w-full shrink-0 items-center justify-center rounded-full bg-accent px-4 text-[11px] font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97]"
         >
           {t('confirmReassess')}
         </button>

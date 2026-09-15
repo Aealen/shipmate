@@ -1,6 +1,6 @@
 /**
  * 统计卡(对齐原型 P2/P6 帧):白底圆角无边框,数值 20px bold(可配色)+
- * 标签 11px 灰,hover 边框 accent 120ms(spec §14)。纯展示组件,无需客户端指令。
+ * 标签 11px 灰,hover 阴影 120ms(spec §14)。纯展示组件,无需客户端指令。
  */
 export function StatCard({
   label,
@@ -15,7 +15,7 @@ export function StatCard({
   hint?: string;
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-[10px] border border-border bg-surface p-3.5 transition-colors duration-[120ms] hover:border-accent">
+    <div className="flex flex-col gap-1 rounded-[14px] bg-surface p-4 transition-shadow duration-[120ms] hover:shadow-sm">
       <p className="text-xl font-bold tabular-nums leading-tight">
         <span className={valueClassName}>{value}</span>
       </p>

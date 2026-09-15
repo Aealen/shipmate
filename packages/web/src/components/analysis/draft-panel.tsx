@@ -59,10 +59,11 @@ export function DraftPanel({
     blocks.filter((b) => b.selected).length + supps.filter((s) => s.selected).length;
 
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-border bg-surface">
+    // 面板外壳透明(原型 P3c 加强:左右栏为暖纸底上的透明分区,草稿块为白卡)
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-text-primary">{t('title')}</h2>
+          <h2 className="text-[15px] font-bold tracking-tight text-text-primary">{t('title')}</h2>
           {hasDraft && !analyzing && (
             <p className="mt-0.5 text-xs text-text-muted">
               {t('draftSummary', { requirements: blocks.length, supplements: supps.length })}
@@ -80,7 +81,7 @@ export function DraftPanel({
               type="button"
               onClick={onApply}
               disabled={applyDisabled}
-              className="h-8 rounded-md bg-accent px-3.5 text-xs font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-8 rounded-full bg-accent px-3.5 text-xs font-medium text-white transition-all duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {applying ? t('applying') : t('apply')}
             </button>
