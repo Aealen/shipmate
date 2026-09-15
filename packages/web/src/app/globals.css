@@ -5,41 +5,42 @@
 
 /*
  * 设计 tokens —— light 默认 + .dark 覆盖。
- * 取值与 shipmate.pen 原型一致(计划 2026-09-11-web-package.md 双主题对照表)。
- * 注:dark 的 --danger 计划表中为「#E5696」(5 位,不完整),按 6 位补全为 #E56966。
+ * 设计语言:Notion 风(DESIGN.md,`npx getdesign add notion`)——暖纸底画布、
+ * 暖灰文字阶、hairline 分隔、单一结构蓝;语义色(success/warning/danger/ai)不变。
+ * 取值与 shipmate.pen 原型变量同步(2026-09-15 Notion 化)。
  */
 :root {
-  --bg: #f5f7fb;
+  --bg: #f6f5f4;
   --surface: #ffffff;
-  --surface-2: #f0f3f9;
-  --border: #e3e8f0;
-  --text-primary: #1a2030;
-  --text-secondary: #5a6478;
-  --text-muted: #8b94a8;
-  --accent: #3b6fe0;
-  --accent-dim: rgba(59, 111, 224, 0.12);
+  --surface-2: #f0efed;
+  --border: #e6e4e1;
+  --text-primary: #20201e;
+  --text-secondary: #57534e;
+  --text-muted: #8a8580;
+  --accent: #0075de;
+  --accent-dim: rgba(0, 117, 222, 0.1);
   --success: #2fa36b;
   --warning: #e0a03b;
   --danger: #d9534f;
   --ai: #7c5cbf;
-  --draft-gray: #9aa0ac;
+  --draft-gray: #8a8580;
 }
 
 .dark {
-  --bg: #171a21;
-  --surface: #1f2430;
-  --surface-2: #262c3a;
-  --border: #303748;
-  --text-primary: #e8ecf4;
-  --text-secondary: #9aa4b8;
-  --text-muted: #6b7488;
-  --accent: #5b8def;
-  --accent-dim: rgba(91, 141, 239, 0.16);
+  --bg: #191817;
+  --surface: #21201e;
+  --surface-2: #2a2926;
+  --border: #383632;
+  --text-primary: #e9e7e3;
+  --text-secondary: #a8a49d;
+  --text-muted: #7a766f;
+  --accent: #3d93f0;
+  --accent-dim: rgba(61, 147, 240, 0.14);
   --success: #4cc38a;
   --warning: #e8b45a;
   --danger: #e56966;
   --ai: #9b7fe8;
-  --draft-gray: #6b7280;
+  --draft-gray: #7a766f;
 }
 
 /* 映射为 Tailwind 工具类:bg-bg / bg-surface / border-border / text-text-primary /
