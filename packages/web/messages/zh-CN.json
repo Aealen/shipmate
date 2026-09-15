@@ -493,6 +493,17 @@
       "streamWriting": "重写中… 已输出 {count} 字",
       "cancelRevise": "取消修订",
       "cancelToast": "已取消修订"
+    },
+    "materialModal": {
+      "meta": "{type} · {chars} 字 · 录入于 {time}",
+      "edit": "编辑",
+      "editTitle": "编辑素材",
+      "editHint": "修改后可重新分析;原文为空将无法保存。",
+      "titleLabel": "素材标题(可选)",
+      "titlePlaceholder": "输入素材标题,如:09-12 上线对齐会",
+      "bodyLabel": "素材原文",
+      "save": "保存修改",
+      "close": "关闭"
     }
   },
   "browse": {

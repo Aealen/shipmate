@@ -33,6 +33,7 @@ export function DraftPanel({
   onSuppsChange,
   onApply,
   onRevise,
+  onOpenMaterialByName,
 }: {
   blocks: DraftBlockState[];
   supps: SupplementBlockState[];
@@ -52,6 +53,8 @@ export function DraftPanel({
   onApply: () => void;
   /** 打开 AI 修订弹窗(块下标 + 点下标,null = 整块);补充块不参与(core 仅支持 requirements) */
   onRevise: (blockIndex: number, pointIndex: number | null) => void;
+  /** 点击来源素材名打开素材 Modal(workbench 按名反查) */
+  onOpenMaterialByName?: (name: string) => void;
 }) {
   const t = useTranslations('analysis');
   const hasDraft = blocks.length > 0 || supps.length > 0;
@@ -116,6 +119,7 @@ export function DraftPanel({
                   modules={modules}
                   onCreateModule={onCreateModule}
                   materialTitles={materialTitles}
+                  onOpenMaterialName={onOpenMaterialByName}
                   onChange={(patch) =>
                     onBlocksChange(blocks.map((q) => (q.key === b.key ? { ...q, ...patch } : q)))
                   }
@@ -134,6 +138,7 @@ export function DraftPanel({
                   supp={s}
                   existing={existingByTitle.get(s.targetTitle)}
                   materialTitles={materialTitles}
+                  onOpenMaterialName={onOpenMaterialByName}
                   onChange={(patch) =>
                     onSuppsChange(supps.map((q) => (q.key === s.key ? { ...q, ...patch } : q)))
                   }

@@ -493,6 +493,17 @@
       "streamWriting": "Rewriting… {count} chars written",
       "cancelRevise": "Cancel revision",
       "cancelToast": "Revision canceled"
+    },
+    "materialModal": {
+      "meta": "{type} · {chars} chars · added {time}",
+      "edit": "Edit",
+      "editTitle": "Edit Material",
+      "editHint": "Re-run the analysis after editing; empty content cannot be saved.",
+      "titleLabel": "Material title (optional)",
+      "titlePlaceholder": "e.g. Launch kickoff 09-12",
+      "bodyLabel": "Raw content",
+      "save": "Save changes",
+      "close": "Close"
     }
   },
   "browse": {

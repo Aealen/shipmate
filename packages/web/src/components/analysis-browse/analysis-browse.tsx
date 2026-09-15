@@ -244,7 +244,7 @@ export function AnalysisBrowse({
           <span className="min-w-0 flex-1" />
           <Link
             href={newAnalysisHref}
-            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-ai px-4 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97]"
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-accent px-4 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97]"
           >
             <svg
               viewBox="0 0 24 24"

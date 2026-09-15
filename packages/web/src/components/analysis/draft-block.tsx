@@ -276,24 +276,66 @@ function BoxIcon() {
 const POINT_INPUT =
   'w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-text-primary outline-none transition-colors focus:border-accent';
 
-/** evidences → 去重来源素材名(缺失标题回退「未命名素材」;单条直出,多条「A、B +N」) */
-function sourceNames(
+/** evidences → 去重来源素材(缺失标题回退「未命名素材」;展示截断「A、B +N」,+N 不可点) */
+function sourceMaterials(
   evidences: { material_id: string; quote: string }[],
   materialTitles: Record<string, string>,
-): string {
+): { id: string; name: string }[] {
   const seen = new Set<string>();
   for (const e of evidences) seen.add(e.material_id);
-  const names = [...seen].map((id) => materialTitles[id] || '未命名素材');
-  return names.length <= 2 ? names.join('、') : `${names[0]}、${names[1]} +${names.length - 2}`;
+  return [...seen].map((id) => ({ id, name: materialTitles[id] || '未命名素材' }));
 }
 
 /** 块级聚合来源(各点 evidences 的 material_id 并集) */
-function blockSourceNames(
+function blockSourceMaterials(
   points: { evidences: { material_id: string; quote: string }[] }[],
   materialTitles: Record<string, string>,
-): string {
+): { id: string; name: string }[] {
   const all = points.flatMap((p) => p.evidences);
-  return all.length > 0 ? sourceNames(all, materialTitles) : '';
+  return all.length > 0 ? sourceMaterials(all, materialTitles) : [];
+}
+
+/**
+ * 来源素材行:📄 + 可点素材名(点击打开素材详情 Modal;最多两个,+N 仅计数)。
+ * 名字比正文深一档并带下划线标记可点(原型反馈:纯灰难与正文区分),hover 转 accent。
+ */
+function SourceMaterialsRow({
+  evidences,
+  materialTitles,
+  onOpenName,
+}: {
+  evidences: { material_id: string; quote: string }[];
+  materialTitles: Record<string, string>;
+  onOpenName?: (name: string) => void;
+}) {
+  const mats = sourceMaterials(evidences, materialTitles);
+  if (mats.length === 0) return null;
+  const shown = mats.slice(0, 2);
+  const extra = mats.length - 2;
+  return (
+    <p className="mt-1 truncate text-[11px] text-text-muted">
+      <span aria-hidden>📄 </span>
+      <span title={evidences.map((e) => `「${e.quote}」`).join('\n')}>
+        {shown.map((m, i) => (
+          <span key={m.id}>
+            {i > 0 && <span aria-hidden>、</span>}
+            {onOpenName ? (
+              <button
+                type="button"
+                onClick={() => onOpenName(m.name)}
+                className="cursor-pointer text-text-secondary underline decoration-border underline-offset-2 transition-colors duration-[80ms] hover:text-accent hover:decoration-accent"
+              >
+                {m.name}
+              </button>
+            ) : (
+              <span>{m.name}</span>
+            )}
+          </span>
+        ))}
+        {extra > 0 && <span aria-hidden> +{extra}</span>}
+      </span>
+    </p>
+  );
 }
 
 // ---------- 模块归类 pill + 下拉(spec §9 规则 10 / D9) ----------
@@ -452,6 +494,7 @@ function PointRow({
   deleteLabel,
   materialTitles,
   onRevise,
+  onOpenName,
 }: {
   point: DraftPointState;
   onChange: (patch: Partial<DraftPointState>) => void;
@@ -461,6 +504,8 @@ function PointRow({
   materialTitles: Record<string, string>;
   /** 打开 AI 修订弹窗(单点作用域);补充块的点不参与修订(core 仅支持 requirements),不传则不渲染入口 */
   onRevise?: () => void;
+  /** 点击来源素材名打开素材 Modal;不传则名字不可点 */
+  onOpenName?: (name: string) => void;
 }) {
   const t = useTranslations('analysis');
   const [editing, setEditing] = useState(false);
@@ -513,12 +558,11 @@ function PointRow({
           <p className="mt-0.5 line-clamp-2 text-xs text-text-secondary">{point.description}</p>
         )}
         {point.evidences.length > 0 ? (
-          <p className="mt-1 truncate text-[11px] text-text-muted">
-            <span aria-hidden>📄 </span>
-            <span title={point.evidences.map((e) => `「${e.quote}」`).join('\n')}>
-              {sourceNames(point.evidences, materialTitles)}
-            </span>
-          </p>
+          <SourceMaterialsRow
+            evidences={point.evidences}
+            materialTitles={materialTitles}
+            onOpenName={onOpenName}
+          />
         ) : (
           <p className="mt-1 text-[11px] text-warning">{t('block.noEvidence')}</p>
         )}
@@ -568,6 +612,7 @@ export function DraftBlock({
   onChange,
   onDelete,
   onRevise,
+  onOpenMaterialName,
 }: {
   block: DraftBlockState;
   /** 项目模块列表(下拉选项;由 workbench 拉取透传) */
@@ -580,6 +625,8 @@ export function DraftBlock({
   onDelete: () => void;
   /** 打开 AI 修订弹窗:pointIndex 为 null = 整块作用域,否则为点下标 */
   onRevise: (pointIndex: number | null) => void;
+  /** 点击来源素材名打开素材 Modal;不传则名字不可点 */
+  onOpenMaterialName?: (name: string) => void;
 }) {
   const t = useTranslations('analysis');
   const c = block.conflict;
@@ -649,23 +696,19 @@ export function DraftBlock({
         )}
       </div>
 
-      {/* 块级来源素材(各点 evidences 聚合,悬停看各点引用原文) */}
-      {(() => {
-        const src = blockSourceNames(block.points, materialTitles);
-        return src ? (
-          <p className="mt-2 truncate text-[10.5px] text-text-muted">
-            <span aria-hidden>📄 </span>
-            <span title={block.points.flatMap((p) => p.evidences).map((e) => `「${e.quote}」`).join('\n')}>
-              {t('block.sourceMaterials', { names: src })}
-            </span>
-          </p>
-        ) : null;
-      })()}
+      {/* 块级来源素材(各点 evidences 聚合,点击名字打开素材 Modal,悬停看各点引用原文) */}
+      <div className="mt-2">
+        <SourceMaterialsRow
+          evidences={block.points.flatMap((p) => p.evidences)}
+          materialTitles={materialTitles}
+          onOpenName={onOpenMaterialName}
+        />
+      </div>
 
       {c?.type === 'duplicate' && (
-        <div className="mt-3 rounded-lg bg-[color-mix(in_srgb,var(--draft-gray)_10%,transparent)] p-2.5">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-draft-gray">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-draft-gray" />
+        <div className="mt-3 rounded-lg bg-[color-mix(in_srgb,var(--warning)_10%,transparent)] p-2.5">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-warning">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-warning" />
             {t('conflict.duplicate')}
           </div>
           {c.reason && (
@@ -729,6 +772,7 @@ export function DraftBlock({
               deleteLabel={t('block.delete')}
               materialTitles={materialTitles}
               onRevise={() => onRevise(pi)}
+              onOpenName={onOpenMaterialName}
               onChange={(patch) =>
                 onChange({
                   points: block.points.map((q) => (q.key === p.key ? { ...q, ...patch } : q)),
@@ -762,6 +806,7 @@ export function SupplementBlock({
   materialTitles,
   onChange,
   onDelete,
+  onOpenMaterialName,
 }: {
   supp: SupplementBlockState;
   existing?: ExistingRequirementView;
@@ -769,6 +814,8 @@ export function SupplementBlock({
   materialTitles: Record<string, string>;
   onChange: (patch: Partial<SupplementBlockState>) => void;
   onDelete: () => void;
+  /** 点击来源素材名打开素材 Modal;不传则名字不可点 */
+  onOpenMaterialName?: (name: string) => void;
 }) {
   const t = useTranslations('analysis');
 
@@ -846,6 +893,7 @@ export function SupplementBlock({
               point={p}
               deleteLabel={t('block.delete')}
               materialTitles={materialTitles}
+              onOpenName={onOpenMaterialName}
               onChange={(patch) =>
                 onChange({
                   points: supp.points.map((q) => (q.key === p.key ? { ...q, ...patch } : q)),

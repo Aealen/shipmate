@@ -24,6 +24,7 @@ import {
   type SupplementBlockState,
 } from '@/components/analysis/draft-block';
 import { MaterialPanel } from '@/components/analysis/material-panel';
+import { MaterialModal } from '@/components/analysis/material-modal';
 import { DraftPanel } from '@/components/analysis/draft-panel';
 import { ReviseModal, type ReviseTarget } from '@/components/analysis/revise-modal';
 
@@ -218,6 +219,10 @@ export function AnalysisWorkbench({
   );
   /** AI 修订弹窗目标(null = 关闭);blockIndex 定位本地块,pointIndex null = 整块 */
   const [reviseTarget, setReviseTarget] = useState<ReviseTarget | null>(null);
+  /** 素材详情 Modal(查看/编辑双态,null = 关闭);入口:素材卡、来源素材名 */
+  const [viewMaterial, setViewMaterial] = useState<MaterialRow | null>(null);
+  /** 打开 Modal 时是否直达编辑态(素材卡 ✏ 入口) */
+  const [editOnOpen, setEditOnOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -317,10 +322,27 @@ export function AnalysisWorkbench({
         return false;
       }
       setMaterials((prev) => prev.map((m) => (m.id === id ? res.data : m)));
+      // Modal 内保存后同步最新行,查看态立即反映新标题/内容
+      setViewMaterial((cur) => (cur?.id === id ? res.data : cur));
       showToast(t('materialUpdated'));
       return true;
     },
     [t],
+  );
+
+  /** 打开素材详情 Modal(edit = 直达编辑态;入口:左栏素材卡 / 卡上 ✏) */
+  const openMaterial = useCallback((m: MaterialRow, edit?: boolean) => {
+    setEditOnOpen(!!edit);
+    setViewMaterial(m);
+  }, []);
+
+  /** 按素材名打开 Modal(需求块/点来源行;在工作台素材列表内反查) */
+  const openMaterialByName = useCallback(
+    (name: string) => {
+      const found = materials.find((m) => (m.title || t('materialUntitled')) === name);
+      if (found) setViewMaterial(found);
+    },
+    [materials, t],
   );
 
   const handleStart = useCallback(async () => {
@@ -474,7 +496,7 @@ export function AnalysisWorkbench({
           analyzing={analyzing}
           onStart={handleStart}
           onAdd={handleAddMaterial}
-          onUpdate={handleUpdateMaterial}
+          onOpen={openMaterial}
         />
         <DraftPanel
           blocks={blocks}
@@ -491,8 +513,16 @@ export function AnalysisWorkbench({
           onSuppsChange={setSupps}
           onApply={() => setConfirmOpen(true)}
           onRevise={openRevise}
+          onOpenMaterialByName={openMaterialByName}
         />
       </div>
+
+      <MaterialModal
+        material={viewMaterial}
+        startInEdit={editOnOpen}
+        onClose={() => setViewMaterial(null)}
+        onUpdate={handleUpdateMaterial}
+      />
 
       <ReviseModal
         open={!!reviseTarget && !!reviseBlock}
