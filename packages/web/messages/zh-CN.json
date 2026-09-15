@@ -559,7 +559,13 @@
       "renamed": "模块已重命名",
       "deleted": "已删除模块「{name}」,{count} 个需求已转为未归类",
       "toggle": "折叠/展开模块组",
-      "menu": "模块菜单"
+      "menu": "模块菜单",
+      "overviewTitle": "模块进度",
+      "overviewSubtitle": "项目 → 模块 → 需求 · 按模块查看需求点就绪度",
+      "emptyHint": "尚无模块,创建后可按模块组织需求",
+      "viewReqs": "查看需求",
+      "deleteConfirm": "删除模块「{name}」?模块下 {count} 个需求将转为未归类。",
+      "deleting": "删除中…"
     },
     "revision": {
       "modalTitle": "修订历史 · 需求块",

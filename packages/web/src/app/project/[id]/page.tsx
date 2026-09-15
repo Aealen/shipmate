@@ -1,21 +1,27 @@
-import type { ChangeLogRow } from '@shipmate/core';
+import type { ChangeLogRow, ModuleSummary } from '@shipmate/core';
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { listModulesAction } from '@/actions/modules';
 import { getProject } from '@/actions/projects';
+import { ModulesPanel } from '@/components/project/modules-panel';
 import { StatCard } from '@/components/shared/stat-card';
 
 /**
  * P2 项目概览(Notion 化,对齐原型加强帧 P2x):五张统计卡一行(需求/需求点/
- * 已确认/开发中/已超期)+ 整宽「最近动态」卡(圆角 14 无边框)——行式条目
- * (类型圆点 + 类型徽章 + 详情 + actor + 时间四要素同行)。时间线:linkage_impact
- * 徽章微光警示;条目 stagger 40ms 滑入 180ms(spec §14)。
+ * 已确认/开发中/已超期)+「模块进度」区块(3 列模块卡,项目级模块管理)+
+ * 整宽「最近动态」卡(圆角 14 无边框)——行式条目(类型圆点 + 类型徽章 + 详情 +
+ * actor + 时间四要素同行)。时间线:linkage_impact 徽章微光警示;条目 stagger
+ * 40ms 滑入 180ms(spec §14)。
  */
 export default async function ProjectOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const t = await getTranslations('project');
 
-  const summary = await getProject(id).catch(() => null);
+  const [summary, modules] = await Promise.all([
+    getProject(id).catch(() => null),
+    listModulesAction(id).catch<ModuleSummary[]>(() => []),
+  ]);
   if (!summary) notFound();
 
   const {
@@ -60,6 +66,9 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
           valueClassName="text-danger"
         />
       </div>
+
+      {/* 模块进度(项目级模块管理):统计卡与最近动态之间,CRUD 后自刷新 */}
+      <ModulesPanel projectId={id} modules={modules} />
 
       <section className="flex w-full flex-col gap-2.5 rounded-[14px] bg-surface p-6">
         <div className="flex w-full items-center gap-2">

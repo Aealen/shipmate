@@ -559,7 +559,13 @@
       "renamed": "Module renamed",
       "deleted": "Deleted module \"{name}\"; {count} requirements moved to Uncategorized",
       "toggle": "Collapse/expand module group",
-      "menu": "Module menu"
+      "menu": "Module menu",
+      "overviewTitle": "Module progress",
+      "overviewSubtitle": "Project → Modules → Requirements · readiness per module",
+      "emptyHint": "No modules yet — create one to organize requirements by module.",
+      "viewReqs": "View requirements",
+      "deleteConfirm": "Delete module \"{name}\"? Its {count} requirements will move to Uncategorized.",
+      "deleting": "Deleting…"
     },
     "revision": {
       "modalTitle": "Revision history · Requirement block",
