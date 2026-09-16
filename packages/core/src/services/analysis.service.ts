@@ -25,6 +25,7 @@ import {
   analysisResultSchema,
   draftPointSchema,
   draftRequirementSchema,
+  blockMergeSchema,
   pointMergeSchema,
   type AnalysisResult,
   type DraftPoint,
@@ -811,6 +812,35 @@ export class AnalysisService {
     const system = `你是资深需求分析师。请把用户提供的多个需求点合并为一个需求点:去重、整合表述、保留全部关键约束与业务规则;粒度与原有点一致;只输出 JSON,结构为 {"title":"合并后标题","description":"合并后描述"}`;
     const raw = await this.llm(system, JSON.stringify(payload, null, 2));
     const parsed = pointMergeSchema.safeParse(raw);
+    if (!parsed.success)
+      throw new DomainError(
+        'LLM_SCHEMA_MISMATCH',
+        `LLM 产出不合 schema:${parsed.error.issues[0]?.path.join('.')} ${parsed.error.issues[0]?.message}`,
+      );
+    return parsed.data;
+  }
+
+  /**
+   * 智能合并(工作台草稿,spec §9 规则 9b):草稿未落库无 id,按内容生成合并建议。
+   * kind='point' 合并多点 → {title, description};kind='block' 合并多块 → {title, summary}
+   * (点列表由前端按 title 归并,不走 LLM)。不落库,结果回填合并弹窗供二次编辑。
+   */
+  async suggestMergeFromContents(
+    kind: 'point' | 'block',
+    items: { title: string; description?: string }[],
+    actor: Actor = 'human',
+  ): Promise<{ title: string; description?: string; summary?: string }> {
+    if (!Array.isArray(items) || items.length < 2)
+      throw new DomainError('VALIDATION_ERROR', '智能合并至少需要 2 个条目');
+    const system =
+      kind === 'point'
+        ? `你是资深需求分析师。请把用户提供的多个需求点合并为一个需求点:去重、整合表述、保留全部关键约束与业务规则;粒度与原有点一致;只输出 JSON,结构为 {"title":"合并后标题","description":"合并后描述"}`
+        : `你是资深需求分析师。请把用户提供的多个需求块合并为一个需求块:标题与摘要去重整合,保留全部关键意图;只输出 JSON,结构为 {"title":"合并后标题","summary":"合并后一句话摘要"}`;
+    const raw = await this.llm(system, JSON.stringify(items, null, 2));
+    const parsed =
+      kind === 'point'
+        ? pointMergeSchema.safeParse(raw)
+        : blockMergeSchema.safeParse(raw);
     if (!parsed.success)
       throw new DomainError(
         'LLM_SCHEMA_MISMATCH',

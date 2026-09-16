@@ -48,6 +48,12 @@ export const analysisResultSchema = z.object({
   supplements: z.array(draftSupplementSchema),
 });
 
+/** 块级智能合并(§9)LLM 产出:合并后块标题/摘要(不落库,点列表由前端归并) */
+export const blockMergeSchema = z.object({
+  title: z.string().min(1),
+  summary: z.string(),
+});
+
 /** 智能合并(§9)LLM 产出:合并后点标题/描述(不落库,回填弹窗供二次编辑) */
 export const pointMergeSchema = z.object({
   title: z.string().min(1),
@@ -61,3 +67,4 @@ export type DraftRequirement = z.infer<typeof draftRequirementSchema>;
 export type DraftSupplement = z.infer<typeof draftSupplementSchema>;
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;
 export type PointMerge = z.infer<typeof pointMergeSchema>;
+export type BlockMerge = z.infer<typeof blockMergeSchema>;

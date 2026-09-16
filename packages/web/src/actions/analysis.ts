@@ -250,3 +250,17 @@ export async function updateRequirementAction(
     return toActionError(e);
   }
 }
+
+/** 智能合并建议(工作台草稿,内容级不落库)——合并弹窗「智能合并」按钮 */
+export async function suggestMergeFromContentsAction(
+  kind: 'point' | 'block',
+  items: { title: string; description?: string }[],
+): Promise<ActionResult<{ title: string; description?: string; summary?: string }>> {
+  try {
+    const { core } = await getShipmate();
+    const data = await core.analysis.suggestMergeFromContents(kind, items, 'human');
+    return { ok: true, data };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
