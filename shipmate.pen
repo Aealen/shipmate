@@ -4858,6 +4858,16 @@
                           "fontFamily": "Inter",
                           "fontSize": 11,
                           "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "L3SMwz",
+                          "name": "Row Del",
+                          "fill": "$text-muted",
+                          "content": "🗑",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -4979,6 +4989,16 @@
                           "fontFamily": "Inter",
                           "fontSize": 11,
                           "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "IiGks",
+                          "name": "Row Del",
+                          "fill": "$text-muted",
+                          "content": "🗑",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -5100,6 +5120,16 @@
                           "fontFamily": "Inter",
                           "fontSize": 11,
                           "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "yoZnD",
+                          "name": "Row Del",
+                          "fill": "$text-muted",
+                          "content": "🗑",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -5221,6 +5251,16 @@
                           "fontFamily": "Inter",
                           "fontSize": 11,
                           "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Z7FLpS",
+                          "name": "Row Del",
+                          "fill": "$text-muted",
+                          "content": "🗑",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -5426,6 +5466,16 @@
                           "fontFamily": "Inter",
                           "fontSize": 11,
                           "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "IPdIn",
+                          "name": "Row Del",
+                          "fill": "$text-muted",
+                          "content": "🗑",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -5547,6 +5597,16 @@
                           "fontFamily": "Inter",
                           "fontSize": 11,
                           "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "hmGjS",
+                          "name": "Row Del",
+                          "fill": "$text-muted",
+                          "content": "🗑",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -64152,7 +64212,7 @@
       "name": "P3n 需求点合并 Modal",
       "clip": true,
       "width": 1920,
-      "height": 860,
+      "height": 1080,
       "fill": "$bg",
       "layout": "vertical",
       "children": [
@@ -64451,49 +64511,311 @@
                         },
                         {
                           "type": "frame",
-                          "id": "q8IZjO",
-                          "name": "M Ev1",
+                          "id": "p3WlhV",
+                          "name": "M Point 1",
                           "width": "fill_container",
-                          "fill": "$surface-2",
-                          "cornerRadius": 6,
-                          "padding": [
-                            7,
-                            9
-                          ],
+                          "fill": "$surface",
+                          "cornerRadius": 9,
+                          "layout": "vertical",
+                          "gap": 8,
+                          "padding": 14,
                           "children": [
                             {
+                              "type": "frame",
+                              "id": "t0fZZZ",
+                              "name": "PR1",
+                              "width": "fill_container",
+                              "gap": 8,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "hGHzM",
+                                  "name": "Draft B",
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 4,
+                                  "padding": [
+                                    2,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "wdih4",
+                                      "name": "Draft L",
+                                      "fill": "$draft-gray",
+                                      "content": "draft",
+                                      "fontFamily": "Inter",
+                                      "fontSize": 10,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "BkSFq",
+                                  "name": "PT",
+                                  "fill": "$text-primary",
+                                  "content": "一键导出 PDF",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "bold"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "GwH9l",
+                                  "name": "Sp",
+                                  "width": "fill_container",
+                                  "height": 1
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "J5BBjd",
+                                  "name": "Ev Chip",
+                                  "fill": "$accent-dim",
+                                  "cornerRadius": 5,
+                                  "padding": [
+                                    4,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "f0IMY",
+                                      "name": "Ev Tx",
+                                      "fill": "$accent",
+                                      "content": "📄 原文依据 ×1",
+                                      "fontFamily": "Inter",
+                                      "fontSize": 10,
+                                      "fontWeight": "bold"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
                               "type": "text",
-                              "id": "eQto5",
-                              "name": "M Ev1 Tx",
+                              "id": "nYiyP",
+                              "name": "PD",
                               "fill": "$text-secondary",
-                              "content": "· 明确上线时限为一周内",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "标书内容按模板导出为 PDF,保留目录与页码,异步执行完成后通知",
                               "fontFamily": "Inter",
-                              "fontSize": 10.5,
+                              "fontSize": 12,
                               "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "zgu6m",
+                              "name": "PR2",
+                              "width": "fill_container",
+                              "gap": 10,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "GxKNr",
+                                  "name": "Conf L",
+                                  "fill": "$text-muted",
+                                  "content": "置信度",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "zfZrU",
+                                  "name": "Conf T",
+                                  "width": 120,
+                                  "height": 5,
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 3,
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "a2zUok",
+                                      "name": "Conf F",
+                                      "width": 110,
+                                      "height": 5,
+                                      "fill": "$success",
+                                      "cornerRadius": 3
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "koU8S",
+                                  "name": "Conf N",
+                                  "fill": "$text-secondary",
+                                  "content": "0.92",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "xyT4p",
+                                  "name": "Sp2",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
                             }
                           ]
                         },
                         {
                           "type": "frame",
-                          "id": "ug7IS",
-                          "name": "M Ev2",
+                          "id": "W24gL",
+                          "name": "M Point 2",
                           "width": "fill_container",
-                          "fill": "$surface-2",
-                          "cornerRadius": 6,
-                          "padding": [
-                            7,
-                            9
-                          ],
+                          "fill": "$surface",
+                          "cornerRadius": 9,
+                          "layout": "vertical",
+                          "gap": 8,
+                          "padding": 14,
                           "children": [
                             {
+                              "type": "frame",
+                              "id": "aaP59",
+                              "name": "PR1",
+                              "width": "fill_container",
+                              "gap": 8,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "MNBOs",
+                                  "name": "Draft B",
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 4,
+                                  "padding": [
+                                    2,
+                                    6
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "M2cVoi",
+                                      "name": "Draft L",
+                                      "fill": "$draft-gray",
+                                      "content": "draft",
+                                      "fontFamily": "Inter",
+                                      "fontSize": 10,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "JX5Fp",
+                                  "name": "PT",
+                                  "fill": "$text-primary",
+                                  "content": "页眉页脚配置",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "bold"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "Apo9F",
+                                  "name": "Sp",
+                                  "width": "fill_container",
+                                  "height": 1
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "gRswn",
+                                  "name": "Ev Chip",
+                                  "fill": "$accent-dim",
+                                  "cornerRadius": 5,
+                                  "padding": [
+                                    4,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "XIfRH",
+                                      "name": "Ev Tx",
+                                      "fill": "$accent",
+                                      "content": "📄 原文依据 ×1",
+                                      "fontFamily": "Inter",
+                                      "fontSize": 10,
+                                      "fontWeight": "bold"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
                               "type": "text",
-                              "id": "i5jCW",
-                              "name": "M Ev2 Tx",
+                              "id": "apTMi",
+                              "name": "PD",
                               "fill": "$text-secondary",
-                              "content": "· 权限覆盖所有合同制员工",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "导出模板支持配置页眉文案、页脚页码格式,按项目保存偏好",
                               "fontFamily": "Inter",
-                              "fontSize": 10.5,
+                              "fontSize": 12,
                               "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Uhe5J",
+                              "name": "PR2",
+                              "width": "fill_container",
+                              "gap": 10,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "LLdMb",
+                                  "name": "Conf L",
+                                  "fill": "$text-muted",
+                                  "content": "置信度",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "BEW13",
+                                  "name": "Conf T",
+                                  "width": 120,
+                                  "height": 5,
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 3,
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "m45bFe",
+                                      "name": "Conf F",
+                                      "width": 94,
+                                      "height": 5,
+                                      "fill": "$warning",
+                                      "cornerRadius": 3
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "yFlZU",
+                                  "name": "Conf N",
+                                  "fill": "$text-secondary",
+                                  "content": "0.78",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "J4x2s",
+                                  "name": "Sp2",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
                             }
                           ]
                         },
@@ -64801,7 +65123,7 @@
       "name": "P3n2 需求点合并 Modal(同块)",
       "clip": true,
       "width": 1920,
-      "height": 860,
+      "height": 1080,
       "fill": "$bg",
       "layout": "vertical",
       "children": [
