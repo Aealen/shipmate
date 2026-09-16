@@ -48,9 +48,16 @@ export const analysisResultSchema = z.object({
   supplements: z.array(draftSupplementSchema),
 });
 
+/** 智能合并(§9)LLM 产出:合并后点标题/描述(不落库,回填弹窗供二次编辑) */
+export const pointMergeSchema = z.object({
+  title: z.string().min(1),
+  description: z.string(),
+});
+
 export type DraftPoint = z.infer<typeof draftPointSchema>;
 export type DraftConflict = z.infer<typeof draftConflictSchema>;
 export type DraftRevision = z.infer<typeof draftRevisionSchema>;
 export type DraftRequirement = z.infer<typeof draftRequirementSchema>;
 export type DraftSupplement = z.infer<typeof draftSupplementSchema>;
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;
+export type PointMerge = z.infer<typeof pointMergeSchema>;

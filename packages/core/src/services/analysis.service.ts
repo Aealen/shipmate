@@ -19,11 +19,13 @@ import { DomainError } from '../errors.js';
 import { writeChangeLog } from './change-log.js';
 import { SettingsService } from './settings.service.js';
 import { ModuleService } from './module.service.js';
+import { RequirementPointService } from './requirement-point.service.js';
 import { chatJson, chatJsonStream, type LlmConfig } from '../llm/client.js';
 import {
   analysisResultSchema,
   draftPointSchema,
   draftRequirementSchema,
+  pointMergeSchema,
   type AnalysisResult,
   type DraftPoint,
   type DraftRequirement,
@@ -707,6 +709,113 @@ export class AnalysisService {
         `LLM 产出不合 schema:${parsed.error.issues[0]?.path.join('.')} ${parsed.error.issues[0]?.message}`,
       );
     }
+    return parsed.data;
+  }
+
+  /**
+   * spec §9 AI 修订(已落库需求点,P4 详情页):按用户批注让 LLM 重写点标题/描述,
+   * 写回复用 updateRequirementPoint(实质修改检测/版本+1/任务联动),审计以
+   * changeType='revision' 留痕(reason=批注),与草稿修订应用后的结转语义一致。
+   * evidences/confidence 不写回——修订不破坏素材溯源;LLM 失败直接冒泡,点零改动。
+   * changed=false 表示 LLM 结果与现内容实质一致,未产生新版本。
+   */
+  async revisePoint(
+    pointId: string,
+    annotation: string,
+    actor: Actor = 'human',
+    handlers?: { onEvent?: (e: ReviseStreamEvent) => void; signal?: AbortSignal },
+  ): Promise<{ point: RequirementPointRow; changed: boolean }> {
+    const emit = (e: ReviseStreamEvent) => handlers?.onEvent?.(e);
+    const annotationText = annotation?.trim();
+    if (!annotationText) throw new DomainError('VALIDATION_ERROR', '修订批注不能为空');
+
+    const row = (
+      await this.db.select().from(requirementPoints).where(eq(requirementPoints.id, pointId))
+    )[0];
+    if (!row) throw new DomainError('NOT_FOUND', `需求点 ${pointId} 不存在`);
+    const requirement = (
+      await this.db.select().from(requirements).where(eq(requirements.id, row.requirementId))
+    )[0];
+    if (!requirement) throw new DomainError('NOT_FOUND', `所属需求 ${row.requirementId} 不存在`);
+
+    emit({ type: 'stage', message: '解析批注' });
+    const user = buildReviseUserPrompt(
+      {
+        requirement_title: requirement.title,
+        title: row.title,
+        description: row.description ?? '',
+      },
+      annotationText,
+      await this.collectExistingDigest(requirement.projectId),
+    );
+    const system = buildReviseSystemPrompt('point');
+
+    emit({ type: 'stage', message: '重写需求点' });
+    let raw: unknown;
+    if (handlers && this.llmStream) {
+      raw = await this.llmStream(system, user, {
+        onDelta: (deltaText) => emit({ type: 'delta', text: deltaText }),
+        signal: handlers.signal,
+      });
+    } else {
+      raw = await this.llm(system, user);
+    }
+
+    emit({ type: 'stage', message: '校验产出' });
+    const parsed = draftPointSchema.safeParse(raw);
+    if (!parsed.success)
+      throw new DomainError(
+        'LLM_SCHEMA_MISMATCH',
+        `LLM 产出不合 schema:${parsed.error.issues[0]?.path.join('.')} ${parsed.error.issues[0]?.message}`,
+      );
+    const revised = parsed.data;
+
+    emit({ type: 'stage', message: '写回需求点' });
+    const points = new RequirementPointService(this.db);
+    const { point } = await points.updateRequirementPoint(
+      pointId,
+      {
+        title: revised.title,
+        description: revised.description ?? '',
+        reason: `AI 修订:${annotationText.slice(0, 120)}`,
+      },
+      actor,
+      { changeType: 'revision' },
+    );
+
+    emit({ type: 'done', revised });
+    return { point, changed: point.version !== row.version };
+  }
+
+  /**
+   * spec §9 智能合并:按所选需求点让 LLM 生成合并后的标题/描述。
+   * 不落库——结果回填合并弹窗供用户二次编辑,确认后才走 mergeRequirementPoints。
+   */
+  async suggestPointMerge(
+    pointIds: string[],
+    actor: Actor = 'human',
+  ): Promise<{ title: string; description: string }> {
+    if (!Array.isArray(pointIds) || pointIds.length < 2)
+      throw new DomainError('VALIDATION_ERROR', '智能合并至少需要选择 2 个需求点');
+    const rows = await this.db
+      .select()
+      .from(requirementPoints)
+      .where(inArray(requirementPoints.id, pointIds));
+    if (rows.length !== new Set(pointIds).size)
+      throw new DomainError('NOT_FOUND', '部分需求点不存在或已被删除');
+    const payload = rows.map((r) => ({
+      title: r.title,
+      description: r.description ?? '',
+      evidence_quotes: (r.evidences ?? []).map((e) => e.quote),
+    }));
+    const system = `你是资深需求分析师。请把用户提供的多个需求点合并为一个需求点:去重、整合表述、保留全部关键约束与业务规则;粒度与原有点一致;只输出 JSON,结构为 {"title":"合并后标题","description":"合并后描述"}`;
+    const raw = await this.llm(system, JSON.stringify(payload, null, 2));
+    const parsed = pointMergeSchema.safeParse(raw);
+    if (!parsed.success)
+      throw new DomainError(
+        'LLM_SCHEMA_MISMATCH',
+        `LLM 产出不合 schema:${parsed.error.issues[0]?.path.join('.')} ${parsed.error.issues[0]?.message}`,
+      );
     return parsed.data;
   }
 

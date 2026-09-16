@@ -318,10 +318,13 @@ listRequirements(projectId, filter?: { moduleId?, status?, priority?, overdue? }
 // RequirementPointService
 listRequirementPoints(filter: { requirementId? / projectId? / status? }): RequirementPoint[]
 getRequirementPoint(id): RequirementPointDetail      // 含完整变更历史
-updateRequirementPoint(id, input: { title?, description?, reason? }, actor): RequirementPoint
-   // 实质修改:version+1 + ChangeLog + Task 联动,同一事务
+updateRequirementPoint(id, input: { title?, description?, reason? }, actor, opts?: { changeType?: 'update' | 'revision' }): RequirementPoint
+   // 实质修改:version+1 + ChangeLog + Task 联动,同一事务;changeType 默认 'update',AI 修订传 'revision'
 setRequirementPointStatus(id, action: 'confirm' | 'start' | 'complete', actor): RequirementPoint
 confirmRequirementPoint(id, actor): RequirementPoint  // setRequirementPointStatus(id,'confirm') 的别名
+deleteRequirementPoint(id, actor): void               // 级联删除其下任务,delete 快照留痕
+mergeRequirementPoints(pointIds(≥2,同项目), target: { requirementId, title, description? }, actor): RequirementPoint
+   // 目标需求下新建合并点(evidences 汇总),被并点及其任务删除留痕;同一事务
 
 // TaskService
 createTask(input: { requirementPointId, title, description?, sortOrder? }, actor): Task
@@ -363,7 +366,7 @@ core 层统一 `DomainError`(带 code),web 映射 HTTP 状态码,mcp 映射 `isE
 
 原则:MCP 零业务逻辑,薄壳调 core;写操作自动记 actor;入参用 zod schema 定义并生成工具 JSON Schema。
 
-工具共 **40 个**:分组 5 / 项目 4 / 模块 4 / 素材 3 / 素材分析 6 / 需求 3 / 需求点 5 / 开发步骤 5 / 审计与进度 3(+ 修订/删除 2)。
+工具共 **44 个**:分组 5 / 项目 4 / 模块 4 / 素材 3 / 素材分析 6 / 需求 3 / 需求点 9 / 开发步骤 5 / 审计与进度 3(+ 修订/删除 2)。
 
 > **同名裁定(2026-09-11)**:素材组与分析组的 `add_material` 同名,仅保留 **runId 版**(素材必属批次);原素材组 `add_material(projectId…, analyze?)` 删除,素材查询(`list_materials`/`get_material`)相应以 runId 定位。
 
@@ -399,6 +402,10 @@ core 层统一 `DomainError`(带 code),web 映射 HTTP 状态码,mcp 映射 `isE
 |            | `update_requirement_point`     | id, title?/description?, reason?                                | 更新后需求点(附联动影响 task 数)                                                                                                                                                                                                                        |
 |            | `set_requirement_point_status` | id, action(confirm/start/complete)                              | 需求点对象                                                                                                                                                                                                                                              |
 |            | `confirm_requirement_point`    | id                                                              | 需求点对象(confirm 别名,语义化给 AI 用)                                                                                                                                                                                                                 |
+|            | `revise_point`                 | id, annotation                                                  | AI 修订后需求点(§9 规则 9a:LLM 重写,revision 留痕,版本+1)                                                                                                                                                                                            |
+|            | `delete_requirement_point`     | id                                                              | 级联删除任务,delete 快照留痕                                                                                                                                                                                                                            |
+|            | `merge_requirement_points`     | pointIds(≥2,同项目), requirementId, title, description?         | 合并后新需求点(被并点删除留痕)                                                                                                                                                                                                                          |
+|            | `suggest_point_merge`          | pointIds(≥2)                                                    | LLM 合并建议 {title, description}(不落库,供二次编辑)                                                                                                                                                                                                   |
 | 开发步骤   | `create_task`                  | requirementPointId, title, description?, sortOrder?             | 任务对象                                                                                                                                                                                                                                                |
 |            | `update_task`                  | id, title?/description?/sortOrder?                              | 任务对象                                                                                                                                                                                                                                                |
 |            | `set_task_status`              | id, action(start/complete)                                      | 任务对象                                                                                                                                                                                                                                                |
@@ -445,6 +452,8 @@ AnalysisRun(pending)
    - **supplement 补充**:草稿中把匹配到的**已有需求块整体带出** — 已有需求点按实时状态展示(done/developing/…),新增点打「补充」标(origin=supplement);应用时仅追加新点到已有需求下,已有点不动
    - 注:本条所述「conflict ChangeLog」落地为任务 status_change + 需求点 update 两种既有类型(ChangeType 枚举无 conflict 专用值),冲突语境经 reason 字段标注
 9. **AI 修订(草稿阶段)**:对未应用的草稿块/需求点,用户可输入批注让 LLM 重写(reviseDraft)。修订保 spec §5.4(draft 态)与 evidences 溯源规则;每次修订写 change_logs(actor+批注+前后快照)并追加块级 revisions 摘要;mcp `revise_draft` 工具使 agent 可发起修订。修订结果中缺失的点视为按批注移除:真删出草稿点列表并逐点追加移除记录;修订记录于应用时结转至实体变更历史(apply 落库后写 `change_type='revision'` 的 ChangeLog,并清空草稿已结转的 revisions 防重复结转)
+9a. **AI 修订(已落库需求点,P4 详情页)**:revisePoint(pointId, annotation) 按批注让 LLM 重写点标题/描述,写回复用 updateRequirementPoint(实质修改检测/版本+1/任务联动),审计以 `change_type='revision'` 留痕(reason=批注);evidences/confidence 不改写——修订不破坏素材溯源;LLM 失败零改动。流式版走 `/api/points/revise-stream`(SSE,同 revise-stream 模式);mcp `revise_point` 工具
+9b. **需求点多选批量与合并(P3 需求产出)**:点行支持多选 → 批量删除(逐点 deleteRequirementPoint,delete 留痕)或合并。合并 = 三栏弹窗(左:已选点清单/中:详情参照/右:合并编辑),「智能合并」走 suggestPointMerge(LLM 生成 {title, description} 回填编辑区,可二次编辑,不落库);确认合并走 mergeRequirementPoints(目标需求可改,默认第一个选中点所属需求;evidences 汇总;被并点及其任务删除留痕)。至少 2 个点、须同项目
 10. **AI 模块归类(草稿阶段)**:分析输入注入项目已有模块列表;LLM 对**每个草稿需求块**独立给出 `module` 归类建议(同名模块自动匹配已有,否则作为新模块名落库)——同批素材可跨多个模块。建议在草稿工作台逐块可改(下拉选已有 / 新建),apply 落库时写入 `requirements.module_id`;无法归类的块为空(未归类)。模块归类不写独立审计(模块变更经 update_requirement 的既有 ChangeLog 覆盖)
 
 ## 10. 配置

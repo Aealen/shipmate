@@ -74,4 +74,62 @@ export function registerPointTools(server: McpServer, core: ShipmateCore, actor:
     },
     withCore(core, actor, (c, { id }) => c.points.confirmRequirementPoint(id, actor)),
   );
+
+  server.registerTool(
+    'revise_point',
+    {
+      title: 'AI 修订需求点',
+      description:
+        '按修订批注让 LLM 重写已落库需求点的标题/描述:实质修改时版本 +1、任务联动待重估,审计以 revision 类型留痕(批注即理由);LLM 失败零改动',
+      inputSchema: {
+        id: z.string().describe('需求点 id'),
+        annotation: z.string().describe('修订批注,描述要怎么改'),
+      },
+    },
+    withCore(core, actor, (c, { id, annotation }) =>
+      c.analysis.revisePoint(id, annotation, actor),
+    ),
+  );
+
+  server.registerTool(
+    'delete_requirement_point',
+    {
+      title: '删除需求点',
+      description:
+        '删除需求点并级联删除其下全部任务,delete 快照留痕;不可恢复(仅审计可查)',
+      inputSchema: { id: z.string().describe('需求点 id') },
+    },
+    withCore(core, actor, (c, { id }) => c.points.deleteRequirementPoint(id, actor)),
+  );
+
+  server.registerTool(
+    'merge_requirement_points',
+    {
+      title: '合并需求点',
+      description:
+        '把多个需求点合并为一个:在目标需求下新建合并点(evidences 汇总),被并点及其任务删除留痕;同一事务,至少 2 个点且须同项目',
+      inputSchema: {
+        pointIds: z.array(z.string()).min(2).describe('被合并的需求点 id 列表(≥2,同项目)'),
+        requirementId: z.string().describe('合并后归属的目标需求 id'),
+        title: z.string().describe('合并后标题'),
+        description: z.string().optional().describe('合并后描述'),
+      },
+    },
+    withCore(core, actor, (c, { pointIds, ...target }) =>
+      c.points.mergeRequirementPoints(pointIds, target, actor),
+    ),
+  );
+
+  server.registerTool(
+    'suggest_point_merge',
+    {
+      title: '智能合并建议',
+      description:
+        '按所选需求点让 LLM 生成合并后的标题/描述建议(不落库),供确认前二次编辑;至少 2 个点',
+      inputSchema: {
+        pointIds: z.array(z.string()).min(2).describe('待合并的需求点 id 列表(≥2)'),
+      },
+    },
+    withCore(core, actor, (c, { pointIds }) => c.analysis.suggestPointMerge(pointIds, actor)),
+  );
 }

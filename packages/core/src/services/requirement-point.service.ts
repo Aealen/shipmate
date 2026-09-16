@@ -6,11 +6,13 @@ import {
   requirements,
   tasks,
   type ChangeLogRow,
+  type Evidence,
   type RequirementPointRow,
   type TaskRow,
 } from '../db/schema.js';
 import type { Actor } from '../types.js';
 import { DomainError } from '../errors.js';
+import { newId } from '../db/id.js';
 import { writeChangeLog } from './change-log.js';
 
 export type PointAction = 'confirm' | 'start' | 'complete';
@@ -44,11 +46,13 @@ export interface RequirementPointDetail {
 export class RequirementPointService {
   constructor(private db: ShipmateDb) {}
 
-  /** spec §5.3:实质修改单事务四件事,要么全成要么全不动 */
+  /** spec §5.3:实质修改单事务四件事,要么全成要么全不动
+   *  opts.changeType:审计类型,默认 'update';AI 修订(revisePoint)传 'revision' 以在时间线区分留痕 */
   async updateRequirementPoint(
     id: string,
     input: UpdatePointInput,
     actor: Actor,
+    opts?: { changeType?: 'update' | 'revision' },
   ): Promise<UpdatePointResult> {
     return this.db.transaction(async (tx): Promise<UpdatePointResult> => {
       const before = (
@@ -85,7 +89,7 @@ export class RequirementPointService {
       await writeChangeLog(tx, {
         entityType: 'requirement_point',
         entityId: id,
-        changeType: 'update',
+        changeType: opts?.changeType ?? 'update',
         before,
         after,
         reason: input.reason,
@@ -207,5 +211,114 @@ export class RequirementPointService {
           .from(requirementPoints)
           .where(and(...conds))
       : this.db.select().from(requirementPoints);
+  }
+
+  /** 删除需求点(级联其下任务),delete 快照留痕(spec §3.7 changeType='delete') */
+  async deleteRequirementPoint(id: string, actor: Actor): Promise<void> {
+    return this.db.transaction(async (tx) => {
+      const before = (
+        await tx.select().from(requirementPoints).where(eq(requirementPoints.id, id))
+      )[0];
+      if (!before) throw new DomainError('NOT_FOUND', `需求点 ${id} 不存在`);
+      await tx.delete(tasks).where(eq(tasks.requirementPointId, id));
+      await tx.delete(requirementPoints).where(eq(requirementPoints.id, id));
+      await writeChangeLog(tx, {
+        entityType: 'requirement_point',
+        entityId: id,
+        changeType: 'delete',
+        before,
+        after: { deleted: true },
+        reason: '删除需求点',
+        actor,
+      });
+    });
+  }
+
+  /**
+   * 合并需求点:在目标需求下新建合并点(evidences 按所选点顺序汇总),
+   * 其余被合并点连同其任务一并删除留痕;新点 create + 各被并点 delete 均记 change_logs,
+   * 同一事务要么全成要么全不动。跨项目/目标需求不存在/少于 2 个点均拒绝。
+   */
+  async mergeRequirementPoints(
+    pointIds: string[],
+    target: { requirementId: string; title: string; description?: string },
+    actor: Actor,
+  ): Promise<RequirementPointRow> {
+    if (!Array.isArray(pointIds) || pointIds.length < 2)
+      throw new DomainError('VALIDATION_ERROR', '合并至少需要选择 2 个需求点');
+    const unique = [...new Set(pointIds)];
+    if (unique.length !== pointIds.length)
+      throw new DomainError('VALIDATION_ERROR', '合并列表存在重复需求点');
+    const title = target.title?.trim();
+    if (!title) throw new DomainError('VALIDATION_ERROR', '合并后标题不能为空');
+
+    return this.db.transaction(async (tx): Promise<RequirementPointRow> => {
+      const rows = await tx
+        .select()
+        .from(requirementPoints)
+        .where(inArray(requirementPoints.id, unique));
+      if (rows.length !== unique.length)
+        throw new DomainError('NOT_FOUND', '部分需求点不存在或已被删除');
+      const reqRows = await tx
+        .select()
+        .from(requirements)
+        .where(inArray(requirements.id, [...new Set(rows.map((r) => r.requirementId))]));
+      const projectIds = new Set(reqRows.map((r) => r.projectId));
+      if (projectIds.size > 1)
+        throw new DomainError('VALIDATION_ERROR', '跨项目的需求点不能合并');
+      const targetReq = (
+        await tx.select().from(requirements).where(eq(requirements.id, target.requirementId))
+      )[0];
+      if (!targetReq) throw new DomainError('NOT_FOUND', `目标需求 ${target.requirementId} 不存在`);
+      if (!projectIds.has(targetReq.projectId))
+        throw new DomainError('VALIDATION_ERROR', '目标需求与所选需求点不属于同一项目');
+
+      // evidences 按所选点顺序汇总(同一素材引用原样保留,合并不破坏溯源)
+      const evidences = rows.flatMap((r): Evidence[] => r.evidences ?? []);
+      const sourceMaterialIds = [
+        ...new Set(rows.flatMap((r) => r.sourceMaterialIds ?? [])),
+      ];
+      const created = (
+        await tx
+          .insert(requirementPoints)
+          .values({
+            id: newId(),
+            requirementId: target.requirementId,
+            title,
+            description: target.description?.trim() || null,
+            status: 'draft',
+            version: 1,
+            origin: 'manual',
+            sourceMaterialIds,
+            evidences,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          })
+          .returning()
+      )[0]!;
+
+      for (const r of rows) {
+        await tx.delete(tasks).where(eq(tasks.requirementPointId, r.id));
+        await tx.delete(requirementPoints).where(eq(requirementPoints.id, r.id));
+        await writeChangeLog(tx, {
+          entityType: 'requirement_point',
+          entityId: r.id,
+          changeType: 'delete',
+          before: r,
+          after: { deleted: true, mergedInto: created.id },
+          reason: `合并进「${created.title}」`,
+          actor,
+        });
+      }
+      await writeChangeLog(tx, {
+        entityType: 'requirement_point',
+        entityId: created.id,
+        changeType: 'create',
+        after: created,
+        reason: `由 ${rows.length} 个需求点合并生成`,
+        actor,
+      });
+      return created;
+    });
   }
 }
