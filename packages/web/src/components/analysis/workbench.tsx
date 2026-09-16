@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { AnalysisResult, AnalysisRunDetail, MaterialRow, ModuleRow, ModuleSummary } from '@shipmate/core';
 import {
   addMaterialAction,
@@ -20,11 +21,15 @@ import { showToast } from '@/components/shared/toast';
 import {
   toPointState,
   type DraftBlockState,
+  type DraftPointState,
   type ExistingRequirementView,
   type SupplementBlockState,
 } from '@/components/analysis/draft-block';
 import { MaterialPanel } from '@/components/analysis/material-panel';
 import { MaterialModal } from '@/components/analysis/material-modal';
+import { MergeDraftModal } from '@/components/analysis/merge-draft-modal';
+import { DraftPointEditModal } from '@/components/analysis/draft-point-edit-modal';
+import { DraftBlockEditModal } from '@/components/analysis/draft-block-edit-modal';
 import { DraftPanel } from '@/components/analysis/draft-panel';
 import { ReviseModal, type ReviseTarget } from '@/components/analysis/revise-modal';
 
@@ -223,6 +228,81 @@ export function AnalysisWorkbench({
   const [viewMaterial, setViewMaterial] = useState<MaterialRow | null>(null);
   /** 打开 Modal 时是否直达编辑态(素材卡 ✏ 入口) */
   const [editOnOpen, setEditOnOpen] = useState(false);
+  // 多选合并(spec §9 规则 9b):块级与点级点选互斥;弹窗 kind
+  const [mergeBlockKeys, setMergeBlockKeys] = useState<string[]>([]);
+  const [mergePointSel, setMergePointSel] = useState<{ blockKey: string; pointKeys: string[] } | null>(null);
+  const [mergeModal, setMergeModal] = useState<'point' | 'block' | null>(null);
+  /** 待删除草稿块(二次确认后移除) */
+  const [pendingDeleteBlock, setPendingDeleteBlock] = useState<DraftBlockState | null>(null);
+  /** 编辑草稿块标题/摘要(弹窗化) */
+  const [editingBlock, setEditingBlock] = useState<DraftBlockState | null>(null);
+  /** 编辑草稿点(弹窗化):ownerKey = 块 key(req)或补充块 key(supp) */
+  const [editingPoint, setEditingPoint] = useState<{
+    ownerKey: string;
+    pointKey: string;
+    kind: 'req' | 'supp';
+    title: string;
+    description: string;
+  } | null>(null);
+
+  const openPointEdit = useCallback(
+    (ownerKey: string, pointKey: string, kind: 'req' | 'supp') => {
+      const owner = kind === 'req' ? blocks.find((b) => b.key === ownerKey) : supps.find((s) => s.key === ownerKey);
+      const point = owner?.points.find((p) => p.key === pointKey);
+      if (!point) return;
+      setEditingPoint({
+        ownerKey,
+        pointKey,
+        kind,
+        title: point.title,
+        description: point.description,
+      });
+    },
+    [blocks, supps],
+  );
+
+  const savePointEdit = useCallback(
+    (input: { title: string; description: string }) => {
+      if (!editingPoint) return;
+      const patchPoint = (p: DraftPointState) =>
+        p.key === editingPoint.pointKey
+          ? { ...p, title: input.title, description: input.description }
+          : p;
+      if (editingPoint.kind === 'req') {
+        setBlocks((prev) =>
+          prev.map((b) =>
+            b.key === editingPoint.ownerKey ? { ...b, points: b.points.map(patchPoint) } : b,
+          ),
+        );
+      } else {
+        setSupps((prev) =>
+          prev.map((s) =>
+            s.key === editingPoint.ownerKey ? { ...s, points: s.points.map(patchPoint) } : s,
+          ),
+        );
+      }
+      setEditingPoint(null);
+    },
+    [editingPoint],
+  );
+
+  const toggleBlockMergeSelect = useCallback((key: string) => {
+    setMergePointSel(null);
+    setMergeBlockKeys((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  }, []);
+
+  const togglePointMergeSelect = useCallback((blockKey: string, pointKey: string) => {
+    setMergeBlockKeys([]);
+    setMergePointSel((prev) => {
+      if (!prev || prev.blockKey !== blockKey) return { blockKey, pointKeys: [pointKey] };
+      return {
+        blockKey,
+        pointKeys: prev.pointKeys.includes(pointKey)
+          ? prev.pointKeys.filter((k) => k !== pointKey)
+          : [...prev.pointKeys, pointKey],
+      };
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -343,6 +423,79 @@ export function AnalysisWorkbench({
       if (found) setViewMaterial(found);
     },
     [materials, t],
+  );
+
+  const selectedMergeBlocks = useMemo(
+    () => blocks.filter((b) => mergeBlockKeys.includes(b.key)),
+    [blocks, mergeBlockKeys],
+  );
+  const selectedMergePoints = useMemo(() => {
+    if (!mergePointSel) return [];
+    const block = blocks.find((b) => b.key === mergePointSel.blockKey);
+    return (block?.points ?? []).filter((p) => mergePointSel.pointKeys.includes(p.key));
+  }, [blocks, mergePointSel]);
+  const blockMergeConflictBlocked = selectedMergeBlocks.some((b) => b.conflict);
+
+  /** 点合并确认:同块内以合并结果替换所选点(evidences 拼接,置信度取均值) */
+  const confirmPointMerge = useCallback(
+    (result: { title: string; description?: string }) => {
+      if (!mergePointSel) return;
+      setBlocks((prev) =>
+        prev.map((b) => {
+          if (b.key !== mergePointSel.blockKey) return b;
+          const picked = b.points.filter((p) => mergePointSel.pointKeys.includes(p.key));
+          const kept = b.points.filter((p) => !mergePointSel.pointKeys.includes(p.key));
+          const merged = {
+            ...toPointState({
+              title: result.title,
+              description: result.description ?? '',
+              confidence: picked.length
+                ? picked.reduce((s, p) => s + p.confidence, 0) / picked.length
+                : 0.8,
+              evidences: picked.flatMap((p) => p.evidences),
+            }),
+            key: nextBlockKey('mp'),
+          };
+          return { ...b, points: [...kept, merged] };
+        }),
+      );
+      setMergePointSel(null);
+      setMergeModal(null);
+      showToast(t('merge.pointDone'));
+    },
+    [mergePointSel, t],
+  );
+
+  /** 块合并确认:首块位置放合并块,其余移除;点按 title 去重归并,修订链拼接 */
+  const confirmBlockMerge = useCallback(
+    (result: { title: string; summary?: string }) => {
+      if (selectedMergeBlocks.length < 2) return;
+      const first = selectedMergeBlocks[0];
+      const seen = new Set<string>();
+      const points = selectedMergeBlocks.flatMap((b) => b.points).filter((p) => {
+        if (seen.has(p.title)) return false;
+        seen.add(p.title);
+        return true;
+      });
+      const merged = {
+        ...first,
+        title: result.title,
+        summary: result.summary ?? '',
+        conflict: null,
+        resolution: null,
+        points,
+        revisions: selectedMergeBlocks.flatMap((b) => b.revisions),
+      };
+      setBlocks((prev) => {
+        const without = prev.filter((b) => !mergeBlockKeys.includes(b.key));
+        const idx = prev.findIndex((b) => b.key === first.key);
+        return [...without.slice(0, idx), merged, ...without.slice(idx)];
+      });
+      setMergeBlockKeys([]);
+      setMergeModal(null);
+      showToast(t('merge.blockDone', { count: selectedMergeBlocks.length }));
+    },
+    [selectedMergeBlocks, mergeBlockKeys, t],
   );
 
   const handleStart = useCallback(async () => {
@@ -514,6 +667,13 @@ export function AnalysisWorkbench({
           onApply={() => setConfirmOpen(true)}
           onRevise={openRevise}
           onOpenMaterialByName={openMaterialByName}
+          mergeBlockKeys={mergeBlockKeys}
+          onToggleBlockMergeSelect={toggleBlockMergeSelect}
+          mergePointSel={mergePointSel}
+          onTogglePointMergeSelect={togglePointMergeSelect}
+          onDeleteBlock={setPendingDeleteBlock}
+          onEditPoint={(ownerKey, pointKey, kind) => openPointEdit(ownerKey, pointKey, kind)}
+          onEditBlock={setEditingBlock}
         />
       </div>
 
@@ -522,6 +682,116 @@ export function AnalysisWorkbench({
         startInEdit={editOnOpen}
         onClose={() => setViewMaterial(null)}
         onUpdate={handleUpdateMaterial}
+      />
+
+      {/* 多选合并弹窗(spec §9 规则 9b):块级/同块点级 */}
+      <MergeDraftModal
+        open={mergeModal !== null}
+        kind={mergeModal ?? 'point'}
+        onClose={() => setMergeModal(null)}
+        onConfirm={mergeModal === 'block' ? confirmBlockMerge : confirmPointMerge}
+        points={selectedMergePoints.map((p) => ({
+          title: p.title,
+          description: p.description,
+          evidenceCount: p.evidences.length,
+        }))}
+        blocks={selectedMergeBlocks.map((b) => ({
+          title: b.title,
+          summary: b.summary,
+          points: b.points.map((p) => ({ title: p.title, description: p.description })),
+        }))}
+      />
+
+      {/* 多选合并浮动条:块≥2 可合并块;同块点≥2 可合并点(与块选互斥) */}
+      {(mergeBlockKeys.length > 0 || (mergePointSel?.pointKeys.length ?? 0) > 0) && (
+        <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full bg-surface px-5 py-2.5 shadow-lg ring-1 ring-border">
+          <span className="text-xs font-bold text-text-primary">
+            {mergeBlockKeys.length > 0
+              ? t('merge.blocksSelected', { count: mergeBlockKeys.length })
+              : t('merge.pointsSelected', { count: mergePointSel?.pointKeys.length ?? 0 })}
+          </span>
+          <span className="h-4 w-px bg-border" />
+          {mergeBlockKeys.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setMergeModal('block')}
+              disabled={mergeBlockKeys.length < 2 || blockMergeConflictBlocked}
+              title={
+                blockMergeConflictBlocked
+                  ? t('merge.conflictBlocked')
+                  : mergeBlockKeys.length < 2
+                    ? t('merge.minHint')
+                    : undefined
+              }
+              className="inline-flex h-7 items-center gap-1 rounded-full bg-accent px-3.5 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              ⇉ {t('merge.blockButton')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMergeModal('point')}
+              disabled={(mergePointSel?.pointKeys.length ?? 0) < 2}
+              title={
+                (mergePointSel?.pointKeys.length ?? 0) < 2 ? t('merge.minHint') : undefined
+              }
+              className="inline-flex h-7 items-center gap-1 rounded-full bg-accent px-3.5 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              ⇉ {t('merge.pointButton')}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setMergeBlockKeys([]);
+              setMergePointSel(null);
+            }}
+            className="text-xs text-text-secondary transition-colors hover:text-text-primary"
+          >
+            {t('merge.cancel')}
+          </button>
+        </div>
+      )}
+
+      {/* 草稿块编辑弹窗(spec §9 规则 9b 调整:标题/摘要从原位 input 改为 Modal) */}
+      <DraftBlockEditModal
+        open={editingBlock !== null}
+        onClose={() => setEditingBlock(null)}
+        onSave={(input) => {
+          if (!editingBlock) return;
+          setBlocks((prev) =>
+            prev.map((b) =>
+              b.key === editingBlock.key
+                ? { ...b, title: input.title, summary: input.summary }
+                : b,
+            ),
+          );
+          setEditingBlock(null);
+        }}
+        initialTitle={editingBlock?.title ?? ''}
+        initialSummary={editingBlock?.summary ?? ''}
+      />
+
+      {/* 草稿点编辑弹窗(spec §9 规则 9b 调整:编辑从原地表单改为 Modal) */}
+      <DraftPointEditModal
+        open={editingPoint !== null}
+        onClose={() => setEditingPoint(null)}
+        onSave={savePointEdit}
+        initialTitle={editingPoint?.title ?? ''}
+        initialDescription={editingPoint?.description ?? ''}
+      />
+
+      {/* 草稿块删除二次确认 */}
+      <DeleteBlockConfirm
+        block={pendingDeleteBlock}
+        onCancel={() => setPendingDeleteBlock(null)}
+        onConfirm={() => {
+          if (pendingDeleteBlock) {
+            setBlocks((prev) => prev.filter((b) => b.key !== pendingDeleteBlock.key));
+            setMergeBlockKeys((prev) => prev.filter((k) => k !== pendingDeleteBlock.key));
+          }
+          setPendingDeleteBlock(null);
+        }}
       />
 
       <ReviseModal
@@ -564,5 +834,53 @@ export function AnalysisWorkbench({
         </div>
       </Modal>
     </div>
+  );
+}
+
+/** 草稿块删除二次确认(spec §9 规则 9b:块级删除属破坏性操作,须确认) */
+function DeleteBlockConfirm({
+  block,
+  onCancel,
+  onConfirm,
+}: {
+  block: DraftBlockState | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const t = useTranslations('analysis.deleteConfirm');
+  if (!block) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('title')}
+        className="relative w-[420px] max-w-[92vw] rounded-[12px] bg-surface p-[22px] shadow-xl"
+      >
+        <h3 className="text-[16px] font-bold tracking-tight text-text-primary">{t('title')}</h3>
+        <p className="mt-2 text-sm text-text-secondary">
+          {t('body', { title: block.title || t('block.newDefaultTitle') })}
+        </p>
+        <p className="mt-1 text-xs text-text-muted">{t('hint', { count: block.points.length })}</p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-8 rounded-lg border border-border px-3 text-xs text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+          >
+            {t('cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="h-8 rounded-full bg-danger px-4 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97]"
+          >
+            {t('confirm')}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }

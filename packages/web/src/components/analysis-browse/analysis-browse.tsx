@@ -16,7 +16,6 @@ import { showToast } from '@/components/shared/toast';
 import { DueSoonBadge, OverdueBadge, StatusBadge } from '@/components/shared/badge';
 import { EmptyState } from '@/components/shared/empty-state';
 import { BoxIcon, ModuleDeleteDialog, ModuleFormModal } from '@/components/modules/module-dialogs';
-import { MergePointsModal } from './merge-points-modal';
 import {
   ChevronIcon,
   ClockIcon,
@@ -221,41 +220,29 @@ export function AnalysisBrowse({
   const [moduleDelete, setModuleDelete] = useState<ModuleSummary | null>(null);
   const [moduleDeleteOpen, setModuleDeleteOpen] = useState(false);
 
-  // 需求点多选批量操作(spec §9 规则 9b):勾选集合 + 合并/批量删除弹窗
-  const [selectedPointIds, setSelectedPointIds] = useState<string[]>([]);
-  const [mergeOpen, setMergeOpen] = useState(false);
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
+  // 需求点删除(spec §9 规则 9b:需求产出页支持单点删除;合并在工作台草稿阶段)
+  const [deletePoint, setDeletePoint] = useState<RequirementPointRow | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  const togglePointSelect = (id: string) => {
-    setSelectedPointIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+  const confirmDeletePoint = async () => {
+    if (!deletePoint || deleting) return;
+    setDeleting(true);
+    const res = await deleteRequirementPointAction(deletePoint.id);
+    setDeleting(false);
+    setDeleteOpen(false);
+    if (res.ok) {
+      showToast(t('bulk.deleted', { count: 1 }));
+      setDeletePoint(null);
+      router.refresh();
+    } else {
+      showToast(res.message, 'error');
+    }
   };
 
-  const selectedPoints = useMemo(
-    () => points.filter((p) => selectedPointIds.includes(p.id)),
-    [points, selectedPointIds],
-  );
-
-  /** 批量删除:逐点删除(留痕),全部完成或失败即 toast 并清空选择 */
-  const bulkDelete = async () => {
-    if (bulkDeleting) return;
-    setBulkDeleting(true);
-    let ok = 0;
-    for (const id of selectedPointIds) {
-      const res = await deleteRequirementPointAction(id);
-      if (res.ok) ok += 1;
-    }
-    setBulkDeleting(false);
-    setBulkDeleteOpen(false);
-    showToast(
-      ok === selectedPointIds.length
-        ? t('bulk.deleted', { count: ok })
-        : t('bulk.partialDeleted', { ok, total: selectedPointIds.length }),
-      ok === selectedPointIds.length ? undefined : 'error',
-    );
-    setSelectedPointIds([]);
+  const openPointDelete = (point: RequirementPointRow) => {
+    setDeletePoint(point);
+    setDeleteOpen(true);
   };
 
   const openModuleCreate = () => {
@@ -374,8 +361,7 @@ export function AnalysisBrowse({
                 onEdit={openRequirementEdit}
                 onRename={openModuleRename}
                 onDelete={openModuleDelete}
-                selectedPointIds={selectedPointIds}
-                onTogglePoint={togglePointSelect}
+                onDeletePoint={openPointDelete}
               />
             ))}
           </div>
@@ -393,8 +379,7 @@ export function AnalysisBrowse({
                 onEvidence={openEvidence}
                 onRevisionHistory={openRevisionHistory}
                 onEdit={openRequirementEdit}
-                selectedPointIds={selectedPointIds}
-                onTogglePoint={togglePointSelect}
+                onDeletePoint={openPointDelete}
               />
             ))}
           </div>
@@ -455,64 +440,20 @@ export function AnalysisBrowse({
         />
       )}
 
-      {/* P3n 需求点合并弹窗(三栏:清单/参照/编辑;≥2 个点才可打开) */}
-      {selectedPoints.length >= 2 && (
-        <MergePointsModal
-          open={mergeOpen}
-          onClose={() => setMergeOpen(false)}
-          onMerged={() => setSelectedPointIds([])}
-          points={selectedPoints}
-          requirements={sortedRequirements.map((r) => ({ id: r.id, title: r.title }))}
-        />
-      )}
-
-      {/* 批量删除确认弹窗 */}
-      {bulkDeleteOpen && (
+      {/* 需求点删除确认弹窗(单点,delete 留痕) */}
+      {deletePoint && (
         <BulkDeleteConfirm
-          count={selectedPointIds.length}
-          deleting={bulkDeleting}
-          onCancel={() => setBulkDeleteOpen(false)}
-          onConfirm={bulkDelete}
+          count={1}
+          deleting={deleting}
+          onCancel={() => setDeleteOpen(false)}
+          onConfirm={confirmDeletePoint}
         />
-      )}
-
-      {/* 多选批量浮动条(选中 ≥1 显示;fixed 底部不随滚动丢) */}
-      {selectedPointIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full bg-surface px-5 py-2.5 shadow-lg ring-1 ring-border">
-          <span className="text-xs font-bold text-text-primary">
-            {t('bulk.selected', { count: selectedPointIds.length })}
-          </span>
-          <span className="h-4 w-px bg-border" />
-          <button
-            type="button"
-            onClick={() => setMergeOpen(true)}
-            disabled={selectedPointIds.length < 2}
-            className="inline-flex h-7 items-center gap-1 rounded-full bg-accent px-3.5 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-            title={selectedPointIds.length < 2 ? t('bulk.mergeMinHint') : undefined}
-          >
-            ⇉ {t('bulk.merge')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setBulkDeleteOpen(true)}
-            className="inline-flex h-7 items-center gap-1 rounded-full border border-danger px-3.5 text-xs font-bold text-danger transition-colors duration-[80ms] hover:bg-[color-mix(in_srgb,var(--danger)_8%,transparent)]"
-          >
-            🗑 {t('bulk.delete')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedPointIds([])}
-            className="text-xs text-text-secondary transition-colors hover:text-text-primary"
-          >
-            {t('bulk.cancel')}
-          </button>
-        </div>
       )}
     </div>
   );
 }
 
-/** 批量删除确认(轻量 portal 弹窗,危险色主按钮) */
+/** 删除确认(轻量 portal 弹窗,危险色主按钮;单点/批量共用) */
 function BulkDeleteConfirm({
   count,
   deleting,
@@ -648,8 +589,7 @@ function RequirementBlock({
   onEvidence,
   onRevisionHistory,
   onEdit,
-  selectedPointIds,
-  onTogglePoint,
+  onDeletePoint,
 }: {
   requirement: RequirementWithOverdue;
   points: RequirementPointRow[];
@@ -661,9 +601,8 @@ function RequirementBlock({
   onEvidence: (point: RequirementPointRow) => void;
   onRevisionHistory: (req: RequirementWithOverdue) => void;
   onEdit: (req: RequirementWithOverdue) => void;
-  /** 多选批量(spec §9 规则 9b):选中点 id 集与切换回调,透传至点行 checkbox */
-  selectedPointIds: string[];
-  onTogglePoint: (id: string) => void;
+  /** 单点删除(spec §9 规则 9b):透传至点行 🗑 入口 */
+  onDeletePoint: (point: RequirementPointRow) => void;
 }) {
   const t = useTranslations('browse');
   const locale = useLocale();
@@ -757,8 +696,7 @@ function RequirementBlock({
               detailHref={`${pointHrefBase}/${p.id}`}
               revisionCount={pointRevisionCounts[p.id] ?? 0}
               onEvidence={() => onEvidence(p)}
-              checked={selectedPointIds.includes(p.id)}
-              onToggle={() => onTogglePoint(p.id)}
+              onDelete={() => onDeletePoint(p)}
             />
           ))}
         </ul>
@@ -777,17 +715,15 @@ function PointRow({
   detailHref,
   revisionCount,
   onEvidence,
-  checked,
-  onToggle,
+  onDelete,
 }: {
   point: RequirementPointRow;
   detailHref: string;
   /** 该点修订计数(>0 显示 ✨N 与 🕘 入口) */
   revisionCount: number;
   onEvidence: () => void;
-  /** 多选批量(spec §9 规则 9b):勾选态与切换 */
-  checked: boolean;
-  onToggle: () => void;
+  /** 单点删除(spec §9 规则 9b):hover 🗑 触发,父级弹确认 */
+  onDelete: () => void;
 }) {
   const t = useTranslations('browse');
   const [expanded, setExpanded] = useState(false);
@@ -817,30 +753,9 @@ function PointRow({
 
   return (
     // 需求点行:无底 + hairline 分隔(消整行灰块),hover 极浅反馈;
-    // pl-9 相对块头缩进(圆点比 P 徽章右移一档),体现「块 → 点」从属层级;
-    // 勾选时整行淡蓝高亮(多选批量,spec §9 规则 9b)
-    <li
-      className={`group flex flex-col gap-2 rounded-[8px] border-b border-border/70 py-3 pl-9 pr-1 transition-colors duration-[120ms] last:border-0 hover:bg-surface-2/40 ${
-        checked ? 'bg-accent-dim' : ''
-      }`}
-    >
+    // pl-9 相对块头缩进(圆点比 P 徽章右移一档),体现「块 → 点」从属层级
+    <li className="group flex flex-col gap-2 rounded-[8px] border-b border-border/70 py-3 pl-9 pr-1 transition-colors duration-[120ms] last:border-0 hover:bg-surface-2/40">
       <div className="flex items-center gap-2.5">
-        <button
-          type="button"
-          role="checkbox"
-          aria-checked={checked}
-          aria-label={t('bulk.checkboxLabel')}
-          onClick={onToggle}
-          className={`flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border transition-colors duration-[80ms] ${
-            checked ? 'border-accent bg-accent text-white' : 'border-border bg-surface hover:border-accent/60'
-          }`}
-        >
-          {checked && (
-            <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M5 13l4 4L19 7" />
-            </svg>
-          )}
-        </button>
         <span className={`h-2 w-2 shrink-0 rounded-full ${dotColor}`} />
         <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{point.title}</span>
         <StatusBadge status={point.status} size="md" />
@@ -877,6 +792,15 @@ function PointRow({
           className="shrink-0 rounded px-1 py-0.5 text-xs text-text-secondary transition-all duration-[80ms] hover:text-accent active:scale-[0.97]"
         >
           📄 {t('evidence')}
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label={t('bulk.delete')}
+          title={t('bulk.delete')}
+          className="shrink-0 rounded px-1 py-0.5 text-[11px] text-text-muted transition-colors duration-[80ms] hover:text-danger"
+        >
+          🗑
         </button>
         <Link
           href={detailHref}
@@ -944,8 +868,7 @@ function ModuleGroup({
   onEdit,
   onRename,
   onDelete,
-  selectedPointIds,
-  onTogglePoint,
+  onDeletePoint,
 }: {
   group: ModuleGroupData;
   pointHrefBase: string;
@@ -957,9 +880,8 @@ function ModuleGroup({
   onEdit: (req: RequirementWithOverdue) => void;
   onRename: (module: ModuleSummary) => void;
   onDelete: (module: ModuleSummary) => void;
-  /** 多选批量(spec §9 规则 9b):选中点 id 集与切换回调,透传至点行 checkbox */
-  selectedPointIds: string[];
-  onTogglePoint: (id: string) => void;
+  /** 单点删除(spec §9 规则 9b):透传至点行 🗑 入口 */
+  onDeletePoint: (point: RequirementPointRow) => void;
 }) {
   const tm = useTranslations('browse.modules');
   // 组头折叠只收组内块:默认展开(与需求块折叠一致)
@@ -1031,8 +953,7 @@ function ModuleGroup({
             onEvidence={onEvidence}
             onRevisionHistory={onRevisionHistory}
             onEdit={onEdit}
-            selectedPointIds={selectedPointIds}
-            onTogglePoint={onTogglePoint}
+            onDeletePoint={onDeletePoint}
           />
         ))}
     </div>

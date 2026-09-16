@@ -34,6 +34,13 @@ export function DraftPanel({
   onApply,
   onRevise,
   onOpenMaterialByName,
+  mergeBlockKeys,
+  onToggleBlockMergeSelect,
+  mergePointSel,
+  onTogglePointMergeSelect,
+  onDeleteBlock,
+  onEditPoint,
+  onEditBlock,
 }: {
   blocks: DraftBlockState[];
   supps: SupplementBlockState[];
@@ -55,6 +62,18 @@ export function DraftPanel({
   onRevise: (blockIndex: number, pointIndex: number | null) => void;
   /** 点击来源素材名打开素材 Modal(workbench 按名反查) */
   onOpenMaterialByName?: (name: string) => void;
+  /** 删除块(workbench 弹二次确认后再移除) */
+  onDeleteBlock?: (block: DraftBlockState) => void;
+  /** 编辑需求点(弹窗化):ownerKey 为块/补充块 key,kind 区分写回目标 */
+  onEditPoint?: (ownerKey: string, pointKey: string, kind: 'req' | 'supp') => void;
+  /** 编辑块标题/摘要(弹窗化) */
+  onEditBlock?: (block: DraftBlockState) => void;
+  /** 多选合并(spec §9 规则 9b):块级点选集与切换 */
+  mergeBlockKeys?: string[];
+  onToggleBlockMergeSelect?: (key: string) => void;
+  /** 点级点选(同块):当前选中块与点 key 集 */
+  mergePointSel?: { blockKey: string; pointKeys: string[] } | null;
+  onTogglePointMergeSelect?: (blockKey: string, pointKey: string) => void;
 }) {
   const t = useTranslations('analysis');
   const hasDraft = blocks.length > 0 || supps.length > 0;
@@ -120,10 +139,16 @@ export function DraftPanel({
                   onCreateModule={onCreateModule}
                   materialTitles={materialTitles}
                   onOpenMaterialName={onOpenMaterialByName}
+                  mergeSelected={mergeBlockKeys?.includes(b.key)}
+                  onToggleMergeSelect={onToggleBlockMergeSelect ? () => onToggleBlockMergeSelect(b.key) : undefined}
+                  mergeSelectedPointKeys={mergePointSel?.blockKey === b.key ? mergePointSel.pointKeys : undefined}
+                  onTogglePointMergeSelect={onTogglePointMergeSelect ? (pk: string) => onTogglePointMergeSelect(b.key, pk) : undefined}
+                  onEditPoint={onEditPoint ? (pk: string) => onEditPoint(b.key, pk, 'req') : undefined}
+                  onEdit={onEditBlock ? () => onEditBlock(b) : undefined}
                   onChange={(patch) =>
                     onBlocksChange(blocks.map((q) => (q.key === b.key ? { ...q, ...patch } : q)))
                   }
-                  onDelete={() => onBlocksChange(blocks.filter((q) => q.key !== b.key))}
+                  onDelete={() => onDeleteBlock?.(b)}
                   onRevise={(pointIndex) => onRevise(i, pointIndex)}
                 />
               </div>
@@ -139,6 +164,7 @@ export function DraftPanel({
                   existing={existingByTitle.get(s.targetTitle)}
                   materialTitles={materialTitles}
                   onOpenMaterialName={onOpenMaterialByName}
+                  onEditPoint={onEditPoint ? (pk: string) => onEditPoint(s.key, pk, 'supp') : undefined}
                   onChange={(patch) =>
                     onSuppsChange(supps.map((q) => (q.key === s.key ? { ...q, ...patch } : q)))
                   }

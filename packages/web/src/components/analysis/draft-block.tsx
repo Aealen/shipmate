@@ -273,9 +273,6 @@ function BoxIcon() {
   );
 }
 
-const POINT_INPUT =
-  'w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-text-primary outline-none transition-colors focus:border-accent';
-
 /** evidences → 去重来源素材(缺失标题回退「未命名素材」;展示截断「A、B +N」,+N 不可点) */
 function sourceMaterials(
   evidences: { material_id: string; quote: string }[],
@@ -489,15 +486,16 @@ function ModulePicker({
 
 function PointRow({
   point,
-  onChange,
   onDelete,
   deleteLabel,
   materialTitles,
   onRevise,
   onOpenName,
+  mergeSelected,
+  onToggleMergeSelect,
+  onEdit,
 }: {
   point: DraftPointState;
-  onChange: (patch: Partial<DraftPointState>) => void;
   onDelete: () => void;
   deleteLabel: string;
   /** materialId → 素材标题(源头素材展示;缺失回退「未命名素材」) */
@@ -506,43 +504,37 @@ function PointRow({
   onRevise?: () => void;
   /** 点击来源素材名打开素材 Modal;不传则名字不可点 */
   onOpenName?: (name: string) => void;
+  /** 多选合并(spec §9 规则 9b):同块点级点选态与切换;点击行非交互区即切换 */
+  mergeSelected?: boolean;
+  onToggleMergeSelect?: () => void;
+  /** 编辑需求点(弹窗化:父级打开编辑 Modal;不再原地表单编辑) */
+  onEdit?: () => void;
 }) {
   const t = useTranslations('analysis');
-  const [editing, setEditing] = useState(false);
-
-  if (editing) {
-    return (
-      <div className="space-y-2 rounded-lg border border-accent/60 bg-accent-dim/40 p-2.5">
-        <input
-          value={point.title}
-          onChange={(e) => onChange({ title: e.target.value })}
-          placeholder={t('block.pointTitlePlaceholder')}
-          className={POINT_INPUT}
-        />
-        <textarea
-          value={point.description}
-          onChange={(e) => onChange({ description: e.target.value })}
-          placeholder={t('block.pointDescPlaceholder')}
-          rows={2}
-          className={`${POINT_INPUT} resize-y`}
-        />
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => setEditing(false)}
-            className="rounded-md px-2 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
-          >
-            {t('block.save')}
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const pickMerge = (e: React.MouseEvent) => {
+    if (!onToggleMergeSelect) return;
+    if (
+      (e.target as HTMLElement).closest(
+        'button, input, textarea, select, a, label, [role="menu"], [role="radiogroup"]',
+      )
+    )
+      return;
+    // 阻断冒泡:避免点行点击再触发块级 pickMerge(块/点选择互斥,块级会清空点选)
+    e.stopPropagation();
+    onToggleMergeSelect();
+  };
 
   const conf = Math.round(point.confidence * 100);
 
   return (
-    <div className="group flex items-start gap-2 rounded-lg border border-transparent px-2 py-1.5 transition-colors duration-[120ms] hover:border-border hover:bg-surface-2/60">
+    // 需求点行:hairline 分隔 + hover 浅灰;合并点选 = 淡蓝整行(点击行非交互区切换);
+    // 操作按钮常显(hover 显隐可发现性差,历史反馈三次);编辑走弹窗(spec §9 规则 9b 调整)
+    <div
+      onClick={pickMerge}
+      className={`group flex items-start gap-2 rounded-lg border border-transparent px-2 py-1.5 transition-colors duration-[120ms] hover:border-border hover:bg-surface-2/60 ${
+        mergeSelected ? 'border-accent bg-accent-dim' : ''
+      } ${onToggleMergeSelect ? 'cursor-pointer' : ''}`}
+    >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{point.title}</span>
@@ -567,7 +559,7 @@ function PointRow({
           <p className="mt-1 text-[11px] text-warning">{t('block.noEvidence')}</p>
         )}
       </div>
-      <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity duration-[120ms] group-hover:opacity-100">
+      <div className="flex shrink-0 gap-0.5">
         {onRevise && (
           <button
             type="button"
@@ -581,7 +573,7 @@ function PointRow({
         )}
         <button
           type="button"
-          onClick={() => setEditing(true)}
+          onClick={() => onEdit?.()}
           aria-label={t('block.edit')}
           title={t('block.edit')}
           className={ICON_BTN}
@@ -613,6 +605,12 @@ export function DraftBlock({
   onDelete,
   onRevise,
   onOpenMaterialName,
+  mergeSelected,
+  onToggleMergeSelect,
+  mergeSelectedPointKeys,
+  onTogglePointMergeSelect,
+  onEditPoint,
+  onEdit,
 }: {
   block: DraftBlockState;
   /** 项目模块列表(下拉选项;由 workbench 拉取透传) */
@@ -627,15 +625,41 @@ export function DraftBlock({
   onRevise: (pointIndex: number | null) => void;
   /** 点击来源素材名打开素材 Modal;不传则名字不可点 */
   onOpenMaterialName?: (name: string) => void;
+  /** 多选合并(spec §9 规则 9b):块级点选态与切换;点击块体非交互区即切换 */
+  mergeSelected?: boolean;
+  onToggleMergeSelect?: () => void;
+  /** 编辑块标题/摘要(弹窗化:父级打开编辑 Modal;原位 input 易误触已移除) */
+  onEdit?: () => void;
+  /** 点级点选(同块合并):选中点 key 集与切换,透传至点行 */
+  mergeSelectedPointKeys?: string[];
+  onTogglePointMergeSelect?: (pointKey: string) => void;
+  /** 编辑需求点(弹窗化):参数为点 key */
+  onEditPoint?: (pointKey: string) => void;
 }) {
   const t = useTranslations('analysis');
   const c = block.conflict;
+  const pickMerge = (e: React.MouseEvent) => {
+    if (!onToggleMergeSelect) return;
+    if (
+      (e.target as HTMLElement).closest(
+        'button, input, textarea, select, a, label, [role="menu"], [role="radiogroup"]',
+      )
+    )
+      return;
+    onToggleMergeSelect();
+  };
 
   return (
-    // 白卡容器(原型 P3c 加强:无框白卡坐暖纸底;未勾选保留虚线 + 半透明)
+    // 白卡容器(原型 P3c 加强:无框白卡坐暖纸底;未勾选保留虚线 + 半透明;
+    // 合并点选 = accent 实线描边,点击块体非交互区切换)
     <div
-      className={`group rounded-[14px] bg-surface p-5 transition-shadow duration-[120ms] hover:shadow-sm ${
-        block.selected ? 'border border-transparent' : 'border border-dashed border-border opacity-55'
+      onClick={pickMerge}
+      className={`group cursor-pointer rounded-[14px] bg-surface p-5 transition-shadow duration-[120ms] hover:shadow-sm ${
+        mergeSelected
+          ? 'border border-accent'
+          : block.selected
+            ? 'border border-transparent'
+            : 'border border-dashed border-border opacity-55'
       }`}
     >
       <div className="flex items-start gap-2.5">
@@ -645,18 +669,13 @@ export function DraftBlock({
           label={t('selectBlock')}
         />
         <div className="min-w-0 flex-1 space-y-1">
-          <input
-            value={block.title}
-            onChange={(e) => onChange({ title: e.target.value })}
-            placeholder={t('block.titleLabel')}
-            className="w-full rounded-md bg-transparent text-[17px] font-bold tracking-tight text-text-primary outline-none transition-colors placeholder:text-text-muted hover:bg-surface-2/60 focus:bg-surface-2/60"
-          />
-          <input
-            value={block.summary}
-            onChange={(e) => onChange({ summary: e.target.value })}
-            placeholder={t('block.summaryPlaceholder')}
-            className="w-full rounded-md bg-transparent text-xs text-text-secondary outline-none transition-colors placeholder:text-text-muted hover:bg-surface-2/60 focus:bg-surface-2/60"
-          />
+          {/* 标题/摘要静态展示;编辑走 ✎ 弹窗(spec §9 规则 9b 调整:原位 input 易误触) */}
+          <h3 className="truncate text-[17px] font-bold tracking-tight text-text-primary">
+            {block.title || <span className="text-text-muted">{t('block.titleLabel')}</span>}
+          </h3>
+          {block.summary && (
+            <p className="line-clamp-2 text-xs text-text-secondary">{block.summary}</p>
+          )}
         </div>
         <div className="flex shrink-0 items-start gap-0.5">
           <button
@@ -664,10 +683,19 @@ export function DraftBlock({
             onClick={() => onRevise(null)}
             aria-label={t('revise.action')}
             title={t('revise.action')}
-            className="flex h-6 items-center gap-1 rounded-md px-1.5 text-xs text-accent opacity-0 transition-all duration-[120ms] hover:bg-accent-dim focus-visible:opacity-100 group-hover:opacity-100"
+            className="flex h-6 items-center gap-1 rounded-md px-1.5 text-xs text-accent transition-all duration-[120ms] hover:bg-accent-dim"
           >
             <SparkleIcon />
             {t('revise.action')}
+          </button>
+          <button
+            type="button"
+            onClick={() => onEdit?.()}
+            aria-label={t('block.edit')}
+            title={t('block.edit')}
+            className={ICON_BTN}
+          >
+            <PencilIcon />
           </button>
           <button
             type="button"
@@ -773,11 +801,9 @@ export function DraftBlock({
               materialTitles={materialTitles}
               onRevise={() => onRevise(pi)}
               onOpenName={onOpenMaterialName}
-              onChange={(patch) =>
-                onChange({
-                  points: block.points.map((q) => (q.key === p.key ? { ...q, ...patch } : q)),
-                })
-              }
+              mergeSelected={mergeSelectedPointKeys?.includes(p.key)}
+              onToggleMergeSelect={onTogglePointMergeSelect ? () => onTogglePointMergeSelect(p.key) : undefined}
+              onEdit={onEditPoint ? () => onEditPoint(p.key) : undefined}
               onDelete={() => onChange({ points: block.points.filter((q) => q.key !== p.key) })}
             />
           ))}
@@ -807,6 +833,7 @@ export function SupplementBlock({
   onChange,
   onDelete,
   onOpenMaterialName,
+  onEditPoint,
 }: {
   supp: SupplementBlockState;
   existing?: ExistingRequirementView;
@@ -816,6 +843,8 @@ export function SupplementBlock({
   onDelete: () => void;
   /** 点击来源素材名打开素材 Modal;不传则名字不可点 */
   onOpenMaterialName?: (name: string) => void;
+  /** 编辑新增点(弹窗化):参数为点 key */
+  onEditPoint?: (pointKey: string) => void;
 }) {
   const t = useTranslations('analysis');
 
@@ -894,11 +923,7 @@ export function SupplementBlock({
               deleteLabel={t('block.delete')}
               materialTitles={materialTitles}
               onOpenName={onOpenMaterialName}
-              onChange={(patch) =>
-                onChange({
-                  points: supp.points.map((q) => (q.key === p.key ? { ...q, ...patch } : q)),
-                })
-              }
+              onEdit={onEditPoint ? () => onEditPoint(p.key) : undefined}
               onDelete={() => onChange({ points: supp.points.filter((q) => q.key !== p.key) })}
             />
           ))}
