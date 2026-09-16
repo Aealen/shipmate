@@ -164,7 +164,7 @@ export class ProjectService {
           .from(changeLogs)
           .where(inArray(changeLogs.entityId, entityIds))
           .orderBy(desc(changeLogs.createdAt))
-          .limit(20)
+          .limit(5)
       : [];
 
     return {

@@ -19,8 +19,8 @@ type Overview = {
 
 /**
  * 侧栏三态壳(expanded 240px → collapsed 64px → hidden 0 循环,240ms
- * cubic-bezier(0.2,0,0,1),spec §14)。内容对齐原型 P1 帧:「分组」小标题 +
- * 全部项目/分组行(右侧纯文字计数)+ 新建分组入口 + 底部设置/MCP;
+ * cubic-bezier(0.2,0,0,1),spec §14)。层级:全部项目(顶层主菜单)→
+ * 分组主菜单(区标题,icon)→ 具体分组(缩进子项)→ 新建分组 → 未分组(主菜单);
  * 点击分组行回首页按分组过滤(/?group=)。
  */
 export function Sidebar({ overview }: { overview: Overview }) {
@@ -69,17 +69,25 @@ export function Sidebar({ overview }: { overview: Overview }) {
         </div>
 
         <nav className="min-h-0 flex-1 overflow-y-auto p-2">
-          <p className="px-2.5 pb-1 pt-1.5 text-xs font-bold text-text-muted">{t('groups')}</p>
-
+          {/* 主菜单:全部项目(顶层,不受分组约束) */}
           <NavRow
             href="/"
             label={t('allProjects')}
             active={pathname === '/' && !currentGroup}
             showTooltip={mode === 'collapsed'}
+            icon={<IconGrid className="h-4 w-4 shrink-0" />}
             count={
               overview.groups.reduce((a, g) => a + g.projectCount, 0) + overview.ungrouped.length
             }
           />
+
+          {/* 分组主菜单(区标题,不可点);具体分组缩进表示从属层级 */}
+          <div className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium text-text-secondary">
+            <IconFolder className="h-4 w-4 shrink-0 text-text-muted" />
+            <span className="min-w-0 flex-1 truncate transition-opacity duration-150 group-data-[mode=collapsed]/sidebar:opacity-0">
+              {t('groups')}
+            </span>
+          </div>
 
           {overview.groups.map((g) => (
             <NavRow
@@ -89,23 +97,14 @@ export function Sidebar({ overview }: { overview: Overview }) {
               active={currentGroup === g.id}
               showTooltip={mode === 'collapsed'}
               count={g.projectCount}
+              indent
             />
           ))}
-
-          {overview.ungrouped.length > 0 && (
-            <NavRow
-              href="/?group=none"
-              label={t('ungrouped')}
-              active={currentGroup === 'none'}
-              showTooltip={mode === 'collapsed'}
-              count={overview.ungrouped.length}
-            />
-          )}
 
           <button
             type="button"
             onClick={() => setGroupModalOpen(true)}
-            className="flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-[13px] text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary"
+            className="flex h-9 w-full items-center gap-2 rounded-md pl-[38px] pr-2.5 text-[13px] text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary"
           >
             <svg
               viewBox="0 0 14 14"
@@ -119,6 +118,18 @@ export function Sidebar({ overview }: { overview: Overview }) {
               {t('newGroup')}
             </span>
           </button>
+
+          {/* 未分组:主菜单级(散落项目的收口桶) */}
+          {overview.ungrouped.length > 0 && (
+            <NavRow
+              href="/?group=none"
+              label={t('ungrouped')}
+              active={currentGroup === 'none'}
+              showTooltip={mode === 'collapsed'}
+              icon={<IconInbox className="h-4 w-4 shrink-0" />}
+              count={overview.ungrouped.length}
+            />
+          )}
         </nav>
 
         <div className="shrink-0 space-y-0.5 border-t border-border p-2">
@@ -145,7 +156,8 @@ export function Sidebar({ overview }: { overview: Overview }) {
 }
 
 /**
- * 分组导航行:文字 + 右侧纯文字计数(对齐原型:计数无底色,12px 灰)。
+ * 分组导航行:可选 icon(主菜单)+ 文字 + 右侧纯文字计数(12px 灰);
+ * indent = 分组子项(前缩进,与主菜单 icon 后的文字对齐,表层级从属)。
  * collapsed 态 300ms 延迟 tooltip。
  */
 function NavRow({
@@ -154,12 +166,16 @@ function NavRow({
   count,
   active,
   showTooltip,
+  icon,
+  indent = false,
 }: {
   href: string;
   label: string;
   count: number;
   active: boolean;
   showTooltip: boolean;
+  icon?: ReactNode;
+  indent?: boolean;
 }) {
   const tip = useDelayedTooltip(showTooltip);
 
@@ -167,12 +183,15 @@ function NavRow({
     <Link
       href={href}
       {...tip.handlers}
-      className={`flex h-9 items-center gap-2 rounded-md px-2.5 text-[13px] transition-colors ${
+      className={`flex h-9 items-center gap-2.5 rounded-md pr-2.5 text-[13px] transition-colors ${
+        indent ? 'pl-[38px]' : 'pl-2.5'
+      } ${
         active
           ? 'bg-accent-dim text-text-primary'
           : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary'
       }`}
     >
+      {icon}
       <span className="min-w-0 flex-1 truncate transition-opacity duration-150 group-data-[mode=collapsed]/sidebar:opacity-0">
         {label}
       </span>
@@ -181,6 +200,64 @@ function NavRow({
       </span>
       {tip.render(label)}
     </Link>
+  );
+}
+
+/** 四宫格 icon(全部项目:项目总览) */
+function IconGrid({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  );
+}
+
+/** 文件夹 icon(分组主菜单) */
+function IconFolder({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    </svg>
+  );
+}
+
+/** 收件箱 icon(未分组:散落项目收口) */
+function IconInbox({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+    </svg>
   );
 }
 

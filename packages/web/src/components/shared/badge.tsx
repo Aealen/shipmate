@@ -22,20 +22,20 @@ export type BadgeSize = 'sm' | 'md';
  * developing=warning、done=success、needs_reassessment=danger、failed=danger、
  * pending=text-muted、archived=muted;active 不在表内(分组/项目启用态),
  * 取 success 表示正常活跃。
- * 形态对齐原型 P2/P3 帧:统一浅灰底(bg-surface-2 ≈ #EEF0F3)小方徽 + 彩色文字,
- * 不带圆点、不做透明色底。
+ * 形态:淡语义色底(color-mix 10%)+ 同色彩字,替代原先的统一灰底——
+ * 灰底徽章满屏时无视觉重点,淡彩底让状态语义一眼可辨(draft 灰/confirmed 蓝/developing 黄/done 绿)。
  */
 const STATUS_STYLES: Record<BadgeStatus, string> = {
-  draft: 'text-draft-gray',
-  confirmed: 'text-accent',
-  developing: 'text-warning',
-  done: 'text-success',
-  needs_reassessment: 'text-danger',
-  failed: 'text-danger',
-  pending: 'text-text-muted',
-  in_progress: 'text-warning',
-  archived: 'text-text-muted',
-  active: 'text-success',
+  draft: 'bg-[color-mix(in_srgb,var(--draft-gray)_10%,transparent)] text-draft-gray',
+  confirmed: 'bg-accent-dim text-accent',
+  developing: 'bg-[color-mix(in_srgb,var(--warning)_12%,transparent)] text-warning',
+  done: 'bg-[color-mix(in_srgb,var(--success)_12%,transparent)] text-success',
+  needs_reassessment: 'bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] text-danger',
+  failed: 'bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] text-danger',
+  pending: 'bg-[color-mix(in_srgb,var(--text-muted)_10%,transparent)] text-text-muted',
+  in_progress: 'bg-[color-mix(in_srgb,var(--warning)_12%,transparent)] text-warning',
+  archived: 'bg-[color-mix(in_srgb,var(--text-muted)_10%,transparent)] text-text-muted',
+  active: 'bg-[color-mix(in_srgb,var(--success)_12%,transparent)] text-success',
 };
 
 const SIZE_STYLES: Record<BadgeSize, string> = {
@@ -44,7 +44,7 @@ const SIZE_STYLES: Record<BadgeSize, string> = {
 };
 
 /**
- * 通用状态徽章:浅灰底小方徽 + 状态名,颜色按计划配色表映射。
+ * 通用状态徽章:淡语义色底小方徽 + 状态名,颜色按计划配色表映射。
  * 状态文案走 shared.badge.* 翻译键。
  */
 export function StatusBadge({ status, size = 'md' }: { status: BadgeStatus; size?: BadgeSize }) {
@@ -52,7 +52,7 @@ export function StatusBadge({ status, size = 'md' }: { status: BadgeStatus; size
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-[4px] bg-surface-2 font-medium leading-none ${SIZE_STYLES[size]} ${STATUS_STYLES[status]}`}
+      className={`inline-flex shrink-0 items-center rounded-[4px] font-medium leading-none ${SIZE_STYLES[size]} ${STATUS_STYLES[status]}`}
     >
       {t(`badge.${status}`)}
     </span>

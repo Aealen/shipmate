@@ -6,7 +6,6 @@ import { useEffect, useState, useTransition, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   getRequirementRevisionHistory,
-  type PointRevisionGroup,
   type RequirementRevisionHistory,
   type RevisionEntry,
 } from '@/actions/revisions';
@@ -134,72 +133,14 @@ export function RevisionEntryRow({
   );
 }
 
-/** 内容区分组:徽章 + 组标题 + 计数 + 折叠圆钮 + 条目列表 */
-function SectionGroup({
-  badge,
-  title,
-  entries,
-  removed = false,
-  defaultCollapsed = false,
-}: {
-  badge: string;
-  title?: string;
+/**
+ * TAB 定义:需求块 / 各需求点 / 已移除(若有),每 TAB 只展示一个实体的修订记录。
+ */
+interface HistoryTab {
+  key: string;
+  label: string;
   entries: RevisionEntry[];
   removed?: boolean;
-  defaultCollapsed?: boolean;
-}) {
-  const t = useTranslations('browse');
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
-
-  return (
-    <div className="flex flex-col gap-[5px]">
-      <div className="flex items-center gap-2">
-        <span
-          className={`inline-flex shrink-0 items-center rounded-[5px] px-[8px] py-[3px] text-[11px] leading-none ${
-            removed
-              ? 'bg-[color-mix(in_srgb,var(--danger)_8%,transparent)] text-danger'
-              : 'bg-surface-2 text-text-secondary'
-          }`}
-        >
-          {badge}
-        </span>
-        {title && (
-          <span className="min-w-0 truncate text-[12.5px] font-medium text-text-primary">
-            {title}
-          </span>
-        )}
-        <span className="min-w-0 flex-1" />
-        {entries.length > 0 && (
-          <span className="shrink-0 text-[10.5px] text-text-muted">
-            {collapsed
-              ? t('revision.collapsedCount', { count: entries.length })
-              : t('revision.count', { count: entries.length })}
-          </span>
-        )}
-        {entries.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setCollapsed((v) => !v)}
-            aria-expanded={!collapsed}
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 text-[10px] text-text-muted transition-colors duration-[80ms] hover:text-text-primary"
-          >
-            <ChevronIcon className="h-2.5 w-2.5" expanded={!collapsed} />
-          </button>
-        )}
-      </div>
-      {entries.length === 0 ? (
-        <p className="text-[11px] text-text-muted">{t('revision.noEntries')}</p>
-      ) : (
-        !collapsed && (
-          <div className="flex flex-col gap-[5px]">
-            {entries.map((entry) => (
-              <RevisionEntryRow key={entry.id} entry={entry} variant="modal" />
-            ))}
-          </div>
-        )
-      )}
-    </div>
-  );
 }
 
 /** 头部图标块:26×26 accent-dim 底 + 时钟图标 */
@@ -227,6 +168,8 @@ export function RevisionHistoryModal({
   // mounted 控制是否渲染(DOM 存在),shown 控制动画目标态(同 shared/modal)
   const [mounted, setMounted] = useState(false);
   const [shown, setShown] = useState(false);
+  /** 当前选中 TAB(key);历史加载后默认选第一个有修订的 TAB */
+  const [activeTab, setActiveTab] = useState<string | null>(null);
 
   // 打开时拉取全量修订历史;requirement.id 变化即重拉
   const requirementId = requirement?.id;
@@ -278,6 +221,40 @@ export function RevisionHistoryModal({
   const totalRevisions = history ? history.block.length + pointTotal : 0;
   const isEmpty = history !== null && totalRevisions === 0;
 
+  // TAB 构建:需求块 + 各需求点 + 已移除(若有);每 TAB 只展示一个实体的修订
+  const tabs: HistoryTab[] = history
+    ? [
+        {
+          key: 'block',
+          label: requirement.title,
+          entries: history.block.filter((e) => e.removedPointTitle === undefined),
+        },
+        ...history.points.map((p) => ({
+          key: p.id,
+          label: p.title,
+          entries: p.entries,
+        })),
+        ...(history.removed.length > 0
+          ? [
+              {
+                key: 'removed',
+                label: t('revision.removedBadge'),
+                entries: history.removed,
+                removed: true,
+              },
+            ]
+          : []),
+      ]
+    : [];
+
+  // 历史加载完成后:若当前 TAB 不存在(新弹窗/历史变化),落到第一个非空 TAB,否则第一个
+  const tabsReady = history !== null && !pending;
+  if (tabsReady && (activeTab === null || !tabs.some((tb) => tb.key === activeTab))) {
+    const firstNonEmpty = tabs.find((tb) => tb.entries.length > 0);
+    setActiveTab((firstNonEmpty ?? tabs[0])?.key ?? null);
+  }
+  const active = tabs.find((tb) => tb.key === activeTab) ?? null;
+
   let content: ReactNode = null;
   if (pending && !history) {
     content = (
@@ -287,31 +264,24 @@ export function RevisionHistoryModal({
     content = (
       <p className="py-6 text-center text-[11px] text-text-muted">{t('revision.empty')}</p>
     );
-  } else if (history) {
-    const blockEntries = history.block.filter((e) => e.removedPointTitle === undefined);
-    const pointGroups: PointRevisionGroup[] = history.points;
+  } else if (history && active) {
     content = (
       <>
-        <SectionGroup
-          badge={t('revision.blockBadge')}
-          title={requirement.title}
-          entries={blockEntries}
-        />
-        {pointGroups.map((p) => (
-          <SectionGroup
-            key={p.id}
-            badge={t('revision.pointBadge')}
-            title={p.title}
-            entries={p.entries}
-          />
-        ))}
-        {history.removed.length > 0 && (
-          <SectionGroup
-            badge={t('revision.removedBadge')}
-            entries={history.removed}
-            removed
-            defaultCollapsed
-          />
+        {/* 当前 TAB 上下文:实体名 · 条数 */}
+        <p className="flex shrink-0 items-center gap-2 text-[11.5px] text-text-muted">
+          <span className="min-w-0 truncate">
+            {active.removed ? active.label : `${t('revision.pointBadge')} · ${active.label}`}
+          </span>
+          <span className="shrink-0">{t('revision.count', { count: active.entries.length })}</span>
+        </p>
+        {active.entries.length === 0 ? (
+          <p className="py-6 text-center text-[11px] text-text-muted">{t('revision.noEntries')}</p>
+        ) : (
+          <div className="flex flex-col gap-[5px]">
+            {active.entries.map((entry) => (
+              <RevisionEntryRow key={entry.id} entry={entry} variant="modal" />
+            ))}
+          </div>
         )}
       </>
     );
@@ -364,8 +334,47 @@ export function RevisionHistoryModal({
           {requirement.title} · {t('revision.contextLine', { count: totalRevisions })}
         </p>
 
-        {/* 内容区:分组列表(移除组默认收起) */}
-        <div className="mt-4 flex min-h-0 flex-1 flex-col gap-[14px] overflow-y-auto">
+        {/* TAB 条:需求块 / 各需求点 / 已移除;选中态 accent 下划短横 */}
+        {tabs.length > 0 && !isEmpty && (
+          <div
+            role="tablist"
+            aria-label={t('revision.modalTitle')}
+            className="mt-3 flex shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {tabs.map((tab) => {
+              const on = tab.key === activeTab;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`relative flex shrink-0 items-center gap-1 px-2.5 pb-2 pt-1.5 text-[12px] transition-colors duration-[80ms] ${
+                    on
+                      ? 'font-medium text-text-primary'
+                      : tab.removed
+                        ? 'text-danger/70 hover:text-danger'
+                        : 'text-text-muted hover:text-text-secondary'
+                  }`}
+                >
+                  <span className="max-w-40 truncate">{tab.label}</span>
+                  {tab.entries.length > 0 && (
+                    <span className="text-[10px] tabular-nums text-text-muted">
+                      {tab.entries.length}
+                    </span>
+                  )}
+                  {on && (
+                    <span className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-accent" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 内容区:当前 TAB 的修订条目 */}
+        <div className="mt-3.5 flex min-h-0 flex-1 flex-col gap-[10px] overflow-y-auto">
           {content}
         </div>
 
