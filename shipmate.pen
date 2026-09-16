@@ -4607,6 +4607,105 @@
               "children": [
                 {
                   "type": "frame",
+                  "id": "c5Rmmg",
+                  "name": "Bulk Bar",
+                  "width": "fill_container",
+                  "fill": "$accent-dim",
+                  "cornerRadius": 10,
+                  "stroke": "$accent-dim",
+                  "gap": 14,
+                  "padding": [
+                    10,
+                    16
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "TVHAo",
+                      "name": "BB Count",
+                      "fill": "$accent",
+                      "content": "已选 3 项",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "gCx0Z",
+                      "name": "BB Merge",
+                      "fill": "$accent",
+                      "cornerRadius": 999,
+                      "padding": [
+                        6,
+                        14
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "zE5Ye",
+                          "name": "BBM Tx",
+                          "fill": "#FFFFFF",
+                          "content": "⇉ 合并",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ejPQR",
+                      "name": "BB Delete",
+                      "fill": "$surface",
+                      "cornerRadius": 999,
+                      "stroke": "$danger",
+                      "padding": [
+                        6,
+                        14
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "VUqDc",
+                          "name": "BBD Tx",
+                          "fill": "$danger",
+                          "content": "🗑 删除",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hU49g",
+                      "name": "BB Cancel",
+                      "cornerRadius": 999,
+                      "padding": [
+                        6,
+                        10
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "g3vVF",
+                          "name": "BBC Tx",
+                          "fill": "$text-secondary",
+                          "content": "取消",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
                   "id": "CCMD6",
                   "name": "List Head",
                   "width": "fill_container",
@@ -4745,12 +4844,42 @@
                       "id": "QC3J4",
                       "name": "Row 结构化输出强制 JSON schema",
                       "width": "fill_container",
-                      "fill": "$bg",
+                      "fill": "$accent-dim",
                       "cornerRadius": 8,
+                      "stroke": "$accent",
                       "gap": 10,
-                      "padding": 12,
+                      "padding": [
+                        12,
+                        12,
+                        12,
+                        36
+                      ],
                       "alignItems": "center",
                       "children": [
+                        {
+                          "type": "frame",
+                          "id": "s8u4oM",
+                          "name": "CB",
+                          "width": 14,
+                          "height": 14,
+                          "fill": "$accent",
+                          "cornerRadius": 4,
+                          "stroke": "$accent",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "tlFZ8",
+                              "name": "CB Tick",
+                              "fill": "#FFFFFF",
+                              "content": "✓",
+                              "fontFamily": "Inter",
+                              "fontSize": 10,
+                              "fontWeight": "bold"
+                            }
+                          ]
+                        },
                         {
                           "type": "frame",
                           "id": "aYNe1",
@@ -4860,12 +4989,42 @@
                       "id": "HRcTL",
                       "name": "Row draft 态不自动确认",
                       "width": "fill_container",
-                      "fill": "$bg",
+                      "fill": "$accent-dim",
                       "cornerRadius": 8,
+                      "stroke": "$accent",
                       "gap": 10,
-                      "padding": 12,
+                      "padding": [
+                        12,
+                        12,
+                        12,
+                        36
+                      ],
                       "alignItems": "center",
                       "children": [
+                        {
+                          "type": "frame",
+                          "id": "gpFiE",
+                          "name": "CB",
+                          "width": 14,
+                          "height": 14,
+                          "fill": "$accent",
+                          "cornerRadius": 4,
+                          "stroke": "$accent",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Rcfvw",
+                              "name": "CB Tick",
+                              "fill": "#FFFFFF",
+                              "content": "✓",
+                              "fontFamily": "Inter",
+                              "fontSize": 10,
+                              "fontWeight": "bold"
+                            }
+                          ]
+                        },
                         {
                           "type": "frame",
                           "id": "ZCmc9",
@@ -4975,12 +5134,30 @@
                       "id": "eEXBq",
                       "name": "Row 需求点实质修改触发联动",
                       "width": "fill_container",
-                      "fill": "$bg",
+                      "fill": "$surface",
                       "cornerRadius": 8,
+                      "stroke": "$border",
                       "gap": 10,
-                      "padding": 12,
+                      "padding": [
+                        12,
+                        12,
+                        12,
+                        36
+                      ],
                       "alignItems": "center",
                       "children": [
+                        {
+                          "type": "frame",
+                          "id": "t6aCD",
+                          "name": "CB",
+                          "width": 14,
+                          "height": 14,
+                          "fill": "$surface",
+                          "cornerRadius": 4,
+                          "stroke": "$border",
+                          "justifyContent": "center",
+                          "alignItems": "center"
+                        },
                         {
                           "type": "frame",
                           "id": "yRCkd",
@@ -5090,12 +5267,30 @@
                       "id": "S8STH3",
                       "name": "Row 素材类型扩展位(截图/文档)",
                       "width": "fill_container",
-                      "fill": "$bg",
+                      "fill": "$surface",
                       "cornerRadius": 8,
+                      "stroke": "$border",
                       "gap": 10,
-                      "padding": 12,
+                      "padding": [
+                        12,
+                        12,
+                        12,
+                        36
+                      ],
                       "alignItems": "center",
                       "children": [
+                        {
+                          "type": "frame",
+                          "id": "U3EIto",
+                          "name": "CB",
+                          "width": 14,
+                          "height": 14,
+                          "fill": "$surface",
+                          "cornerRadius": 4,
+                          "stroke": "$border",
+                          "justifyContent": "center",
+                          "alignItems": "center"
+                        },
                         {
                           "type": "frame",
                           "id": "C0dMd",
@@ -5289,12 +5484,30 @@
                       "id": "CPnfd",
                       "name": "Row 项目/分组 CRUD 工具组",
                       "width": "fill_container",
-                      "fill": "$bg",
+                      "fill": "$surface",
                       "cornerRadius": 8,
+                      "stroke": "$border",
                       "gap": 10,
-                      "padding": 12,
+                      "padding": [
+                        12,
+                        12,
+                        12,
+                        36
+                      ],
                       "alignItems": "center",
                       "children": [
+                        {
+                          "type": "frame",
+                          "id": "f3mUG",
+                          "name": "CB",
+                          "width": 14,
+                          "height": 14,
+                          "fill": "$surface",
+                          "cornerRadius": 4,
+                          "stroke": "$border",
+                          "justifyContent": "center",
+                          "alignItems": "center"
+                        },
                         {
                           "type": "frame",
                           "id": "Nl1hj",
@@ -5404,12 +5617,30 @@
                       "id": "f40V0g",
                       "name": "Row 审计报表工具 get_project_audit_report",
                       "width": "fill_container",
-                      "fill": "$bg",
+                      "fill": "$surface",
                       "cornerRadius": 8,
+                      "stroke": "$border",
                       "gap": 10,
-                      "padding": 12,
+                      "padding": [
+                        12,
+                        12,
+                        12,
+                        36
+                      ],
                       "alignItems": "center",
                       "children": [
+                        {
+                          "type": "frame",
+                          "id": "UuyR7",
+                          "name": "CB",
+                          "width": 14,
+                          "height": 14,
+                          "fill": "$surface",
+                          "cornerRadius": 4,
+                          "stroke": "$border",
+                          "justifyContent": "center",
+                          "alignItems": "center"
+                        },
                         {
                           "type": "frame",
                           "id": "CHQaq",
@@ -39811,6 +40042,31 @@
                         },
                         {
                           "type": "frame",
+                          "id": "gFvXU",
+                          "name": "Act AI Revise",
+                          "fill": "$accent-dim",
+                          "cornerRadius": 7,
+                          "gap": 5,
+                          "padding": [
+                            7,
+                            12
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "RInCp",
+                              "name": "AE Tx",
+                              "fill": "$accent",
+                              "content": "✨ AI 修订",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "bold"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
                           "id": "BGvb5",
                           "name": "Act Edit",
                           "fill": "$accent",
@@ -64011,6 +64267,692 @@
                       "fontFamily": "Inter",
                       "fontSize": 10,
                       "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "V5R4EA",
+      "x": 74000,
+      "y": 0,
+      "name": "P3n 需求点合并 Modal",
+      "clip": true,
+      "width": 1240,
+      "height": 860,
+      "fill": "$bg",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "mSrPZ",
+          "name": "TopBar",
+          "width": "fill_container",
+          "height": 48,
+          "fill": "$surface",
+          "padding": [
+            0,
+            20
+          ],
+          "alignItems": "center"
+        },
+        {
+          "type": "frame",
+          "id": "tNKIy",
+          "name": "Overlay",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "#1A1D2366",
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "kR8ty",
+              "name": "合并弹窗",
+              "width": 1080,
+              "height": 700,
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 14,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "e4OZB",
+                  "name": "头",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "y87IJC",
+                      "name": "Ico",
+                      "width": 26,
+                      "height": 26,
+                      "fill": "$accent-dim",
+                      "cornerRadius": 6,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "uQm26",
+                          "name": "Ico Tx",
+                          "fill": "$accent",
+                          "content": "⇉",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "yZ7Rt",
+                      "name": "标题",
+                      "fill": "$text-primary",
+                      "content": "合并需求点",
+                      "fontFamily": "Inter",
+                      "fontSize": 17,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "fP2yM",
+                      "name": "副标",
+                      "fill": "$text-muted",
+                      "content": "已选 3 个需求点 · 合并为 1 个并归入指定需求",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ygYA1",
+                      "name": "Sp",
+                      "width": "fill_container",
+                      "height": 1
+                    },
+                    {
+                      "type": "frame",
+                      "id": "k9sWH3",
+                      "name": "Close",
+                      "width": 26,
+                      "height": 26,
+                      "fill": "$surface-2",
+                      "cornerRadius": 999,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "F1AmYW",
+                          "name": "Close Tx",
+                          "fill": "$text-secondary",
+                          "content": "✕",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ozWWD",
+                  "name": "分隔",
+                  "width": "fill_container",
+                  "height": 1,
+                  "fill": "$border"
+                },
+                {
+                  "type": "frame",
+                  "id": "oziWu",
+                  "name": "三栏",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ap6WU",
+                      "name": "左·已选清单",
+                      "width": 250,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "UXV0d",
+                          "name": "L Head",
+                          "fill": "$text-secondary",
+                          "content": "已选需求点(3)",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "vfdrs",
+                          "name": "LI 明确上线时限为一周内",
+                          "width": "fill_container",
+                          "fill": "$accent-dim",
+                          "cornerRadius": 8,
+                          "stroke": "$accent",
+                          "layout": "vertical",
+                          "gap": 3,
+                          "padding": [
+                            9,
+                            11
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "KY8A7",
+                              "name": "LI T",
+                              "fill": "$text-primary",
+                              "content": "明确上线时限为一周内",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "bold"
+                            },
+                            {
+                              "type": "text",
+                              "id": "d6BiQ",
+                              "name": "LI R",
+                              "fill": "$text-muted",
+                              "content": "智慧投标系统一周内上线",
+                              "fontFamily": "Inter",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "oOfxD",
+                          "name": "LI 权限覆盖所有合同制员工",
+                          "width": "fill_container",
+                          "fill": "$surface",
+                          "cornerRadius": 8,
+                          "stroke": "$border",
+                          "layout": "vertical",
+                          "gap": 3,
+                          "padding": [
+                            9,
+                            11
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "qM08x",
+                              "name": "LI T",
+                              "fill": "$text-primary",
+                              "content": "权限覆盖所有合同制员工",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "bold"
+                            },
+                            {
+                              "type": "text",
+                              "id": "Zk6MJ",
+                              "name": "LI R",
+                              "fill": "$text-muted",
+                              "content": "智慧投标系统一周内上线",
+                              "fontFamily": "Inter",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "KidP5",
+                          "name": "LI 全员迁移推广策略",
+                          "width": "fill_container",
+                          "fill": "$surface",
+                          "cornerRadius": 8,
+                          "stroke": "$border",
+                          "layout": "vertical",
+                          "gap": 3,
+                          "padding": [
+                            9,
+                            11
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Kjm9t",
+                              "name": "LI T",
+                              "fill": "$text-primary",
+                              "content": "全员迁移推广策略",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "bold"
+                            },
+                            {
+                              "type": "text",
+                              "id": "ojB8a",
+                              "name": "LI R",
+                              "fill": "$text-muted",
+                              "content": "系统推广与集成方案",
+                              "fontFamily": "Inter",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Kdi5p",
+                      "name": "中·详情参照",
+                      "width": 300,
+                      "height": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": 10,
+                      "stroke": "$border",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "L6lm7",
+                          "name": "M Head",
+                          "fill": "$text-secondary",
+                          "content": "详情参照(点击左侧切换)",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "x9o6JI",
+                          "name": "M Title",
+                          "fill": "$text-primary",
+                          "content": "明确上线时限为一周内",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "qEkvX",
+                          "name": "M Desc L",
+                          "fill": "$text-muted",
+                          "content": "描述",
+                          "fontFamily": "Inter",
+                          "fontSize": 10.5,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "A9pQi",
+                          "name": "M Desc",
+                          "fill": "$text-secondary",
+                          "content": "鉴于投标系统为核心业务系统,将上线周期\n压缩至一周内,各方全力配合确保按时交付。",
+                          "lineHeight": 1.6,
+                          "fontFamily": "Inter",
+                          "fontSize": 11.5,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "WzDVJ",
+                          "name": "M Ev L",
+                          "fill": "$text-muted",
+                          "content": "溯源依据(2)",
+                          "fontFamily": "Inter",
+                          "fontSize": 10.5,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "q8IZjO",
+                          "name": "M Ev1",
+                          "width": "fill_container",
+                          "fill": "$surface-2",
+                          "cornerRadius": 6,
+                          "padding": [
+                            7,
+                            9
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "eQto5",
+                              "name": "M Ev1 Tx",
+                              "fill": "$text-secondary",
+                              "content": "「明确上线时限:鉴于投标系统为核心业务系统…」",
+                              "fontFamily": "Inter",
+                              "fontSize": 10.5,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ug7IS",
+                          "name": "M Ev2",
+                          "width": "fill_container",
+                          "fill": "$surface-2",
+                          "cornerRadius": 6,
+                          "padding": [
+                            7,
+                            9
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "i5jCW",
+                              "name": "M Ev2 Tx",
+                              "fill": "$text-secondary",
+                              "content": "「一周内完成系统上线。 @全体参会人员」",
+                              "fontFamily": "Inter",
+                              "fontSize": 10.5,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "R82Bue",
+                          "name": "M Sp",
+                          "width": "fill_container",
+                          "height": "fill_container"
+                        },
+                        {
+                          "type": "text",
+                          "id": "VGqL8",
+                          "name": "M Hint",
+                          "fill": "$text-muted",
+                          "content": "合并后:其余 2 个点将删除并留痕,evidences 汇总",
+                          "fontFamily": "Inter",
+                          "fontSize": 10,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YN7D9",
+                      "name": "右·合并编辑",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": 10,
+                      "stroke": "$border",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "aQlV0",
+                          "name": "R Head",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "xou4r",
+                              "name": "R H T",
+                              "fill": "$text-secondary",
+                              "content": "合并结果",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "bold"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Klhn6",
+                              "name": "R H Sp",
+                              "width": "fill_container",
+                              "height": 1
+                            },
+                            {
+                              "type": "frame",
+                              "id": "S3L5XS",
+                              "name": "AI Merge Btn",
+                              "fill": "$accent-dim",
+                              "cornerRadius": 999,
+                              "gap": 5,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "OJqKy",
+                                  "name": "AI Tx",
+                                  "fill": "$accent",
+                                  "content": "✨ 智能合并",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 11,
+                                  "fontWeight": "bold"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "vFyME",
+                          "name": "R Req L",
+                          "fill": "$text-muted",
+                          "content": "归入需求",
+                          "fontFamily": "Inter",
+                          "fontSize": 10.5,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "v3GWk",
+                          "name": "R Req Sel",
+                          "width": "fill_container",
+                          "fill": "$surface",
+                          "cornerRadius": 6,
+                          "stroke": "$border",
+                          "gap": 6,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "r7uZJy",
+                              "name": "R Req Tx",
+                              "fill": "$text-primary",
+                              "content": "智慧投标系统一周内上线",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "W8EN8",
+                              "name": "R Req Sp",
+                              "width": "fill_container",
+                              "height": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "sVMMa",
+                              "name": "R Req Cv",
+                              "fill": "$text-muted",
+                              "content": "▾",
+                              "fontFamily": "Inter",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "dOzPP",
+                          "name": "R Title L",
+                          "fill": "$text-muted",
+                          "content": "合并后标题",
+                          "fontFamily": "Inter",
+                          "fontSize": 10.5,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "aFoHW",
+                          "name": "R Title In",
+                          "width": "fill_container",
+                          "fill": "$surface",
+                          "cornerRadius": 6,
+                          "stroke": "$border",
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "T65A3c",
+                              "name": "R Title Tx",
+                              "fill": "$text-primary",
+                              "content": "一周内完成系统上线与全员推广(自合同签订日起)",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "NtIby",
+                          "name": "R Desc L",
+                          "fill": "$text-muted",
+                          "content": "合并后描述",
+                          "fontFamily": "Inter",
+                          "fontSize": 10.5,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "u8h1d",
+                          "name": "R Desc In",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": "$surface",
+                          "cornerRadius": 6,
+                          "stroke": "$border",
+                          "layout": "vertical",
+                          "padding": [
+                            9,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "y7dVs",
+                              "name": "R Desc Tx",
+                              "fill": "$text-secondary",
+                              "content": "鉴于投标系统为核心业务系统:\n1) 上线周期压缩至一周内(自合同签订日起算),各方全力配合确保按时交付;\n2) 系统面向所有合同制员工开放,凭内部统一工作平台账号使用;\n3) 否决深度接口集成,采用链接跳转方式接入办事大厅与邮件链接,引导全员迁移养成使用习惯。",
+                              "lineHeight": 1.6,
+                              "fontFamily": "Inter",
+                              "fontSize": 11.5,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "G4IA0",
+                          "name": "R Foot",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n3Zimo",
+                              "name": "R Foot Hint",
+                              "fill": "$text-muted",
+                              "content": "合并后原点删除并记入变更历史",
+                              "fontFamily": "Inter",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "kfmUh",
+                              "name": "R Foot Sp",
+                              "width": "fill_container",
+                              "height": 1
+                            },
+                            {
+                              "type": "frame",
+                              "id": "jYFje",
+                              "name": "R Cancel",
+                              "fill": "$surface-2",
+                              "cornerRadius": 999,
+                              "padding": [
+                                7,
+                                16
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "B2pZl",
+                                  "name": "R Cancel Tx",
+                                  "fill": "$text-secondary",
+                                  "content": "取消",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "GIHgb",
+                              "name": "R Confirm",
+                              "fill": "$accent",
+                              "cornerRadius": 999,
+                              "padding": [
+                                7,
+                                16
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "VqGG3",
+                                  "name": "R Confirm Tx",
+                                  "fill": "#FFFFFF",
+                                  "content": "确认合并",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "bold"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
                     }
                   ]
                 }
