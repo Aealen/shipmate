@@ -9,10 +9,14 @@ import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { getPointRevisionHistory, type RevisionEntry } from '@/actions/revisions';
+import { deleteRequirementPointAction } from '@/actions/points';
+import { showToast } from '@/components/shared/toast';
 import { DueSoonBadge, OverdueBadge, StatusBadge } from '@/components/shared/badge';
 import { EmptyState } from '@/components/shared/empty-state';
 import { BoxIcon, ModuleDeleteDialog, ModuleFormModal } from '@/components/modules/module-dialogs';
+import { MergePointsModal } from './merge-points-modal';
 import {
   ChevronIcon,
   ClockIcon,
@@ -217,6 +221,43 @@ export function AnalysisBrowse({
   const [moduleDelete, setModuleDelete] = useState<ModuleSummary | null>(null);
   const [moduleDeleteOpen, setModuleDeleteOpen] = useState(false);
 
+  // 需求点多选批量操作(spec §9 规则 9b):勾选集合 + 合并/批量删除弹窗
+  const [selectedPointIds, setSelectedPointIds] = useState<string[]>([]);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  const togglePointSelect = (id: string) => {
+    setSelectedPointIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const selectedPoints = useMemo(
+    () => points.filter((p) => selectedPointIds.includes(p.id)),
+    [points, selectedPointIds],
+  );
+
+  /** 批量删除:逐点删除(留痕),全部完成或失败即 toast 并清空选择 */
+  const bulkDelete = async () => {
+    if (bulkDeleting) return;
+    setBulkDeleting(true);
+    let ok = 0;
+    for (const id of selectedPointIds) {
+      const res = await deleteRequirementPointAction(id);
+      if (res.ok) ok += 1;
+    }
+    setBulkDeleting(false);
+    setBulkDeleteOpen(false);
+    showToast(
+      ok === selectedPointIds.length
+        ? t('bulk.deleted', { count: ok })
+        : t('bulk.partialDeleted', { ok, total: selectedPointIds.length }),
+      ok === selectedPointIds.length ? undefined : 'error',
+    );
+    setSelectedPointIds([]);
+  };
+
   const openModuleCreate = () => {
     setModuleForm({ mode: 'create', module: null });
     setModuleFormOpen(true);
@@ -237,10 +278,10 @@ export function AnalysisBrowse({
       {/* 上半:素材分析记录(白卡包裹 + 灰底批次卡流) */}
       <section className="flex flex-col gap-3 rounded-[14px] bg-surface p-6">
         <div className="flex items-center gap-2.5">
-          <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
+          <h2 className="text-base font-bold tracking-tight text-text-primary">
             {t('runsTitle')}
           </h2>
-          <span className="text-[11px] text-text-muted">{t('runsSubtitle')}</span>
+          <span className="text-xs text-text-muted">{t('runsSubtitle')}</span>
           <span className="min-w-0 flex-1" />
           <Link
             href={newAnalysisHref}
@@ -285,10 +326,10 @@ export function AnalysisBrowse({
       {/* 下半:需求产出(draft 置灰置顶;有模块时按模块分组,未归类置底) */}
       <section className="flex flex-col gap-3.5">
         <div className="flex items-center gap-2.5">
-          <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
+          <h2 className="text-base font-bold tracking-tight text-text-primary">
             {t('requirementsTitle')}
           </h2>
-          <span className="text-[11px] text-text-muted">{t('reqsSubtitle')}</span>
+          <span className="text-xs text-text-muted">{t('reqsSubtitle')}</span>
           <span className="min-w-0 flex-1" />
           {/* P3k:section 行右侧「+ 新建模块」幽灵按钮 */}
           <button
@@ -333,6 +374,8 @@ export function AnalysisBrowse({
                 onEdit={openRequirementEdit}
                 onRename={openModuleRename}
                 onDelete={openModuleDelete}
+                selectedPointIds={selectedPointIds}
+                onTogglePoint={togglePointSelect}
               />
             ))}
           </div>
@@ -350,6 +393,8 @@ export function AnalysisBrowse({
                 onEvidence={openEvidence}
                 onRevisionHistory={openRevisionHistory}
                 onEdit={openRequirementEdit}
+                selectedPointIds={selectedPointIds}
+                onTogglePoint={togglePointSelect}
               />
             ))}
           </div>
@@ -409,7 +454,112 @@ export function AnalysisBrowse({
           }}
         />
       )}
+
+      {/* P3n 需求点合并弹窗(三栏:清单/参照/编辑;≥2 个点才可打开) */}
+      {selectedPoints.length >= 2 && (
+        <MergePointsModal
+          open={mergeOpen}
+          onClose={() => setMergeOpen(false)}
+          onMerged={() => setSelectedPointIds([])}
+          points={selectedPoints}
+          requirements={sortedRequirements.map((r) => ({ id: r.id, title: r.title }))}
+        />
+      )}
+
+      {/* 批量删除确认弹窗 */}
+      {bulkDeleteOpen && (
+        <BulkDeleteConfirm
+          count={selectedPointIds.length}
+          deleting={bulkDeleting}
+          onCancel={() => setBulkDeleteOpen(false)}
+          onConfirm={bulkDelete}
+        />
+      )}
+
+      {/* 多选批量浮动条(选中 ≥1 显示;fixed 底部不随滚动丢) */}
+      {selectedPointIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full bg-surface px-5 py-2.5 shadow-lg ring-1 ring-border">
+          <span className="text-xs font-bold text-text-primary">
+            {t('bulk.selected', { count: selectedPointIds.length })}
+          </span>
+          <span className="h-4 w-px bg-border" />
+          <button
+            type="button"
+            onClick={() => setMergeOpen(true)}
+            disabled={selectedPointIds.length < 2}
+            className="inline-flex h-7 items-center gap-1 rounded-full bg-accent px-3.5 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+            title={selectedPointIds.length < 2 ? t('bulk.mergeMinHint') : undefined}
+          >
+            ⇉ {t('bulk.merge')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setBulkDeleteOpen(true)}
+            className="inline-flex h-7 items-center gap-1 rounded-full border border-danger px-3.5 text-xs font-bold text-danger transition-colors duration-[80ms] hover:bg-[color-mix(in_srgb,var(--danger)_8%,transparent)]"
+          >
+            🗑 {t('bulk.delete')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedPointIds([])}
+            className="text-xs text-text-secondary transition-colors hover:text-text-primary"
+          >
+            {t('bulk.cancel')}
+          </button>
+        </div>
+      )}
     </div>
+  );
+}
+
+/** 批量删除确认(轻量 portal 弹窗,危险色主按钮) */
+function BulkDeleteConfirm({
+  count,
+  deleting,
+  onCancel,
+  onConfirm,
+}: {
+  count: number;
+  deleting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const t = useTranslations('browse.bulk');
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('deleteTitle')}
+        className="relative w-[420px] max-w-[92vw] rounded-[12px] bg-surface p-[22px] shadow-xl"
+      >
+        <h3 className="text-[16px] font-bold tracking-tight text-text-primary">
+          {t('deleteTitle')}
+        </h3>
+        <p className="mt-2 text-sm text-text-secondary">{t('deleteBody', { count })}</p>
+        <p className="mt-1 text-xs text-text-muted">{t('deleteHint')}</p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={deleting}
+            className="h-8 rounded-lg border border-border px-3 text-xs text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {t('cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={deleting}
+            className="h-8 rounded-full bg-danger px-4 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {deleting ? t('deleting') : t('confirmDelete')}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -423,11 +573,11 @@ function RunCard({ run, href, locale }: { run: RunCardData; href: string; locale
         {t('runStatusFailed')}
       </span>
     ) : run.status === 'pending' ? (
-      <span className="inline-flex shrink-0 items-center rounded-[4px] bg-surface px-[5px] py-[2px] text-[9px] font-medium leading-none text-warning">
+      <span className="inline-flex shrink-0 items-center rounded-[4px] bg-[color-mix(in_srgb,var(--warning)_12%,transparent)] px-[5px] py-[2px] text-[9px] font-medium leading-none text-warning">
         {t('runStatusPending')}
       </span>
     ) : (
-      <span className="inline-flex shrink-0 items-center rounded-[4px] bg-surface px-[5px] py-[2px] text-[9px] font-medium leading-none text-success">
+      <span className="inline-flex shrink-0 items-center rounded-[4px] bg-[color-mix(in_srgb,var(--success)_12%,transparent)] px-[5px] py-[2px] text-[9px] font-medium leading-none text-success">
         {t('runStatusDone')}
       </span>
     );
@@ -450,21 +600,22 @@ function RunCard({ run, href, locale }: { run: RunCardData; href: string; locale
         : t('reanalyze');
 
   return (
+    // 批次卡:白底 hairline 边框嵌入块(原灰底块消灰),hover 描边转蓝
     <Link
       href={href}
-      className="flex flex-col gap-[7px] rounded-[9px] border border-border bg-bg p-3 transition-colors duration-[120ms] hover:border-accent"
+      className="flex flex-col gap-[7px] rounded-[9px] border border-border bg-surface p-3 transition-colors duration-[120ms] hover:border-accent"
     >
       <div className="flex items-center gap-1.5">
-        <span className="inline-flex shrink-0 items-center rounded-[4px] bg-surface-2 px-[5px] py-[2px] text-[9px] leading-none text-text-secondary">
+        <span className="shrink-0 text-[10px] leading-none text-text-muted">
           {t('runMaterials', { count: run.materialCount })}
         </span>
         <span className="min-w-0 flex-1" />
         {statusBadge}
       </div>
-      <p className="truncate text-xs font-bold text-text-primary">
+      <p className="truncate text-[13px] font-bold text-text-primary">
         {run.title ?? t('runUntitled')}
       </p>
-      <p className="truncate text-[10px] text-text-muted">{meta}</p>
+      <p className="truncate text-[11px] text-text-muted">{meta}</p>
       {/* 失败原因摘要:截两行,悬停看全文;旧失败数据无摘要时维持现状 */}
       {run.status === 'failed' && run.error && (
         <p
@@ -497,6 +648,8 @@ function RequirementBlock({
   onEvidence,
   onRevisionHistory,
   onEdit,
+  selectedPointIds,
+  onTogglePoint,
 }: {
   requirement: RequirementWithOverdue;
   points: RequirementPointRow[];
@@ -508,6 +661,9 @@ function RequirementBlock({
   onEvidence: (point: RequirementPointRow) => void;
   onRevisionHistory: (req: RequirementWithOverdue) => void;
   onEdit: (req: RequirementWithOverdue) => void;
+  /** 多选批量(spec §9 规则 9b):选中点 id 集与切换回调,透传至点行 checkbox */
+  selectedPointIds: string[];
+  onTogglePoint: (id: string) => void;
 }) {
   const t = useTranslations('browse');
   const locale = useLocale();
@@ -531,19 +687,19 @@ function RequirementBlock({
           className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5 text-left"
         >
           <span
-            className={`inline-flex shrink-0 items-center rounded-[5px] px-[7px] py-[2px] text-[10px] font-bold leading-none ${PRIORITY_BADGE[req.priority]}`}
+            className={`inline-flex shrink-0 items-center rounded-[5px] px-[8px] py-[3px] text-[11px] font-bold leading-none ${PRIORITY_BADGE[req.priority]}`}
           >
             {req.priority}
           </span>
-          <span className="min-w-0 truncate text-[17px] font-bold tracking-tight text-text-primary">
+          <span className="min-w-0 truncate text-[19px] font-bold tracking-tight text-text-primary">
             {req.title}
           </span>
-          <StatusBadge status={req.status} size="sm" />
-          <span className="shrink-0 text-[11px] text-text-muted">{planTimeText(req, t, locale)}</span>
+          <StatusBadge status={req.status} size="md" />
+          <span className="shrink-0 text-xs text-text-muted">{planTimeText(req, t, locale)}</span>
           {req.dueSoon && <DueSoonBadge />}
           {req.overdue && <OverdueBadge days={req.overdueDays} />}
           <span className="min-w-0 flex-1" />
-          <span className="shrink-0 text-[11px] text-text-muted">
+          <span className="shrink-0 text-xs text-text-muted">
             {t('pointsReady', { done: doneCount, total: points.length })}
           </span>
         </button>
@@ -601,6 +757,8 @@ function RequirementBlock({
               detailHref={`${pointHrefBase}/${p.id}`}
               revisionCount={pointRevisionCounts[p.id] ?? 0}
               onEvidence={() => onEvidence(p)}
+              checked={selectedPointIds.includes(p.id)}
+              onToggle={() => onTogglePoint(p.id)}
             />
           ))}
         </ul>
@@ -619,12 +777,17 @@ function PointRow({
   detailHref,
   revisionCount,
   onEvidence,
+  checked,
+  onToggle,
 }: {
   point: RequirementPointRow;
   detailHref: string;
   /** 该点修订计数(>0 显示 ✨N 与 🕘 入口) */
   revisionCount: number;
   onEvidence: () => void;
+  /** 多选批量(spec §9 规则 9b):勾选态与切换 */
+  checked: boolean;
+  onToggle: () => void;
 }) {
   const t = useTranslations('browse');
   const [expanded, setExpanded] = useState(false);
@@ -653,33 +816,56 @@ function PointRow({
           : 'bg-draft-gray';
 
   return (
-    <li className="group flex flex-col gap-2 rounded-[8px] bg-bg px-3 py-3">
+    // 需求点行:无底 + hairline 分隔(消整行灰块),hover 极浅反馈;
+    // pl-9 相对块头缩进(圆点比 P 徽章右移一档),体现「块 → 点」从属层级;
+    // 勾选时整行淡蓝高亮(多选批量,spec §9 规则 9b)
+    <li
+      className={`group flex flex-col gap-2 rounded-[8px] border-b border-border/70 py-3 pl-9 pr-1 transition-colors duration-[120ms] last:border-0 hover:bg-surface-2/40 ${
+        checked ? 'bg-accent-dim' : ''
+      }`}
+    >
       <div className="flex items-center gap-2.5">
-        <span className={`h-[7px] w-[7px] shrink-0 rounded-full ${dotColor}`} />
-        <span className="min-w-0 flex-1 truncate text-[13px] text-text-primary">{point.title}</span>
-        <StatusBadge status={point.status} size="sm" />
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={checked}
+          aria-label={t('bulk.checkboxLabel')}
+          onClick={onToggle}
+          className={`flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border transition-colors duration-[80ms] ${
+            checked ? 'border-accent bg-accent text-white' : 'border-border bg-surface hover:border-accent/60'
+          }`}
+        >
+          {checked && (
+            <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </button>
+        <span className={`h-2 w-2 shrink-0 rounded-full ${dotColor}`} />
+        <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{point.title}</span>
+        <StatusBadge status={point.status} size="md" />
         {point.origin === 'analysis' && (
-          <span className="inline-flex shrink-0 items-center rounded-[4px] bg-surface-2 px-[6px] py-[2px] text-[10px] leading-none text-ai">
-            ai:analysis
+          <span className="inline-flex shrink-0 items-center rounded-[4px] bg-accent-dim px-[6px] py-[2px] text-[10.5px] font-medium leading-none text-accent">
+            AI
           </span>
         )}
         {hasHistory && (
           <button
             type="button"
             onClick={toggleHistory}
-            className="shrink-0 text-[10.5px] leading-none text-accent transition-opacity duration-[80ms] hover:opacity-80"
+            className="shrink-0 text-[11.5px] leading-none text-accent transition-opacity duration-[80ms] hover:opacity-80"
           >
             ✨{revisionCount}
           </button>
         )}
-        <span className="shrink-0 text-[10px] tabular-nums text-text-muted">v{point.version}</span>
+        <span className="shrink-0 text-[11px] tabular-nums text-text-muted">v{point.version}</span>
         {hasHistory && (
           <button
             type="button"
             onClick={toggleHistory}
             aria-expanded={expanded}
             aria-label={t('revision.historyLabel')}
-            className="flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-[11px] text-text-secondary transition-all duration-[80ms] hover:text-accent active:scale-[0.97]"
+            className="flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-xs text-text-secondary transition-all duration-[80ms] hover:text-accent active:scale-[0.97]"
           >
             <ClockIcon className="h-3 w-3" />
             <ChevronIcon className="h-2.5 w-2.5" expanded={expanded} />
@@ -688,13 +874,13 @@ function PointRow({
         <button
           type="button"
           onClick={onEvidence}
-          className="shrink-0 rounded px-1 py-0.5 text-[11px] text-text-secondary transition-all duration-[80ms] hover:text-accent active:scale-[0.97]"
+          className="shrink-0 rounded px-1 py-0.5 text-xs text-text-secondary transition-all duration-[80ms] hover:text-accent active:scale-[0.97]"
         >
           📄 {t('evidence')}
         </button>
         <Link
           href={detailHref}
-          className="shrink-0 rounded px-1 py-0.5 text-[11px] font-bold text-accent transition-opacity hover:opacity-80"
+          className="shrink-0 rounded px-1 py-0.5 text-xs font-bold text-accent transition-opacity hover:opacity-80"
         >
           {t('detail')} ›
         </Link>
@@ -758,6 +944,8 @@ function ModuleGroup({
   onEdit,
   onRename,
   onDelete,
+  selectedPointIds,
+  onTogglePoint,
 }: {
   group: ModuleGroupData;
   pointHrefBase: string;
@@ -769,6 +957,9 @@ function ModuleGroup({
   onEdit: (req: RequirementWithOverdue) => void;
   onRename: (module: ModuleSummary) => void;
   onDelete: (module: ModuleSummary) => void;
+  /** 多选批量(spec §9 规则 9b):选中点 id 集与切换回调,透传至点行 checkbox */
+  selectedPointIds: string[];
+  onTogglePoint: (id: string) => void;
 }) {
   const tm = useTranslations('browse.modules');
   // 组头折叠只收组内块:默认展开(与需求块折叠一致)
@@ -788,13 +979,13 @@ function ModuleGroup({
           <BoxIcon />
         </span>
         <span
-          className={`shrink-0 text-[15px] font-bold ${
+          className={`shrink-0 text-base font-bold ${
             untagged ? 'text-text-secondary' : 'text-text-primary'
           }`}
         >
           {untagged ? tm('untagged') : group.module!.name}
         </span>
-        <span className="inline-flex shrink-0 items-center rounded-[5px] bg-surface-2 px-[8px] py-[3px] text-[10.5px] leading-none text-text-secondary">
+        <span className="shrink-0 text-xs leading-none text-text-muted">
           {tm('count', { count: group.count, done: group.pointsDone, total: group.pointsTotal })}
         </span>
         <span className="min-w-0 flex-1" />
@@ -840,6 +1031,8 @@ function ModuleGroup({
             onEvidence={onEvidence}
             onRevisionHistory={onRevisionHistory}
             onEdit={onEdit}
+            selectedPointIds={selectedPointIds}
+            onTogglePoint={onTogglePoint}
           />
         ))}
     </div>

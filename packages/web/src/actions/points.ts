@@ -129,3 +129,45 @@ export async function confirmRequirementPointAction(
     return toActionError(e);
   }
 }
+
+/** 删除需求点(级联其下任务,delete 留痕)——P3 需求产出批量删除 */
+export async function deleteRequirementPointAction(
+  id: string,
+): Promise<ActionResult<true>> {
+  try {
+    const { core } = await getShipmate();
+    await core.points.deleteRequirementPoint(id, 'human');
+    revalidateApp();
+    return { ok: true, data: true };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+/** 合并需求点(被并点删除留痕,evidences 汇总)——P3 三栏合并弹窗确认 */
+export async function mergeRequirementPointsAction(
+  pointIds: string[],
+  target: { requirementId: string; title: string; description?: string },
+): Promise<ActionResult<RequirementPointRow>> {
+  try {
+    const { core } = await getShipmate();
+    const row = await core.points.mergeRequirementPoints(pointIds, target, 'human');
+    revalidateApp();
+    return { ok: true, data: row };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+/** 智能合并建议(LLM 生成,不落库)——合并弹窗「智能合并」按钮 */
+export async function suggestPointMergeAction(
+  pointIds: string[],
+): Promise<ActionResult<{ title: string; description: string }>> {
+  try {
+    const { core } = await getShipmate();
+    const data = await core.analysis.suggestPointMerge(pointIds, 'human');
+    return { ok: true, data };
+  } catch (e) {
+    return toActionError(e);
+  }
+}

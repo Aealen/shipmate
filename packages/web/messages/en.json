@@ -309,6 +309,19 @@
       "submitting": "Submitting…",
       "reasonMissing": "Please fill in the reason first",
       "success": "Saved, now v{version}"
+    },
+    "revise": {
+      "button": "AI Revise",
+      "title": "AI Revise Point",
+      "target": "Target",
+      "placeholder": "Describe how to revise, e.g. this is a deadline, not a requirement; remove related wording",
+      "start": "Start",
+      "revising": "Revising…",
+      "cancel": "Cancel",
+      "cancelToast": "Revision canceled, point unchanged",
+      "close": "Close",
+      "doneToast": "AI revision applied, version +1",
+      "charsDelta": "{count} chars generated"
     }
   },
   "board": {
@@ -618,6 +631,46 @@
       "cancel": "Cancel",
       "save": "Save",
       "saving": "Saving…"
+    },
+    "bulk": {
+      "selected": "{count} selected",
+      "merge": "Merge",
+      "mergeMinHint": "Select at least 2 points to merge",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "checkboxLabel": "Select this point",
+      "deleteTitle": "Delete points",
+      "deleteBody": "This deletes {count} requirement points and their tasks.",
+      "deleteHint": "Deletions are logged in audit and cannot be undone.",
+      "confirmDelete": "Delete",
+      "deleting": "Deleting…",
+      "deleted": "Deleted {count} points",
+      "partialDeleted": "Deleted {ok}/{total}, some failed"
+    },
+    "merge": {
+      "title": "Merge Points",
+      "subtitle": "{count} points selected · merge into 1 under a chosen requirement",
+      "selectedList": "Selected ({count})",
+      "reference": "Reference (click left to switch)",
+      "description": "Description",
+      "descriptionEmpty": "(no description)",
+      "evidences": "Evidences ({count})",
+      "referenceEmpty": "No point selected",
+      "mergeHint": "After merge: other points are deleted with audit trail; evidences are merged",
+      "result": "Merged result",
+      "suggest": "Smart merge",
+      "suggesting": "Generating…",
+      "suggestDone": "Merge suggestion generated, feel free to edit",
+      "targetRequirement": "Target requirement",
+      "mergedTitle": "Merged title",
+      "mergedTitlePlaceholder": "Enter merged title",
+      "mergedDescription": "Merged description",
+      "mergedDescriptionPlaceholder": "Enter merged description, or click Smart merge",
+      "footHint": "Original points will be deleted and logged in change history",
+      "close": "Cancel",
+      "confirm": "Merge",
+      "merging": "Merging…",
+      "mergedDone": "Merged {count} points"
     }
   }
 }
