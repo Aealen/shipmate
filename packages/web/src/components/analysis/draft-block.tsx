@@ -683,7 +683,7 @@ export function DraftBlock({
     // 合并点选 = accent 实线描边,点击块体非交互区切换)
     <div
       onClick={pickMerge}
-      className={`group cursor-pointer rounded-[14px] bg-surface p-5 transition-shadow duration-[120ms] hover:shadow-sm ${
+      className={`group cursor-pointer rounded-lg bg-surface p-5 transition-shadow duration-[120ms] hover:shadow-sm ${
         mergeSelected
           ? 'border border-accent'
           : block.selected
@@ -904,7 +904,7 @@ export function SupplementBlock({
   return (
     // 白卡容器(原型 P3c 加强:无框白卡坐暖纸底;未勾选保留虚线 + 半透明)
     <div
-      className={`rounded-[14px] bg-surface p-5 transition-shadow duration-[120ms] hover:shadow-sm ${
+      className={`rounded-lg bg-surface p-5 transition-shadow duration-[120ms] hover:shadow-sm ${
         supp.selected ? 'border border-transparent' : 'border border-dashed border-border opacity-55'
       }`}
     >

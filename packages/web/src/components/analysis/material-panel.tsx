@@ -108,7 +108,7 @@ export function MaterialPanel({
       </div>
 
       {/* 新增素材:白底 + hairline 边框卡(原型 Add Material Box),类型为 pill 组 */}
-      <div className="shrink-0 rounded-[14px] border border-border bg-surface p-4">
+      <div className="shrink-0 rounded-lg border border-border bg-surface p-4">
         <p className="text-xs font-semibold text-text-secondary">{t('addMaterial.title')}</p>
         <div className="mt-2.5 flex gap-1.5" role="radiogroup" aria-label={t('addMaterial.type')}>
           {MATERIAL_TYPES.map((v) => {

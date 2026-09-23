@@ -99,7 +99,7 @@ function ModalShell({
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className={`relative flex max-h-[85vh] w-full ${width} flex-col rounded-[12px] bg-surface p-[22px] shadow-xl transition-all duration-[120ms] ${
+        className={`relative flex max-h-[85vh] w-full ${width} flex-col rounded-md bg-surface p-[22px] shadow-xl transition-all duration-[120ms] ${
           shown ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
         }`}
       >
@@ -293,7 +293,7 @@ export function ModuleDeleteDialog({
       {/* 红系头部:危险图标 + 标题/模块名 */}
       <div className="flex shrink-0 items-center gap-2.5">
         <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-danger/10 text-[17px]"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-danger/10 text-[17px]"
           aria-hidden
         >
           🗑
@@ -307,7 +307,7 @@ export function ModuleDeleteDialog({
       </div>
 
       {/* 红色警示条:模块下 N 个需求将转为未归类 */}
-      <div className="mt-3.5 shrink-0 rounded-[10px] bg-danger/[0.08] p-3 outline outline-1 -outline-offset-1 outline-danger/30">
+      <div className="mt-3.5 shrink-0 rounded-md bg-danger/[0.08] p-3 outline outline-1 -outline-offset-1 outline-danger/30">
         <p className="text-[13px] leading-snug text-danger">
           {tm('deleteConfirm', { name: module.name, count: module.requirementCount })}
         </p>

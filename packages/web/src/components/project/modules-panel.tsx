@@ -149,7 +149,7 @@ function ModuleCard({
     module.pointsTotal > 0 ? Math.round((module.pointsDone / module.pointsTotal) * 100) : 0;
 
   return (
-    <div className="group flex flex-col gap-3 rounded-[14px] bg-surface p-[18px] transition-shadow duration-[120ms] hover:shadow-sm">
+    <div className="group flex flex-col gap-3 rounded-lg bg-surface p-[18px] transition-shadow duration-[120ms] hover:shadow-sm">
       {/* 头行:图标 + 模块名 + 就绪比 + ⋯ 菜单 */}
       <div className="flex items-center gap-2">
         <span
@@ -170,7 +170,7 @@ function ModuleCard({
 
       {/* 进度条:点就绪占比 */}
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
-        <div className="h-full rounded-full bg-accent transition-[width] duration-[180ms]" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-chart-1 transition-[width] duration-[180ms]" style={{ width: `${pct}%` }} />
       </div>
 
       {/* 底行:需求统计 + 查看需求入口 */}

@@ -11,7 +11,7 @@ export default async function ProfileSettingsPage() {
         <p className="mt-1 text-sm text-text-secondary">{t('description')}</p>
       </header>
 
-      <section className="rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
+      <section className="rounded-lg bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
         <div className="flex items-center gap-4">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-dim text-lg font-semibold text-accent">
             S

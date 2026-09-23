@@ -157,7 +157,7 @@ export function AuditView({ report }: { report: AuditReport }) {
           </div>
 
           {/* 时间线(全宽白卡,行式条目) */}
-          <section className="flex flex-col gap-2.5 rounded-[14px] bg-surface p-6">
+          <section className="flex flex-col gap-2.5 rounded-lg bg-surface p-6">
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center gap-1.5 py-12 text-center">
                 <p className="text-sm text-text-secondary">
@@ -177,7 +177,7 @@ export function AuditView({ report }: { report: AuditReport }) {
 
         {/* 右侧统计列 */}
         <aside className="flex min-w-0 flex-col gap-4">
-          <section className="flex flex-col gap-3 rounded-[14px] bg-surface p-6">
+          <section className="flex flex-col gap-3 rounded-lg bg-surface p-6">
             <h3 className="text-[15px] font-bold tracking-tight text-text-primary">
               {t('statsActor')}
             </h3>
@@ -193,7 +193,7 @@ export function AuditView({ report }: { report: AuditReport }) {
             ))}
           </section>
 
-          <section className="flex flex-col gap-2.5 rounded-[14px] bg-surface p-6">
+          <section className="flex flex-col gap-2.5 rounded-lg bg-surface p-6">
             <h3 className="text-[15px] font-bold tracking-tight text-text-primary">
               {t('statsEntity')}
             </h3>
@@ -213,7 +213,7 @@ export function AuditView({ report }: { report: AuditReport }) {
             )}
           </section>
 
-          <section className="flex flex-col gap-2.5 rounded-[14px] bg-surface p-6">
+          <section className="flex flex-col gap-2.5 rounded-lg bg-surface p-6">
             <h3 className="text-[15px] font-bold tracking-tight text-text-primary">
               {t('statsDaily')}
             </h3>
@@ -314,7 +314,7 @@ function DailyBars({
           <div
             key={c.date}
             title={`${c.date} · ${c.count}`}
-            className="min-w-[4px] flex-1 rounded-t bg-accent/70 transition-colors duration-[120ms] hover:bg-accent"
+            className="min-w-[4px] flex-1 rounded-t bg-chart-1/70 transition-colors duration-[120ms] hover:bg-chart-1"
             style={{ height: `${Math.max(6, (c.count / max) * 100)}%` }}
           />
         ))}

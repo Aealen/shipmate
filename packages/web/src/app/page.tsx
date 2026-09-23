@@ -86,7 +86,7 @@ export default async function HomePage({
           empty={{ title: t('emptyTitle'), description: t('emptyDesc') }}
         />
       ) : filtered.length === 0 ? (
-        <p className="rounded-[10px] border border-dashed border-border px-4 py-10 text-center text-sm text-text-muted">
+        <p className="rounded-md border border-dashed border-border px-4 py-10 text-center text-sm text-text-muted">
           {t('groupEmpty')}
         </p>
       ) : (
@@ -155,16 +155,16 @@ function ProjectCard({
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
   const dotStats = [
-    { label: labels.done, value: counts?.done ?? 0, color: 'bg-success' },
+    { label: labels.done, value: counts?.done ?? 0, color: 'bg-chart-1' },
     { label: labels.developing, value: counts?.developing ?? 0, color: 'bg-warning' },
     { label: labels.draft, value: counts?.draft ?? 0, color: 'bg-draft-gray' },
-    { label: labels.confirmed, value: counts?.confirmed ?? 0, color: 'bg-accent' },
+    { label: labels.confirmed, value: counts?.confirmed ?? 0, color: 'bg-chart-2' },
   ];
 
   return (
     <Link
       href={`/project/${id}`}
-      className="group flex flex-col gap-3 rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm"
+      className="group flex flex-col gap-3 rounded-lg bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm"
     >
       <div className="flex items-center gap-2.5">
         <h3 className="min-w-0 truncate text-[17px] font-bold tracking-tight text-text-primary">{name}</h3>
@@ -182,9 +182,9 @@ function ProjectCard({
       </p>
 
       <div className="flex items-center gap-3">
-        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-[3px] bg-surface-2">
+        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-2">
           <div
-            className="h-full rounded-[3px] bg-accent transition-[width] duration-[120ms]"
+            className="h-full rounded-full bg-chart-1 transition-[width] duration-[120ms]"
             style={{ width: total > 0 ? `${Math.max(pct, 2)}%` : '0%' }}
           />
         </div>

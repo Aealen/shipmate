@@ -78,7 +78,7 @@ export function HistoryTimeline({ changeLogs }: { changeLogs: ChangeLogRow[] }) 
         const isLinkage = log.changeType === 'linkage_impact';
 
         return (
-          <li key={log.id} className="flex gap-2.5 rounded-[14px] bg-surface p-4">
+          <li key={log.id} className="flex gap-2.5 rounded-lg bg-surface p-4">
             <span
               aria-hidden
               style={

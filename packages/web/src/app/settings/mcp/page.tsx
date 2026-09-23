@@ -42,7 +42,7 @@ export default async function McpSettingsPage() {
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         {/* HTTP streamable */}
-        <section className="flex flex-col gap-3 rounded-[14px] bg-surface p-6">
+        <section className="flex flex-col gap-3 rounded-lg bg-surface p-6">
           <div className="flex items-center gap-2">
             <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
               {t('httpTitle')}
@@ -54,7 +54,7 @@ export default async function McpSettingsPage() {
             <CopyButton text={HTTP_ENDPOINT} />
           </div>
           <p className="text-xs leading-relaxed text-text-secondary">{t('httpDesc')}</p>
-          <div className="flex items-center gap-2.5 rounded-[8px] bg-bg px-3.5 py-[11px]">
+          <div className="flex items-center gap-2.5 rounded-md bg-bg px-3.5 py-[11px]">
             <code className="min-w-0 flex-1 truncate font-mono text-[13px] text-text-primary">
               {HTTP_ENDPOINT}
             </code>
@@ -65,7 +65,7 @@ export default async function McpSettingsPage() {
         </section>
 
         {/* stdio 传输 */}
-        <section className="flex flex-col gap-3 rounded-[14px] bg-surface p-6">
+        <section className="flex flex-col gap-3 rounded-lg bg-surface p-6">
           <div className="flex items-center gap-2">
             <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
               {t('stdioTitle')}
@@ -74,14 +74,14 @@ export default async function McpSettingsPage() {
             <CopyButton text={STDIO_CONFIG} />
           </div>
           <p className="text-xs leading-relaxed text-text-secondary">{t('stdioDesc')}</p>
-          <pre className="overflow-x-auto rounded-[8px] bg-[#1E222B] p-3.5 font-mono text-xs leading-relaxed text-[#9CDCFE]">
+          <pre className="overflow-x-auto rounded-md bg-[#1E222B] p-3.5 font-mono text-xs leading-relaxed text-[#9CDCFE]">
             {STDIO_CONFIG}
           </pre>
         </section>
       </div>
 
       {/* Claude Code 快捷命令(计划补充项) */}
-      <section className="flex flex-col gap-3 rounded-[14px] bg-surface p-6">
+      <section className="flex flex-col gap-3 rounded-lg bg-surface p-6">
         <div className="flex items-center gap-2">
           <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
             {t('cliTitle')}
@@ -90,7 +90,7 @@ export default async function McpSettingsPage() {
           <CopyButton text={CLI_COMMAND} />
         </div>
         <p className="text-xs leading-relaxed text-text-secondary">{t('cliDesc')}</p>
-        <div className="flex items-center gap-2.5 rounded-[8px] bg-bg px-3.5 py-[11px]">
+        <div className="flex items-center gap-2.5 rounded-md bg-bg px-3.5 py-[11px]">
           <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-[13px] text-text-primary">
             {CLI_COMMAND}
           </code>

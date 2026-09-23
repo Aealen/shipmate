@@ -118,7 +118,7 @@ export function ProgressView({
             <select
               value={moduleFilter}
               onChange={(e) => setModuleFilter(e.target.value)}
-              className="h-8 rounded-[8px] border border-border bg-surface px-2 text-[13px] text-text-primary outline-none transition-colors focus:border-accent"
+              className="h-8 rounded-md border border-border bg-surface px-2 text-[13px] text-text-primary outline-none transition-colors focus:border-accent"
             >
               <option value="all">{t('moduleAll')}</option>
               {modules.map((m) => (
@@ -148,7 +148,7 @@ export function ProgressView({
       </div>
 
       {/* 点状态分布 */}
-      <section className="rounded-[14px] bg-surface p-6">
+      <section className="rounded-lg bg-surface p-6">
         <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
           {t('pointDistribution')}
         </h2>
@@ -194,7 +194,7 @@ export function ProgressView({
           {t('byRequirement')}
         </h2>
         {filteredReqs.length === 0 ? (
-          <p className="rounded-[14px] bg-surface p-6 text-xs text-text-muted">
+          <p className="rounded-lg bg-surface p-6 text-xs text-text-muted">
             {t('noRequirements')}
           </p>
         ) : (
@@ -208,7 +208,7 @@ export function ProgressView({
               return (
                 <article
                   key={req.id}
-                  className="rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm"
+                  className="rounded-lg bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm"
                 >
                   <div className="flex items-center gap-2">
                     <span
@@ -234,7 +234,7 @@ export function ProgressView({
                   <div className="mt-3 flex items-center gap-3">
                     <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-2">
                       <div
-                        className="h-full rounded-full bg-success transition-all duration-[120ms]"
+                        className="h-full rounded-full bg-chart-1 transition-all duration-[120ms]"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -260,7 +260,7 @@ export function ProgressView({
 
       {/* 超期 / 临期清单 */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <section className="rounded-[14px] bg-surface p-6">
+        <section className="rounded-lg bg-surface p-6">
           <h2 className="flex items-center gap-2 text-[15px] font-bold tracking-tight text-text-primary">
             <span className="h-2 w-2 rounded-full bg-danger" aria-hidden />
             {t('overdueList')}
@@ -291,7 +291,7 @@ export function ProgressView({
           )}
         </section>
 
-        <section className="rounded-[14px] bg-surface p-6">
+        <section className="rounded-lg bg-surface p-6">
           <h2 className="flex items-center gap-2 text-[15px] font-bold tracking-tight text-text-primary">
             <span className="h-2 w-2 rounded-full bg-warning" aria-hidden />
             {t('dueSoonList')}

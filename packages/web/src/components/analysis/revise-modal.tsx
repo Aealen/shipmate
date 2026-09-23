@@ -449,7 +449,7 @@ export function ReviseModal({
         role="dialog"
         aria-modal="true"
         aria-label={phase === 'preview' ? t('revise.previewTitle') : t('revise.title')}
-        className={`relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-[14px] bg-surface shadow-xl transition-all duration-[120ms] ${
+        className={`relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-lg bg-surface shadow-xl transition-all duration-[120ms] ${
           shown ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
         } ${phase === 'preview' ? 'max-w-[760px]' : 'max-w-[640px]'}`}
       >
@@ -509,7 +509,7 @@ export function ReviseModal({
               </div>
 
               {/* 当前内容卡 */}
-              <div className="space-y-1.5 rounded-[10px] bg-surface-2 p-3.5">
+              <div className="space-y-1.5 rounded-md bg-surface-2 p-3.5">
                 <p className="text-[11px] text-text-muted">{t('revise.currentLabel')}</p>
                 <p className="text-sm text-text-primary">{curTitle}</p>
                 {curDesc && (
@@ -677,7 +677,7 @@ export function ReviseModal({
 
               {/* 原文 / 修订后对照 */}
               <div className="flex flex-col gap-3 sm:flex-row">
-                <div className="min-w-0 flex-1 space-y-2 rounded-[10px] bg-surface-2 p-3.5">
+                <div className="min-w-0 flex-1 space-y-2 rounded-md bg-surface-2 p-3.5">
                   <p className="text-[11px] text-text-muted">{t('revise.originalLabel')}</p>
                   <p className="text-[13.5px] text-text-muted">{origin?.title}</p>
                   {origin?.desc && (
@@ -687,7 +687,7 @@ export function ReviseModal({
                     {t('revise.currentEvidence', { count: origin?.evidenceCount ?? 0 })}
                   </p>
                 </div>
-                <div className="min-w-0 flex-1 space-y-2 rounded-[10px] bg-surface-2 p-3.5 outline-2 -outline-offset-2 outline-accent">
+                <div className="min-w-0 flex-1 space-y-2 rounded-md bg-surface-2 p-3.5 outline-2 -outline-offset-2 outline-accent">
                   <p className="text-[11px] text-accent">{t('revise.revisedLabel')}</p>
                   <p className="text-[13.5px] text-text-primary">{revTitle}</p>
                   {revDesc && (

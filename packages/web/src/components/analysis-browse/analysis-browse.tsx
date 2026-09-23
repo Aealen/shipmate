@@ -317,7 +317,7 @@ export function AnalysisBrowse({
   return (
     <div className="flex w-full flex-col gap-6 p-6">
       {/* 上半:素材分析记录(白卡包裹 + 灰底批次卡流) */}
-      <section className="flex flex-col gap-3 rounded-[14px] bg-surface p-6">
+      <section className="flex flex-col gap-3 rounded-lg bg-surface p-6">
         <div className="flex items-center gap-2.5">
           <h2 className="text-base font-bold tracking-tight text-text-primary">
             {t('runsTitle')}
@@ -560,7 +560,7 @@ function BulkDeleteConfirm({
         role="dialog"
         aria-modal="true"
         aria-label={t('deleteTitle')}
-        className="relative w-[420px] max-w-[92vw] rounded-[12px] bg-surface p-[22px] shadow-xl"
+        className="relative w-[420px] max-w-[92vw] rounded-md bg-surface p-[22px] shadow-xl"
       >
         <h3 className="text-[16px] font-bold tracking-tight text-text-primary">
           {t('deleteTitle')}
@@ -711,7 +711,7 @@ function RequirementBlock({
 
   return (
     <div
-      className={`flex flex-col gap-3 rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm ${
+      className={`flex flex-col gap-3 rounded-lg bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm ${
         isDraft ? 'opacity-75' : ''
       }`}
     >
@@ -886,7 +886,7 @@ function PointRow({
     // 多选批量确认 = 点选整行淡蓝高亮(点击行非交互区切换)
     <li
       onClick={pickSelect}
-      className={`group flex flex-col gap-2 rounded-[8px] border-b border-border/70 py-3 pl-9 pr-1 transition-colors duration-[120ms] last:border-0 hover:bg-surface-2/40 ${
+      className={`group flex flex-col gap-2 rounded-md border-b border-border/70 py-3 pl-9 pr-1 transition-colors duration-[120ms] last:border-0 hover:bg-surface-2/40 ${
         selected ? 'bg-accent-dim' : ''
       } ${onToggleSelect ? 'cursor-pointer' : ''}`}
       >
@@ -956,7 +956,7 @@ function PointRow({
 
       {/* P3g 就地修订历史:圆角容器 + 头部 + 条目列表 */}
       {hasHistory && expanded && (
-        <div className="flex flex-col gap-[6px] rounded-[10px] bg-surface-2 px-[14px] py-[10px]">
+        <div className="flex flex-col gap-[6px] rounded-md bg-surface-2 px-[14px] py-[10px]">
           <div className="flex items-center gap-1.5 text-[12px] font-medium leading-none text-accent">
             <ClockIcon className="h-3 w-3" />
             {t('revision.pointTitle')}

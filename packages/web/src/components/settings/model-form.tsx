@@ -89,7 +89,7 @@ export function ModelForm({ initial }: { initial: ModelFormInitial }) {
       }}
       className="space-y-4"
     >
-      <div className="space-y-4 rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
+      <div className="space-y-4 rounded-lg bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
         <Field label={t('baseUrl')}>
           <input
             type="text"

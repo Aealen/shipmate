@@ -15,7 +15,7 @@ export function StatCard({
   hint?: string;
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-[14px] bg-surface p-4 transition-shadow duration-[120ms] hover:shadow-sm">
+    <div className="flex flex-col gap-1 rounded-lg bg-surface p-4 transition-shadow duration-[120ms] hover:shadow-sm">
       <p className="text-xl font-bold tabular-nums leading-tight">
         <span className={valueClassName}>{value}</span>
       </p>

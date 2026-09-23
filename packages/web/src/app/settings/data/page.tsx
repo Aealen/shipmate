@@ -21,7 +21,7 @@ export default async function DataSettingsPage() {
       </header>
 
       {/* 备份 */}
-      <section className="rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
+      <section className="rounded-lg bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-[15px] font-bold tracking-tight text-text-primary">{t('backupTitle')}</h2>
           <CopyButton text={BACKUP_COMMAND} />
@@ -33,13 +33,13 @@ export default async function DataSettingsPage() {
       </section>
 
       {/* 导出 */}
-      <section className="rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
+      <section className="rounded-lg bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
         <h2 className="text-[15px] font-bold tracking-tight text-text-primary">{t('exportTitle')}</h2>
         <p className="mt-2 text-xs leading-relaxed text-text-secondary">{t('exportDesc')}</p>
       </section>
 
       {/* 危险区:置灰占位,操作未开放 */}
-      <section className="rounded-[14px] border border-danger/40 bg-surface p-6">
+      <section className="rounded-lg border border-danger/40 bg-surface p-6">
         <div className="flex items-center gap-2">
           <h2 className="text-[15px] font-bold tracking-tight text-danger">{t('dangerTitle')}</h2>
           <span className="inline-flex items-center rounded-full bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] px-2 py-0.5 text-[11px] font-medium text-danger">

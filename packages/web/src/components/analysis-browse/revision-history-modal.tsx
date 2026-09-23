@@ -116,7 +116,7 @@ export function RevisionEntryRow({
       : 'bg-surface text-accent';
 
   return (
-    <div className={`flex items-center gap-[10px] rounded-[8px] px-[10px] py-[7px] ${rowBg}`}>
+    <div className={`flex items-center gap-[10px] rounded-md px-[10px] py-[7px] ${rowBg}`}>
       <span
         className={`inline-flex shrink-0 items-center rounded-[6px] px-[8px] py-[2px] text-[10.5px] leading-none ${badgeBg}`}
       >
@@ -299,7 +299,7 @@ export function RevisionHistoryModal({
         role="dialog"
         aria-modal="true"
         aria-label={t('revision.modalTitle')}
-        className={`relative flex max-h-[80vh] w-[680px] max-w-[92vw] flex-col rounded-[12px] bg-surface p-[22px] shadow-xl transition-all duration-[120ms] ${
+        className={`relative flex max-h-[80vh] w-[680px] max-w-[92vw] flex-col rounded-md bg-surface p-[22px] shadow-xl transition-all duration-[120ms] ${
           shown ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
         }`}
       >
@@ -383,7 +383,7 @@ export function RevisionHistoryModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-[8px] bg-surface-2 px-[24px] py-[9px] text-[13px] text-text-secondary transition-colors duration-[80ms] hover:text-text-primary"
+            className="rounded-md bg-surface-2 px-[24px] py-[9px] text-[13px] text-text-secondary transition-colors duration-[80ms] hover:text-text-primary"
           >
             {t('revision.close')}
           </button>

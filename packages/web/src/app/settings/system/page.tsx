@@ -31,7 +31,7 @@ export default async function SystemSettingsPage() {
         <p className="mt-1 text-sm text-text-secondary">{t('description')}</p>
       </header>
 
-      <section className="rounded-[14px] bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
+      <section className="rounded-lg bg-surface p-6 transition-shadow duration-[120ms] hover:shadow-sm">
         <dl className="divide-y divide-border">
           {rows.map((row) => (
             <div

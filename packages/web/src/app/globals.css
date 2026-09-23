@@ -5,46 +5,51 @@
 
 /*
  * 设计 tokens —— light 默认 + .dark 覆盖。
- * 设计语言:Notion 风(DESIGN.md,`npx getdesign add notion`)——暖纸底画布、
- * 暖灰文字阶、hairline 分隔、单一结构蓝;语义色(success/warning/danger/ai)不变。
- * 取值与 shipmate.pen 原型变量同步(2026-09-15 Notion 化)。
+ * 设计语言:Wise 形态 + 靖蓝配色(docs/wise-redesign/_palette.md,原型 shipmate.pen 同步):
+ * 鼠尾草底画布、白卡表面对比、单一品牌靛蓝;绿仅小面积成功语义;图表走亮靛蓝三色。
  */
 :root {
-  --bg: #f6f5f4;
-  --surface: #ffffff;
-  --surface-2: #f0efed;
-  --border: #e6e4e1;
-  --text-primary: #20201e;
-  --text-secondary: #57534e;
-  --text-muted: #8a8580;
-  --accent: #0075de;
-  --accent-dim: rgba(0, 117, 222, 0.1);
-  --success: #2fa36b;
+  --bg: #e8ebe6; /* 鼠尾草画布 canvas-soft */
+  --surface: #ffffff; /* 白卡 canvas */
+  --surface-2: #e8ebe6; /* 卡内嵌套子面(sage) */
+  --border: #dfe2dc; /* sage hairline */
+  --text-primary: #0e0f0c; /* ink */
+  --text-secondary: #454745; /* body */
+  --text-muted: #868685; /* mute */
+  --accent: #4f46e5; /* 品牌靛蓝:CTA/激活/链接(白字) */
+  --accent-dim: rgba(79, 70, 229, 0.09); /* 浅靛蓝面(pill/选中/hover) */
+  --success: #2ead4b; /* positive:小徽章/状态点专用 */
   --warning: #e0a03b;
-  --danger: #d9534f;
-  --ai: #7c5cbf;
-  --draft-gray: #8a8580;
+  --danger: #d03238;
+  --ai: #6366f1; /* AI 语义:亮靛蓝一档 */
+  --draft-gray: #868685;
+  --chart-1: #6366f1; /* 图表主色:进度条/柱图/分布主段 */
+  --chart-2: #a5b4fc; /* 图表次色 */
+  --chart-3: #c5c7c4; /* 图表辅助浅灰 */
 }
 
 .dark {
-  --bg: #191817;
-  --surface: #21201e;
-  --surface-2: #2a2926;
-  --border: #383632;
-  --text-primary: #e9e7e3;
-  --text-secondary: #a8a49d;
-  --text-muted: #7a766f;
-  --accent: #3d93f0;
-  --accent-dim: rgba(61, 147, 240, 0.14);
+  --bg: #161715;
+  --surface: #1e1f1d;
+  --surface-2: #272825;
+  --border: #35362f;
+  --text-primary: #e9eae7;
+  --text-secondary: #a9aaa6;
+  --text-muted: #7c7d79;
+  --accent: #818cf8;
+  --accent-dim: rgba(129, 140, 248, 0.14);
   --success: #4cc38a;
   --warning: #e8b45a;
   --danger: #e56966;
-  --ai: #9b7fe8;
-  --draft-gray: #7a766f;
+  --ai: #a5b4fc;
+  --draft-gray: #7c7d79;
+  --chart-1: #818cf8;
+  --chart-2: #6366f1;
+  --chart-3: #4a4b47;
 }
 
 /* 映射为 Tailwind 工具类:bg-bg / bg-surface / border-border / text-text-primary /
-   text-accent / bg-accent-dim / text-danger / bg-ai / text-draft-gray … */
+   text-accent / bg-accent-dim / text-danger / bg-ai / text-draft-gray / bg-chart-1 … */
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -60,11 +65,30 @@
   --color-danger: var(--danger);
   --color-ai: var(--ai);
   --color-draft-gray: var(--draft-gray);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+
+  /* Wise 形态:圆角刻度整体抬档 —— 卡片/按钮 rounded-lg = 24px,嵌套面 rounded-md = 12px */
+  --radius-md: 0.75rem;
+  --radius-lg: 1.5rem;
+
+  /* Wise 三档字重:标题/次级统一 600,正文 400(原型 900 显示层由大标题组件单独 font-black) */
+  --font-weight-bold: 600;
+  --font-weight-semibold: 600;
 }
 
 body {
   background-color: var(--bg);
   color: var(--text-primary);
+  font-family:
+    'Noto Sans SC',
+    'PingFang SC',
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    system-ui,
+    -apple-system,
+    sans-serif;
   /* spec §14:主题切换 150ms 颜色过渡 */
   transition:
     background-color 150ms ease,

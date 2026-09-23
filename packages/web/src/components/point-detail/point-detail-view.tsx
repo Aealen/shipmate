@@ -145,7 +145,7 @@ export function PointDetailView({
           </div>
 
           {/* Summary Card:描述 + 溯源依据(原型 P4 单张白卡) */}
-          <section className="flex flex-col gap-4 rounded-[14px] bg-surface p-5">
+          <section className="flex flex-col gap-4 rounded-lg bg-surface p-5">
             <div className="flex flex-col gap-2">
               <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
                 {t('description')}
@@ -166,7 +166,7 @@ export function PointDetailView({
           </section>
 
           {/* Tasks Card:关联任务(原型 P4 白卡) */}
-          <section className="flex flex-col gap-3 rounded-[14px] bg-surface p-5">
+          <section className="flex flex-col gap-3 rounded-lg bg-surface p-5">
             <div className="flex items-center justify-between">
               <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
                 {t('tasks')}

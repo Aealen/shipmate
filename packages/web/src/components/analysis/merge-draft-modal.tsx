@@ -151,7 +151,7 @@ export function MergeDraftModal({
         role="dialog"
         aria-modal="true"
         aria-label={kind === 'point' ? t('pointTitle') : t('blockTitle')}
-        className={`relative flex h-[82vh] w-[1280px] max-w-[96vw] flex-col rounded-[12px] bg-surface p-[22px] shadow-xl transition-all duration-[120ms] ${
+        className={`relative flex h-[82vh] w-[1280px] max-w-[96vw] flex-col rounded-md bg-surface p-[22px] shadow-xl transition-all duration-[120ms] ${
           shown ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
         }`}
       >
@@ -230,7 +230,7 @@ export function MergeDraftModal({
           </div>
 
           {/* 中:详情参照(需求点展示完整描述,栏内滚动) */}
-          <div className="flex w-[400px] shrink-0 flex-col gap-2 overflow-y-auto rounded-[10px] border border-border bg-surface p-3">
+          <div className="flex w-[400px] shrink-0 flex-col gap-2 overflow-y-auto rounded-md border border-border bg-surface p-3">
             <p className="shrink-0 text-xs font-bold text-text-secondary">{t('reference')}</p>
             {kind === 'point' ? (
               <>
@@ -287,7 +287,7 @@ export function MergeDraftModal({
           </div>
 
           {/* 右:合并编辑 */}
-          <div className="flex min-w-0 flex-1 flex-col gap-2 overflow-y-auto rounded-[10px] border border-border bg-surface p-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-2 overflow-y-auto rounded-md border border-border bg-surface p-3">
             <div className="flex shrink-0 items-center gap-2">
               <p className="text-xs font-bold text-text-secondary">{t('result')}</p>
               <span className="min-w-0 flex-1" />

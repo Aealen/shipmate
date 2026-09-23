@@ -70,7 +70,7 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
       {/* 模块进度(项目级模块管理):统计卡与最近动态之间,CRUD 后自刷新 */}
       <ModulesPanel projectId={id} modules={modules} />
 
-      <section className="flex w-full flex-col gap-2.5 rounded-[14px] bg-surface p-6">
+      <section className="flex w-full flex-col gap-2.5 rounded-lg bg-surface p-6">
         <div className="flex w-full items-center gap-2">
           <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
             {t('recentChanges')}

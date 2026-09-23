@@ -161,7 +161,7 @@ export function BoardView({
             <select
               value={moduleFilter}
               onChange={(e) => setModuleFilter(e.target.value)}
-              className="h-8 rounded-[8px] border border-border bg-surface px-2 text-[13px] text-text-primary outline-none transition-colors focus:border-accent"
+              className="h-8 rounded-md border border-border bg-surface px-2 text-[13px] text-text-primary outline-none transition-colors focus:border-accent"
             >
               <option value="all">{t('moduleAll')}</option>
               {modules.map((m) => (

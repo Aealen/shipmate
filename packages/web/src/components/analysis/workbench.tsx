@@ -879,7 +879,7 @@ function DeleteBlockConfirm({
         role="dialog"
         aria-modal="true"
         aria-label={t('title')}
-        className="relative w-[420px] max-w-[92vw] rounded-[12px] bg-surface p-[22px] shadow-xl"
+        className="relative w-[420px] max-w-[92vw] rounded-md bg-surface p-[22px] shadow-xl"
       >
         <h3 className="text-[16px] font-bold tracking-tight text-text-primary">{t('title')}</h3>
         <p className="mt-2 text-sm text-text-secondary">

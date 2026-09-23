@@ -132,13 +132,13 @@ export function DeleteProjectDialog({
         role="dialog"
         aria-modal="true"
         aria-label={t('title')}
-        className={`relative flex max-h-[80vh] w-full max-w-[560px] flex-col overflow-hidden rounded-[14px] bg-surface shadow-xl transition-all duration-[120ms] ${
+        className={`relative flex max-h-[80vh] w-full max-w-[560px] flex-col overflow-hidden rounded-lg bg-surface shadow-xl transition-all duration-[120ms] ${
           shown ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
         }`}
       >
         {/* 红系头部:危险图标 + 标题/副题 */}
         <div className="flex shrink-0 items-center gap-2.5 px-5 pb-3.5 pt-5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-danger/10 text-[17px]">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-danger/10 text-[17px]">
             🗑
           </span>
           <span className="flex min-w-0 flex-col gap-0.5">
@@ -151,7 +151,7 @@ export function DeleteProjectDialog({
 
         <div className="flex shrink-0 flex-col gap-3.5 px-5 pb-4">
           {/* 红色警示条:项目名 + 五项统计 */}
-          <div className="rounded-[10px] bg-danger/[0.08] p-3 pt-3 outline outline-1 -outline-offset-1 outline-danger/30">
+          <div className="rounded-md bg-danger/[0.08] p-3 pt-3 outline outline-1 -outline-offset-1 outline-danger/30">
             <p className="text-[13px] leading-snug text-danger">
               {t('warning', { name: projectName })}
             </p>

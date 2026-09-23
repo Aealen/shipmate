@@ -69,7 +69,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`relative flex max-h-[85vh] w-full max-w-lg flex-col rounded-[14px] bg-surface shadow-xl transition-all duration-[120ms] ${
+        className={`relative flex max-h-[85vh] w-full max-w-lg flex-col rounded-lg bg-surface shadow-xl transition-all duration-[120ms] ${
           shown ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
         }`}
       >
