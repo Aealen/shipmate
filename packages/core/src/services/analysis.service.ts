@@ -100,6 +100,13 @@ function draftCount(draft: AnalysisResult | null): number {
   return draft.requirements.length + draft.supplements.length;
 }
 
+/** Deadline 字符串(YYYY-MM-DD)→ 当地零点毫秒;非法输入返回 null(spec §9 规则 11) */
+function parseDeadlineToMs(deadline: string | null | undefined): number | null {
+  if (!deadline) return null;
+  const ms = new Date(`${deadline}T00:00:00`).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
 export class AnalysisService {
   constructor(
     private db: ShipmateDb,
@@ -209,7 +216,9 @@ export class AnalysisService {
     });
   }
 
-  /** spec §9 主链路:汇集素材 → LLM 结构化输出 → 草稿暂存 Run(不落业务表) */
+/**
+ * spec §9 主链路:汇集素材 → LLM 结构化输出 → 草稿暂存 Run(不落业务表)。
+ */
   async startAnalysis(runId: string, actor: Actor): Promise<AnalysisRunRow> {
     const run = (await this.db.select().from(analysisRuns).where(eq(analysisRuns.id, runId)))[0];
     if (!run) throw new DomainError('NOT_FOUND', `分析批次 ${runId} 不存在`);
@@ -966,6 +975,7 @@ export class AnalysisService {
     moduleId?: string | null,
   ): Promise<RequirementRow> {
     const now = Date.now();
+    const deadlineMs = parseDeadlineToMs(block.deadline);
     const req = (
       await tx
         .insert(requirements)
@@ -976,6 +986,9 @@ export class AnalysisService {
           summary: block.summary || null,
           // AI 归类建议落库(spec D9);归类本身不写独立 change_log(requirement create 快照已含 module_id)
           moduleId: moduleId ?? null,
+          // Deadline/起始时间(spec §9 规则 11):AI 识别,YYYY-MM-DD → 当地零点毫秒
+          planDueAt: deadlineMs,
+          planStartAt: parseDeadlineToMs(block.startDate),
           status: 'draft',
           priority: 'P2',
           createdAt: now,
@@ -983,7 +996,16 @@ export class AnalysisService {
         })
         .returning()
     )[0]!;
-    for (const p of block.points) await this.insertDraftPoint(tx, req.id, p, 'analysis', actor);
+    // 点 deadline 未单独给出时继承块 deadline(spec §9 规则 11)
+    for (const p of block.points)
+      await this.insertDraftPoint(
+        tx,
+        req.id,
+        p,
+        'analysis',
+        actor,
+        p.deadline ? parseDeadlineToMs(p.deadline) : deadlineMs,
+      );
     await writeChangeLog(tx, {
       entityType: 'requirement',
       entityId: req.id,
@@ -1001,6 +1023,8 @@ export class AnalysisService {
     p: DraftPoint,
     origin: 'analysis' | 'supplement',
     actor: Actor,
+    /** 点未单独给出 deadline 时继承所属块的 deadline(spec §9 规则 11) */
+    fallbackDeadlineMs?: number | null,
   ): Promise<RequirementPointRow> {
     const now = Date.now();
     const row = (
@@ -1017,6 +1041,7 @@ export class AnalysisService {
           evidences: p.evidences,
           origin,
           relations: null,
+          planDueAt: p.deadline ? parseDeadlineToMs(p.deadline) : (fallbackDeadlineMs ?? null),
           createdAt: now,
           updatedAt: now,
         })

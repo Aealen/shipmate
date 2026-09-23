@@ -521,10 +521,7 @@
     "merge": {
       "blocksSelected": "{count} blocks selected",
       "pointsSelected": "{count} points selected",
-      "blockButton": "Merge blocks",
-      "pointButton": "Merge points",
       "minHint": "Select at least 2 items to merge",
-      "conflictBlocked": "Blocks with unresolved conflicts cannot be merged",
       "cancel": "Cancel",
       "pointTitle": "Merge Points",
       "pointSubtitle": "{count} points in the same block · merge into 1",
@@ -555,7 +552,9 @@
       "confirmPoint": "Merge points",
       "confirmBlock": "Merge blocks",
       "pointDone": "Points merged in draft",
-      "blockDone": "Merged {count} blocks in draft"
+      "blockDone": "Merged {count} blocks in draft",
+      "button": "Merge",
+      "conflictDropHint": "{count} selected block(s) carry unresolved conflict marks; they will be dropped on merge."
     },
     "deleteConfirm": {
       "title": "Delete draft block",
@@ -571,7 +570,8 @@
       "descLabel": "Description",
       "descPlaceholder": "Enter description",
       "save": "Save",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "deadlineLabel": "Deadline"
     },
     "blockEdit": {
       "title": "Edit Block",
@@ -580,8 +580,14 @@
       "summaryLabel": "Summary",
       "summaryPlaceholder": "Enter summary (optional)",
       "save": "Save",
-      "cancel": "Cancel"
-    }
+      "cancel": "Cancel",
+      "deadlineLabel": "Deadline",
+      "startDateLabel": "Start date"
+    },
+    "deadlineLabel": "Deadline",
+    "editDeadline": "Edit",
+    "pointDeadlineExceeds": "Point deadline cannot be later than the block deadline ({blockDeadline})",
+    "planRangeLabel": "Plan"
   },
   "browse": {
     "runsTitle": "Material analyses",
@@ -704,7 +710,15 @@
       "deleteHint": "Deletions are logged in audit and cannot be undone.",
       "confirmDelete": "Delete",
       "deleting": "Deleting…",
-      "deleted": "Deleted {count} points"
+      "deleted": "Deleted {count} points",
+      "confirmOne": "Confirm",
+      "confirmSelected": "Confirm requirements",
+      "confirming": "Confirming…",
+      "confirmed": "Confirmed {count} point(s)",
+      "nothingToConfirm": "No draft points in selection",
+      "selected": "{count} selected",
+      "confirmBlockOne": "Confirm requirement",
+      "blockConfirmed": "Requirement confirmed"
     }
   }
 }

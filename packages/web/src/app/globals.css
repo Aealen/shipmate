@@ -102,3 +102,19 @@ body {
 .dropdown-enter {
   animation: dropdown-enter 120ms ease-out;
 }
+
+/* 原生 date 控件适配主题(日历弹出层配色 + 指示图标,契合整体样式) */
+input[type='date'] {
+  color-scheme: light;
+}
+.dark input[type='date'] {
+  color-scheme: dark;
+}
+input[type='date']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 80ms;
+}
+input[type='date']:hover::-webkit-calendar-picker-indicator {
+  opacity: 0.8;
+}

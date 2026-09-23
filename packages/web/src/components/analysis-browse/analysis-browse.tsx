@@ -11,7 +11,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { getPointRevisionHistory, type RevisionEntry } from '@/actions/revisions';
-import { deleteRequirementPointAction } from '@/actions/points';
+import { deleteRequirementPointAction, setRequirementPointStatusAction } from '@/actions/points';
+import { updateRequirementAction } from '@/actions/analysis';
 import { showToast } from '@/components/shared/toast';
 import { DueSoonBadge, OverdueBadge, StatusBadge } from '@/components/shared/badge';
 import { EmptyState } from '@/components/shared/empty-state';
@@ -220,10 +221,23 @@ export function AnalysisBrowse({
   const [moduleDelete, setModuleDelete] = useState<ModuleSummary | null>(null);
   const [moduleDeleteOpen, setModuleDeleteOpen] = useState(false);
 
-  // 需求点删除(spec §9 规则 9b:需求产出页支持单点删除;合并在工作台草稿阶段)
+  // 需求点删除与批量确认(spec §9 规则 9b)
   const [deletePoint, setDeletePoint] = useState<RequirementPointRow | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [selectedPointIds, setSelectedPointIds] = useState<string[]>([]);
+  const [confirming, setConfirming] = useState(false);
+
+  const togglePointSelect = (id: string) => {
+    setSelectedPointIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const openPointDelete = (point: RequirementPointRow) => {
+    setDeletePoint(point);
+    setDeleteOpen(true);
+  };
 
   const confirmDeletePoint = async () => {
     if (!deletePoint || deleting) return;
@@ -233,6 +247,7 @@ export function AnalysisBrowse({
     setDeleteOpen(false);
     if (res.ok) {
       showToast(t('bulk.deleted', { count: 1 }));
+      setSelectedPointIds((prev) => prev.filter((id) => id !== deletePoint.id));
       setDeletePoint(null);
       router.refresh();
     } else {
@@ -240,9 +255,48 @@ export function AnalysisBrowse({
     }
   };
 
-  const openPointDelete = (point: RequirementPointRow) => {
-    setDeletePoint(point);
-    setDeleteOpen(true);
+  /** 单点确认(draft→confirmed) */
+  const confirmSingle = async (point: RequirementPointRow) => {
+    const res = await setRequirementPointStatusAction(point.id, 'confirm');
+    if (res.ok) {
+      showToast(t('bulk.confirmed', { count: 1 }));
+      router.refresh();
+    } else {
+      showToast(res.message, 'error');
+    }
+  };
+
+  /** 需求块确认(draft→confirmed):块头 hover ✓ 入口 */
+  const confirmRequirementBlock = async (req: RequirementWithOverdue) => {
+    const res = await updateRequirementAction(req.id, { status: 'confirmed' });
+    if (res.ok) {
+      showToast(t('bulk.blockConfirmed'));
+      router.refresh();
+    } else {
+      showToast(res.message, 'error');
+    }
+  };
+
+  /** 批量确认:仅对 draft 点发起,完成后刷新并清空选择 */
+  const bulkConfirm = async () => {
+    if (confirming) return;
+    const targets = points.filter(
+      (p) => selectedPointIds.includes(p.id) && p.status === 'draft',
+    );
+    if (targets.length === 0) {
+      showToast(t('bulk.nothingToConfirm'), 'error');
+      return;
+    }
+    setConfirming(true);
+    let ok = 0;
+    for (const p of targets) {
+      const res = await setRequirementPointStatusAction(p.id, 'confirm');
+      if (res.ok) ok += 1;
+    }
+    setConfirming(false);
+    setSelectedPointIds([]);
+    showToast(t('bulk.confirmed', { count: ok }));
+    router.refresh();
   };
 
   const openModuleCreate = () => {
@@ -362,6 +416,10 @@ export function AnalysisBrowse({
                 onRename={openModuleRename}
                 onDelete={openModuleDelete}
                 onDeletePoint={openPointDelete}
+                onConfirmPoint={confirmSingle}
+                onConfirmBlock={confirmRequirementBlock}
+                selectedPointIds={selectedPointIds}
+                onTogglePointSelect={togglePointSelect}
               />
             ))}
           </div>
@@ -380,6 +438,10 @@ export function AnalysisBrowse({
                 onRevisionHistory={openRevisionHistory}
                 onEdit={openRequirementEdit}
                 onDeletePoint={openPointDelete}
+                onConfirmPoint={confirmSingle}
+                onConfirmBlock={confirmRequirementBlock}
+                selectedPointIds={selectedPointIds}
+                onTogglePointSelect={togglePointSelect}
               />
             ))}
           </div>
@@ -448,6 +510,31 @@ export function AnalysisBrowse({
           onCancel={() => setDeleteOpen(false)}
           onConfirm={confirmDeletePoint}
         />
+      )}
+
+      {/* 多选批量确认浮动条(选中 ≥1 显示) */}
+      {selectedPointIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full bg-surface px-5 py-2.5 shadow-lg ring-1 ring-border">
+          <span className="text-xs font-bold text-text-primary">
+            {t('bulk.selected', { count: selectedPointIds.length })}
+          </span>
+          <span className="h-4 w-px bg-border" />
+          <button
+            type="button"
+            onClick={bulkConfirm}
+            disabled={confirming}
+            className="inline-flex h-7 items-center gap-1 rounded-full bg-success px-3.5 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            ✓ {confirming ? t('bulk.confirming') : t('bulk.confirmSelected')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedPointIds([])}
+            className="text-xs text-text-secondary transition-colors hover:text-text-primary"
+          >
+            {t('bulk.cancel')}
+          </button>
+        </div>
       )}
     </div>
   );
@@ -590,6 +677,10 @@ function RequirementBlock({
   onRevisionHistory,
   onEdit,
   onDeletePoint,
+  onConfirmPoint,
+  onConfirmBlock,
+  selectedPointIds,
+  onTogglePointSelect,
 }: {
   requirement: RequirementWithOverdue;
   points: RequirementPointRow[];
@@ -603,6 +694,13 @@ function RequirementBlock({
   onEdit: (req: RequirementWithOverdue) => void;
   /** 单点删除(spec §9 规则 9b):透传至点行 🗑 入口 */
   onDeletePoint: (point: RequirementPointRow) => void;
+  /** 单点确认(draft→confirmed):透传至点行 ✓ 入口 */
+  onConfirmPoint: (point: RequirementPointRow) => void;
+  /** 需求块确认(draft→confirmed):块头 hover ✓ 入口 */
+  onConfirmBlock: (req: RequirementWithOverdue) => void;
+  /** 多选批量确认:选中点 id 集与切换,透传至点行 */
+  selectedPointIds: string[];
+  onTogglePointSelect: (id: string) => void;
 }) {
   const t = useTranslations('browse');
   const locale = useLocale();
@@ -645,6 +743,15 @@ function RequirementBlock({
         {/* hover 按钮组:修订徽标 + 历史入口 + 编辑入口 */}
         {/* 按钮组常显:hover 显隐可发现性差(仅头部行触发,卡内其余区域无反馈) */}
         <span className="flex shrink-0 items-center gap-0.5">
+          {req.status === 'draft' && (
+            <button
+              type="button"
+              onClick={() => onConfirmBlock(req)}
+              className="shrink-0 rounded px-1 py-0.5 text-xs font-bold text-accent opacity-0 transition-all duration-[80ms] hover:opacity-80 focus-visible:opacity-100 group-hover:opacity-100"
+            >
+              ✓ {t('bulk.confirmBlockOne')}
+            </button>
+          )}
           {revisionCount > 0 && (
             <button
               type="button"
@@ -697,6 +804,9 @@ function RequirementBlock({
               revisionCount={pointRevisionCounts[p.id] ?? 0}
               onEvidence={() => onEvidence(p)}
               onDelete={() => onDeletePoint(p)}
+              onConfirm={() => onConfirmPoint(p)}
+              selected={selectedPointIds.includes(p.id)}
+              onToggleSelect={() => onTogglePointSelect(p.id)}
             />
           ))}
         </ul>
@@ -716,6 +826,9 @@ function PointRow({
   revisionCount,
   onEvidence,
   onDelete,
+  onConfirm,
+  selected,
+  onToggleSelect,
 }: {
   point: RequirementPointRow;
   detailHref: string;
@@ -724,6 +837,11 @@ function PointRow({
   onEvidence: () => void;
   /** 单点删除(spec §9 规则 9b):hover 🗑 触发,父级弹确认 */
   onDelete: () => void;
+  /** 单点确认(draft→confirmed;仅 draft 态渲染入口) */
+  onConfirm: () => void;
+  /** 多选批量确认(spec §9 规则 9b):点选态与切换;点击行非交互区即切换 */
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const t = useTranslations('browse');
   const [expanded, setExpanded] = useState(false);
@@ -751,10 +869,27 @@ function PointRow({
           ? 'bg-accent'
           : 'bg-draft-gray';
 
+  const pickSelect = (e: React.MouseEvent) => {
+    if (!onToggleSelect) return;
+    if (
+      (e.target as HTMLElement).closest(
+        'button, input, textarea, select, a, label, [role="menu"]',
+      )
+    )
+      return;
+    onToggleSelect();
+  };
+
   return (
     // 需求点行:无底 + hairline 分隔(消整行灰块),hover 极浅反馈;
-    // pl-9 相对块头缩进(圆点比 P 徽章右移一档),体现「块 → 点」从属层级
-    <li className="group flex flex-col gap-2 rounded-[8px] border-b border-border/70 py-3 pl-9 pr-1 transition-colors duration-[120ms] last:border-0 hover:bg-surface-2/40">
+    // pl-9 相对块头缩进(圆点比 P 徽章右移一档),体现「块 → 点」从属层级;
+    // 多选批量确认 = 点选整行淡蓝高亮(点击行非交互区切换)
+    <li
+      onClick={pickSelect}
+      className={`group flex flex-col gap-2 rounded-[8px] border-b border-border/70 py-3 pl-9 pr-1 transition-colors duration-[120ms] last:border-0 hover:bg-surface-2/40 ${
+        selected ? 'bg-accent-dim' : ''
+      } ${onToggleSelect ? 'cursor-pointer' : ''}`}
+      >
       <div className="flex items-center gap-2.5">
         <span className={`h-2 w-2 shrink-0 rounded-full ${dotColor}`} />
         <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{point.title}</span>
@@ -802,6 +937,15 @@ function PointRow({
         >
           🗑
         </button>
+        {point.status === 'draft' && (
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="shrink-0 rounded px-1 py-0.5 text-xs font-bold text-accent opacity-0 transition-all duration-[80ms] hover:opacity-80 focus-visible:opacity-100 group-hover:opacity-100"
+          >
+            ✓ {t('bulk.confirmOne')}
+          </button>
+        )}
         <Link
           href={detailHref}
           className="shrink-0 rounded px-1 py-0.5 text-xs font-bold text-accent transition-opacity hover:opacity-80"
@@ -869,6 +1013,10 @@ function ModuleGroup({
   onRename,
   onDelete,
   onDeletePoint,
+  onConfirmPoint,
+  onConfirmBlock,
+  selectedPointIds,
+  onTogglePointSelect,
 }: {
   group: ModuleGroupData;
   pointHrefBase: string;
@@ -882,6 +1030,13 @@ function ModuleGroup({
   onDelete: (module: ModuleSummary) => void;
   /** 单点删除(spec §9 规则 9b):透传至点行 🗑 入口 */
   onDeletePoint: (point: RequirementPointRow) => void;
+  /** 单点确认(draft→confirmed):透传至点行 ✓ 入口 */
+  onConfirmPoint: (point: RequirementPointRow) => void;
+  /** 需求块确认(draft→confirmed):透传至块头 ✓ 入口 */
+  onConfirmBlock: (req: RequirementWithOverdue) => void;
+  /** 多选批量确认:选中点 id 集与切换,透传至点行 */
+  selectedPointIds: string[];
+  onTogglePointSelect: (id: string) => void;
 }) {
   const tm = useTranslations('browse.modules');
   // 组头折叠只收组内块:默认展开(与需求块折叠一致)
@@ -954,6 +1109,10 @@ function ModuleGroup({
             onRevisionHistory={onRevisionHistory}
             onEdit={onEdit}
             onDeletePoint={onDeletePoint}
+            onConfirmPoint={onConfirmPoint}
+            onConfirmBlock={onConfirmBlock}
+            selectedPointIds={selectedPointIds}
+            onTogglePointSelect={onTogglePointSelect}
           />
         ))}
     </div>

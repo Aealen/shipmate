@@ -2,25 +2,28 @@ import type { ExistingRequirementDigest } from './prompt-types.js';
 import type { MaterialRow } from '../db/schema.js';
 
 export function buildSystemPrompt(): string {
+  const today = new Date().toISOString().slice(0, 10);
   return `你是资深需求分析师。从素材中提炼「需求(requirement)」与「需求点(point)」,只输出 JSON,结构如下:
 {
   "requirements": [
-    { "title": "需求标题", "summary": "一句话摘要",
+    { "title": "需求标题", "summary": "一句话摘要", "start_date": "YYYY-MM-DD 或 null", "deadline": "YYYY-MM-DD 或 null",
       "conflict": { "type": "duplicate 或 contradiction", "target_requirement_title": "已有需求标题", "reason": "判定原因" },
       "points": [
-        { "title": "需求点标题", "description": "描述", "confidence": 0.0,
+        { "title": "需求点标题", "description": "描述", "confidence": 0.0, "deadline": "YYYY-MM-DD 或 null",
           "evidences": [ { "material_id": "素材ID", "quote": "原文引用段落" } ] } ] }
   ],
-  "supplements": [
-    { "target_requirement_title": "已有需求标题", "points": [ 同上 ] }
-  ]
-}
 规则:
 1. 每个需求点必须尽量给出 evidences,引用素材原文段落并标注素材ID;确无原文依据时 evidences 给空数组,禁止编造
 2. 与「已有需求」中的需求实质重复时,加 conflict 且 type=duplicate;结论相悖时 type=contradiction
-3. 素材是对已有需求的补充(只新增需求点)时,放入 supplements,不新建需求
+3. 素材是对已有需求的补充(只新增需求点)时,放入 supplements,不新建需求;无补充内容时 supplements 输出空数组 []
 4. 全新需求放 requirements,不带 conflict 字段
-5. 只输出 JSON,不输出任何其他文字`;
+5. 只输出 JSON,不输出任何其他文字
+6. Deadline 识别(今天是 ${today}):素材中出现「一周内/本月底/X月X日前/立即」等时间性表述时,换算为具体日期(YYYY-MM-DD,相对表述以素材日期为基准,「立即/当天」= 素材日期):
+   - 需求块的 deadline = 该块整体的最晚完成期限
+   - 需求点的 deadline 默认继承块的 deadline;素材对某点给出了更早/更晚的明确期限时才单独设置
+   - 纯时间性/排期性表述(如「一周内完成系统上线」)应识别为 deadline,不要把它单独拆成需求点
+   - 素材完全未提及时限则 deadline 给 null
+   - 素材明确提及开始/启动日期(如「X月X日启动」)时给 start_date,否则给 null`;
 }
 
 /**

@@ -26,6 +26,8 @@ export interface MergePointItem {
 export interface MergeBlockItem {
   title: string;
   summary: string;
+  /** 该块带未裁决冲突标记(spec §9 规则 8)——合并后丢弃,弹窗内提示 */
+  hasConflict?: boolean;
   points: { title: string; description: string }[];
 }
 
@@ -103,6 +105,10 @@ export function MergeDraftModal({
     }
     return list;
   }, [kind, blocks]);
+  const conflictCount = useMemo(
+    () => (kind === 'block' ? blocks.filter((b) => b.hasConflict).length : 0),
+    [kind, blocks],
+  );
 
   async function suggest() {
     if (suggesting) return;
@@ -145,7 +151,7 @@ export function MergeDraftModal({
         role="dialog"
         aria-modal="true"
         aria-label={kind === 'point' ? t('pointTitle') : t('blockTitle')}
-        className={`relative flex h-[80vh] w-[1080px] max-w-[95vw] flex-col rounded-[12px] bg-surface p-[22px] shadow-xl transition-all duration-[120ms] ${
+        className={`relative flex h-[82vh] w-[1280px] max-w-[96vw] flex-col rounded-[12px] bg-surface p-[22px] shadow-xl transition-all duration-[120ms] ${
           shown ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
         }`}
       >
@@ -223,8 +229,8 @@ export function MergeDraftModal({
                 ))}
           </div>
 
-          {/* 中:详情参照 */}
-          <div className="flex w-[320px] shrink-0 flex-col gap-2 overflow-y-auto rounded-[10px] border border-border bg-surface p-3">
+          {/* 中:详情参照(需求点展示完整描述,栏内滚动) */}
+          <div className="flex w-[400px] shrink-0 flex-col gap-2 overflow-y-auto rounded-[10px] border border-border bg-surface p-3">
             <p className="shrink-0 text-xs font-bold text-text-secondary">{t('reference')}</p>
             {kind === 'point' ? (
               <>
@@ -246,14 +252,14 @@ export function MergeDraftModal({
                   {blocks[viewingIndex]?.title}
                 </p>
                 <p className="shrink-0 text-[11px] text-text-muted">{t('summaryLabel')}</p>
-                <p className="text-xs leading-relaxed text-text-secondary">
+                <p className="whitespace-pre-wrap text-xs leading-relaxed text-text-secondary">
                   {blocks[viewingIndex]?.summary || t('descriptionEmpty')}
                 </p>
                 <p className="mt-1 shrink-0 text-[11px] text-text-muted">
                   {t('pointsCount', { count: blocks[viewingIndex]?.points.length ?? 0 })}
                 </p>
                 {(blocks[viewingIndex]?.points ?? []).map((p, i) => (
-                  <div key={i} className="rounded-md bg-surface-2/60 px-2.5 py-1.5">
+                  <div key={i} className="rounded-md border border-border/70 bg-surface-2/50 p-2.5">
                     <p className="flex items-center gap-1.5">
                       <span className="inline-flex shrink-0 items-center rounded-[4px] bg-[color-mix(in_srgb,var(--draft-gray)_10%,transparent)] px-[5px] py-[2px] text-[9px] font-medium leading-none text-draft-gray">
                         draft
@@ -263,7 +269,7 @@ export function MergeDraftModal({
                       </span>
                     </p>
                     {p.description && (
-                      <p className="mt-0.5 line-clamp-2 text-[11px] text-text-secondary">
+                      <p className="mt-1 whitespace-pre-wrap text-[11px] leading-relaxed text-text-secondary">
                         {p.description}
                       </p>
                     )}
@@ -272,6 +278,11 @@ export function MergeDraftModal({
               </>
             )}
             <span className="min-h-4 flex-1" />
+            {conflictCount > 0 && (
+              <p className="shrink-0 text-[10.5px] text-warning">
+                {t('conflictDropHint', { count: conflictCount })}
+              </p>
+            )}
             <p className="shrink-0 text-[10.5px] text-text-muted">{t('mergeHint')}</p>
           </div>
 
@@ -292,12 +303,13 @@ export function MergeDraftModal({
             <label htmlFor="merge-draft-title" className="shrink-0 text-[11px] text-text-muted">
               {kind === 'point' ? t('mergedTitle') : t('mergedBlockTitle')}
             </label>
-            <input
+            <textarea
               id="merge-draft-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('titlePlaceholder')}
-              className="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-accent"
+              rows={2}
+              className="shrink-0 w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm leading-relaxed text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-accent"
             />
             {kind === 'point' ? (
               <>
@@ -309,7 +321,7 @@ export function MergeDraftModal({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={t('descriptionPlaceholder')}
-                  rows={8}
+                  rows={12}
                   className="min-h-0 w-full flex-1 resize-none rounded-md border border-border bg-surface px-3 py-2 text-xs leading-relaxed text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-accent"
                 />
               </>
@@ -323,8 +335,8 @@ export function MergeDraftModal({
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
                   placeholder={t('summaryPlaceholder')}
-                  rows={3}
-                  className="shrink-0 resize-none rounded-md border border-border bg-surface px-3 py-2 text-xs leading-relaxed text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-accent"
+                  rows={6}
+                  className="shrink-0 resize-y rounded-md border border-border bg-surface px-3 py-2 text-xs leading-relaxed text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-accent"
                 />
                 <p className="shrink-0 text-[11px] text-text-muted">
                   {t('mergedPointsPreview', { count: mergedPoints.length })}

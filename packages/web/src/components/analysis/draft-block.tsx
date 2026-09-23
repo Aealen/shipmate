@@ -38,6 +38,8 @@ export interface DraftPointState {
   description: string;
   confidence: number;
   evidences: { material_id: string; quote: string }[];
+  /** Deadline(spec §9 规则 11):YYYY-MM-DD;null = 继承所属块 */
+  deadline: string | null;
 }
 
 /**
@@ -61,6 +63,10 @@ export interface DraftBlockState {
   summary: string;
   /** AI 归类建议(spec §9 规则 10):模块名;空串 = 未归类 */
   module: string;
+  /** Deadline(spec §9 规则 11):YYYY-MM-DD;null = 素材未提及;点默认继承此值 */
+  deadline: string | null;
+  /** 起始时间(spec §9 规则 11):YYYY-MM-DD;null = 素材未提及 */
+  startDate: string | null;
   conflict: ConflictView | null;
   /** duplicate 默认 merge;contradiction 为 null 表示未裁决(应用禁用) */
   resolution: BlockResolution | null;
@@ -106,6 +112,7 @@ export function toPointState(p: {
   description?: string;
   confidence?: number;
   evidences?: { material_id: string; quote: string }[];
+  deadline?: string | null;
 }): DraftPointState {
   return {
     key: nextKey('p'),
@@ -113,6 +120,7 @@ export function toPointState(p: {
     description: p.description ?? '',
     confidence: p.confidence ?? 0.5,
     evidences: p.evidences ?? [],
+    deadline: p.deadline ?? null,
   };
 }
 
@@ -124,6 +132,8 @@ export function newBlockState(defaultTitle: string, defaultPointTitle: string): 
     title: defaultTitle,
     summary: '',
     module: '',
+    deadline: null,
+    startDate: null,
     conflict: null,
     resolution: null,
     points: [toPointState({ title: defaultPointTitle })],
@@ -271,6 +281,19 @@ function BoxIcon() {
       <path d="M12 22V12" />
     </svg>
   );
+}
+
+/** evidences 按「素材+引文」去重(合并点时被合并点常引用相同段落) */
+export function dedupeEvidences<T extends { material_id: string; quote: string }>(list: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const e of list) {
+    const k = `${e.material_id}::${e.quote}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(e);
+  }
+  return out;
 }
 
 /** evidences → 去重来源素材(缺失标题回退「未命名素材」;展示截断「A、B +N」,+N 不可点) */
@@ -549,6 +572,12 @@ function PointRow({
         {point.description && (
           <p className="mt-0.5 line-clamp-2 text-xs text-text-secondary">{point.description}</p>
         )}
+        {point.deadline && (
+          <p className="mt-0.5 text-[11px] text-text-muted">
+            <span aria-hidden>⏰ </span>
+            {t('deadlineLabel')} {point.deadline}
+          </p>
+        )}
         {point.evidences.length > 0 ? (
           <SourceMaterialsRow
             evidences={point.evidences}
@@ -723,6 +752,30 @@ export function DraftBlock({
           <span className="min-w-0 truncate text-[10.5px] text-text-muted">{t('moduleAiHint')}</span>
         )}
       </div>
+
+      {/* 起止时间行(spec §9 规则 11):AI 识别/可编辑;有起止任一即展示,区间用 → 连接 */}
+      {(block.deadline || block.startDate) && (
+        <div className="mt-2 flex items-center gap-2">
+          <span aria-hidden className="text-[11px] text-text-muted">
+            ⏰
+          </span>
+          <span className="shrink-0 text-[11px] text-text-muted">
+            {block.startDate ? t('planRangeLabel') : t('deadlineLabel')}
+          </span>
+          <span className="shrink-0 text-[11px] font-medium text-text-primary">
+            {block.startDate ? `${block.startDate} → ${block.deadline ?? '?'}` : block.deadline}
+          </span>
+          {onEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit()}
+              className="text-[10.5px] text-text-muted transition-colors hover:text-accent"
+            >
+              {t('editDeadline')}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 块级来源素材(各点 evidences 聚合,点击名字打开素材 Modal,悬停看各点引用原文) */}
       <div className="mt-2">

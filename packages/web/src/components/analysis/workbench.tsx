@@ -19,6 +19,7 @@ import { createModuleAction, listModulesAction } from '@/actions/modules';
 import { Modal } from '@/components/shared/modal';
 import { showToast } from '@/components/shared/toast';
 import {
+  dedupeEvidences,
   toPointState,
   type DraftBlockState,
   type DraftPointState,
@@ -59,6 +60,8 @@ const CLOSED_BLOCK: DraftBlockState = {
   title: '',
   summary: '',
   module: '',
+  deadline: null,
+  startDate: null,
   conflict: null,
   resolution: null,
   points: [],
@@ -82,8 +85,10 @@ function blocksFromDraft(draft: AnalysisResult): DraftBlockState[] {
     selected: true,
     title: r.title,
     summary: r.summary ?? '',
-    // AI 归类建议(spec §9 规则 10);旧草稿无该字段,兜底空串 = 未归类
+    // AI 归类建议(spec §9 规则 10)与 Deadline(规则 11);旧草稿无该字段兜底
     module: r.module ?? '',
+    deadline: r.deadline ?? null,
+    startDate: r.startDate ?? null,
     conflict: r.conflict
       ? {
           type: r.conflict.type,
@@ -98,6 +103,7 @@ function blocksFromDraft(draft: AnalysisResult): DraftBlockState[] {
         description: p.description,
         confidence: p.confidence,
         evidences: p.evidences,
+        deadline: p.deadline ?? r.deadline ?? null,
       }),
     ),
     // 块级修订记录(spec §9 规则 9)随草稿带出,写回时原样保留
@@ -154,6 +160,9 @@ function buildDraftPayload(
       summary: b.summary.trim(),
       // 块级归类建议随草稿带出(spec §9 规则 10),apply 按名落模块
       module: b.module,
+      // 起止时间(spec §9 规则 11)随草稿写回,apply 落 plan_start_at/plan_due_at
+      deadline: b.deadline,
+      startDate: b.startDate,
       conflict: b.conflict
         ? {
             type: b.conflict.type,
@@ -166,6 +175,7 @@ function buildDraftPayload(
         description: p.description,
         confidence: p.confidence,
         evidences: p.evidences,
+        deadline: p.deadline,
       })),
       ...(b.revisions.length > 0 ? { revisions: b.revisions } : {}),
     })),
@@ -176,6 +186,7 @@ function buildDraftPayload(
         description: p.description,
         confidence: p.confidence,
         evidences: p.evidences,
+        deadline: p.deadline,
       })),
     })),
   };
@@ -234,7 +245,7 @@ export function AnalysisWorkbench({
   const [mergeModal, setMergeModal] = useState<'point' | 'block' | null>(null);
   /** 待删除草稿块(二次确认后移除) */
   const [pendingDeleteBlock, setPendingDeleteBlock] = useState<DraftBlockState | null>(null);
-  /** 编辑草稿块标题/摘要(弹窗化) */
+  /** 编辑草稿块标题/摘要/起止时间(弹窗化) */
   const [editingBlock, setEditingBlock] = useState<DraftBlockState | null>(null);
   /** 编辑草稿点(弹窗化):ownerKey = 块 key(req)或补充块 key(supp) */
   const [editingPoint, setEditingPoint] = useState<{
@@ -243,6 +254,7 @@ export function AnalysisWorkbench({
     kind: 'req' | 'supp';
     title: string;
     description: string;
+    deadline: string;
   } | null>(null);
 
   const openPointEdit = useCallback(
@@ -256,34 +268,10 @@ export function AnalysisWorkbench({
         kind,
         title: point.title,
         description: point.description,
+        deadline: point.deadline ?? '',
       });
     },
     [blocks, supps],
-  );
-
-  const savePointEdit = useCallback(
-    (input: { title: string; description: string }) => {
-      if (!editingPoint) return;
-      const patchPoint = (p: DraftPointState) =>
-        p.key === editingPoint.pointKey
-          ? { ...p, title: input.title, description: input.description }
-          : p;
-      if (editingPoint.kind === 'req') {
-        setBlocks((prev) =>
-          prev.map((b) =>
-            b.key === editingPoint.ownerKey ? { ...b, points: b.points.map(patchPoint) } : b,
-          ),
-        );
-      } else {
-        setSupps((prev) =>
-          prev.map((s) =>
-            s.key === editingPoint.ownerKey ? { ...s, points: s.points.map(patchPoint) } : s,
-          ),
-        );
-      }
-      setEditingPoint(null);
-    },
-    [editingPoint],
   );
 
   const toggleBlockMergeSelect = useCallback((key: string) => {
@@ -434,7 +422,10 @@ export function AnalysisWorkbench({
     const block = blocks.find((b) => b.key === mergePointSel.blockKey);
     return (block?.points ?? []).filter((p) => mergePointSel.pointKeys.includes(p.key));
   }, [blocks, mergePointSel]);
-  const blockMergeConflictBlocked = selectedMergeBlocks.some((b) => b.conflict);
+  const selectedMergeConflictCount = useMemo(
+    () => selectedMergeBlocks.filter((b) => b.conflict).length,
+    [selectedMergeBlocks],
+  );
 
   /** 点合并确认:同块内以合并结果替换所选点(evidences 拼接,置信度取均值) */
   const confirmPointMerge = useCallback(
@@ -452,7 +443,8 @@ export function AnalysisWorkbench({
               confidence: picked.length
                 ? picked.reduce((s, p) => s + p.confidence, 0) / picked.length
                 : 0.8,
-              evidences: picked.flatMap((p) => p.evidences),
+              // evidences 按「素材+引文」去重汇总(被合并点常引用相同段落)
+              evidences: dedupeEvidences(picked.flatMap((p) => p.evidences)),
             }),
             key: nextBlockKey('mp'),
           };
@@ -698,11 +690,12 @@ export function AnalysisWorkbench({
         blocks={selectedMergeBlocks.map((b) => ({
           title: b.title,
           summary: b.summary,
+          hasConflict: !!b.conflict,
           points: b.points.map((p) => ({ title: p.title, description: p.description })),
         }))}
       />
 
-      {/* 多选合并浮动条:块≥2 可合并块;同块点≥2 可合并点(与块选互斥) */}
+      {/* 多选合并浮动条:块≥2 可合并块;同块点≥2 可合并点(与块选互斥);统一「合并」按钮 */}
       {(mergeBlockKeys.length > 0 || (mergePointSel?.pointKeys.length ?? 0) > 0) && (
         <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full bg-surface px-5 py-2.5 shadow-lg ring-1 ring-border">
           <span className="text-xs font-bold text-text-primary">
@@ -711,35 +704,19 @@ export function AnalysisWorkbench({
               : t('merge.pointsSelected', { count: mergePointSel?.pointKeys.length ?? 0 })}
           </span>
           <span className="h-4 w-px bg-border" />
-          {mergeBlockKeys.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setMergeModal('block')}
-              disabled={mergeBlockKeys.length < 2 || blockMergeConflictBlocked}
-              title={
-                blockMergeConflictBlocked
-                  ? t('merge.conflictBlocked')
-                  : mergeBlockKeys.length < 2
-                    ? t('merge.minHint')
-                    : undefined
-              }
-              className="inline-flex h-7 items-center gap-1 rounded-full bg-accent px-3.5 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              ⇉ {t('merge.blockButton')}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setMergeModal('point')}
-              disabled={(mergePointSel?.pointKeys.length ?? 0) < 2}
-              title={
-                (mergePointSel?.pointKeys.length ?? 0) < 2 ? t('merge.minHint') : undefined
-              }
-              className="inline-flex h-7 items-center gap-1 rounded-full bg-accent px-3.5 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              ⇉ {t('merge.pointButton')}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setMergeModal(mergeBlockKeys.length > 0 ? 'block' : 'point')}
+            disabled={mergeBlockKeys.length > 0 ? mergeBlockKeys.length < 2 : (mergePointSel?.pointKeys.length ?? 0) < 2}
+            title={
+              (mergeBlockKeys.length > 0 ? mergeBlockKeys.length : mergePointSel?.pointKeys.length ?? 0) < 2
+                ? t('merge.minHint')
+                : undefined
+            }
+            className="inline-flex h-7 items-center gap-1 rounded-full bg-accent px-3.5 text-xs font-bold text-white transition-transform duration-[80ms] hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            ⇉ {t('merge.button')}
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -762,7 +739,19 @@ export function AnalysisWorkbench({
           setBlocks((prev) =>
             prev.map((b) =>
               b.key === editingBlock.key
-                ? { ...b, title: input.title, summary: input.summary }
+                ? {
+                    ...b,
+                    title: input.title,
+                    summary: input.summary,
+                    deadline: input.deadline,
+                    startDate: input.startDate ?? null,
+                    // 点 deadline 默认继承块:块提前时,未单独设置(=旧块值)的点同步跟随
+                    points: b.points.map((p) =>
+                      p.deadline === b.deadline || !p.deadline
+                        ? { ...p, deadline: input.deadline ?? p.deadline }
+                        : p,
+                    ),
+                  }
                 : b,
             ),
           );
@@ -770,15 +759,49 @@ export function AnalysisWorkbench({
         }}
         initialTitle={editingBlock?.title ?? ''}
         initialSummary={editingBlock?.summary ?? ''}
+        initialDeadline={editingBlock?.deadline ?? ''}
+        initialStartDate={editingBlock?.startDate ?? ''}
       />
 
       {/* 草稿点编辑弹窗(spec §9 规则 9b 调整:编辑从原地表单改为 Modal) */}
       <DraftPointEditModal
         open={editingPoint !== null}
         onClose={() => setEditingPoint(null)}
-        onSave={savePointEdit}
+        onSave={(input) => {
+          if (!editingPoint) return;
+          // 约束(spec §9 规则 11):点 deadline 须包含在块 deadline 之内
+          const owner = blocks.find((b) => b.key === editingPoint.ownerKey);
+          if (
+            editingPoint.kind === 'req' &&
+            owner?.deadline &&
+            input.deadline &&
+            input.deadline > owner.deadline
+          ) {
+            showToast(t('pointDeadlineExceeds', { blockDeadline: owner.deadline }), 'error');
+            return;
+          }
+          const patchPoint = (p: DraftPointState) =>
+            p.key === editingPoint.pointKey
+              ? { ...p, title: input.title, description: input.description, deadline: input.deadline }
+              : p;
+          if (editingPoint.kind === 'req') {
+            setBlocks((prev) =>
+              prev.map((b) =>
+                b.key === editingPoint.ownerKey ? { ...b, points: b.points.map(patchPoint) } : b,
+              ),
+            );
+          } else {
+            setSupps((prev) =>
+              prev.map((s) =>
+                s.key === editingPoint.ownerKey ? { ...s, points: s.points.map(patchPoint) } : s,
+              ),
+            );
+          }
+          setEditingPoint(null);
+        }}
         initialTitle={editingPoint?.title ?? ''}
         initialDescription={editingPoint?.description ?? ''}
+        initialDeadline={editingPoint?.deadline ?? ''}
       />
 
       {/* 草稿块删除二次确认 */}

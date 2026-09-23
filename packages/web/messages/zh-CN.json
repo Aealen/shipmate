@@ -521,10 +521,7 @@
     "merge": {
       "blocksSelected": "已选 {count} 个块",
       "pointsSelected": "已选 {count} 个需求点",
-      "blockButton": "合并块",
-      "pointButton": "合并点",
       "minHint": "至少选择 2 项才能合并",
-      "conflictBlocked": "存在冲突未裁决的块,不能合并",
       "cancel": "取消",
       "pointTitle": "合并需求点",
       "pointSubtitle": "同块内已选 {count} 个需求点 · 合并为 1 个",
@@ -555,7 +552,9 @@
       "confirmPoint": "合并需求点",
       "confirmBlock": "合并需求块",
       "pointDone": "已在草稿中合并需求点",
-      "blockDone": "已在草稿中合并 {count} 个块"
+      "blockDone": "已在草稿中合并 {count} 个块",
+      "button": "合并",
+      "conflictDropHint": "{count} 个所选块带未裁决冲突标记,合并后将丢弃。"
     },
     "deleteConfirm": {
       "title": "删除草稿块",
@@ -571,7 +570,8 @@
       "descLabel": "描述",
       "descPlaceholder": "输入描述",
       "save": "保存",
-      "cancel": "取消"
+      "cancel": "取消",
+      "deadlineLabel": "截止时间"
     },
     "blockEdit": {
       "title": "编辑需求块",
@@ -580,8 +580,14 @@
       "summaryLabel": "摘要",
       "summaryPlaceholder": "输入摘要(可选)",
       "save": "保存",
-      "cancel": "取消"
-    }
+      "cancel": "取消",
+      "deadlineLabel": "截止时间",
+      "startDateLabel": "开始时间"
+    },
+    "deadlineLabel": "截止时间",
+    "editDeadline": "编辑",
+    "pointDeadlineExceeds": "需求点的截止时间不能晚于所属需求块的截止时间({blockDeadline})",
+    "planRangeLabel": "计划"
   },
   "browse": {
     "runsTitle": "素材分析记录",
@@ -704,7 +710,15 @@
       "deleteHint": "删除留痕可在审计中查看,操作不可恢复。",
       "confirmDelete": "确认删除",
       "deleting": "删除中…",
-      "deleted": "已删除 {count} 个需求点"
+      "deleted": "已删除 {count} 个需求点",
+      "confirmOne": "确认",
+      "confirmSelected": "需求确认",
+      "confirming": "确认中…",
+      "confirmed": "已确认 {count} 个需求点",
+      "nothingToConfirm": "所选均为非草稿状态,无可确认项",
+      "selected": "已选 {count} 项",
+      "confirmBlockOne": "需求确认",
+      "blockConfirmed": "需求已确认"
     }
   }
 }

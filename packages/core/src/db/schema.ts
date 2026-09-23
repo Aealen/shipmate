@@ -99,6 +99,8 @@ export const requirementPoints = pgTable(
     evidences: jsonb('evidences').$type<Evidence[]>(),
     origin: text('origin', { enum: ['analysis', 'supplement', 'manual'] }).notNull(),
     relations: jsonb('relations').$type<PointRelation[]>(),
+    // 需求点截止时间(spec §9 规则 11):合并/需求分析识别;默认继承所属需求块的 plan_due_at
+    planDueAt: bigint('plan_due_at', { mode: 'number' }),
     createdAt: bigint('created_at', { mode: 'number' }).notNull(),
     updatedAt: bigint('updated_at', { mode: 'number' }).notNull(),
   },

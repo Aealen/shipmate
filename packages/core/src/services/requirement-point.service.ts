@@ -273,8 +273,18 @@ export class RequirementPointService {
       if (!projectIds.has(targetReq.projectId))
         throw new DomainError('VALIDATION_ERROR', '目标需求与所选需求点不属于同一项目');
 
-      // evidences 按所选点顺序汇总(同一素材引用原样保留,合并不破坏溯源)
-      const evidences = rows.flatMap((r): Evidence[] => r.evidences ?? []);
+      // evidences 按所选点顺序汇总,并按「素材+引文」去重——
+      // 被合并点常引用相同素材段落,直接拼接会产生重复依据
+      const seenEv = new Set<string>();
+      const evidences: Evidence[] = [];
+      for (const r of rows) {
+        for (const e of r.evidences ?? []) {
+          const k = `${e.material_id}::${e.quote}`;
+          if (seenEv.has(k)) continue;
+          seenEv.add(k);
+          evidences.push(e);
+        }
+      }
       const sourceMaterialIds = [
         ...new Set(rows.flatMap((r) => r.sourceMaterialIds ?? [])),
       ];

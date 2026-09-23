@@ -11,6 +11,12 @@ export const draftPointSchema = z.object({
   description: z.string().optional().default(''),
   confidence: z.number().min(0).max(1),
   evidences: z.array(evidenceSchema),
+  // Deadline(spec §9 规则 11):YYYY-MM-DD;null = 素材未提及,回退所属块的 deadline
+  deadline: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
 });
 
 export const draftConflictSchema = z.object({
@@ -33,6 +39,18 @@ export const draftRequirementSchema = z.object({
   summary: z.string().optional().default(''),
   // AI 归类建议(spec §9 规则 10):模块名;空串 = 未归类。默认空串保证旧草稿(无该字段)兼容
   module: z.string().optional().default(''),
+  // Deadline(spec §9 规则 11):YYYY-MM-DD;null = 素材未提及;点 deadline 默认继承此值
+  deadline: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
+  // 起始时间(spec §9 规则 11):素材明确提及开始/启动日期时给出
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
   conflict: draftConflictSchema.optional(),
   points: z.array(draftPointSchema),
   revisions: z.array(draftRevisionSchema).optional(),
@@ -45,7 +63,8 @@ export const draftSupplementSchema = z.object({
 
 export const analysisResultSchema = z.object({
   requirements: z.array(draftRequirementSchema),
-  supplements: z.array(draftSupplementSchema),
+  // supplements 宽容化:素材无「补充已有需求」场景时 LLM 常省略该字段,缺省补空数组
+  supplements: z.array(draftSupplementSchema).optional().default([]),
 });
 
 /** 块级智能合并(§9)LLM 产出:合并后块标题/摘要(不落库,点列表由前端归并) */
