@@ -31,9 +31,9 @@ const NEXT_TRANSITION: Partial<
 };
 
 /**
- * P4 需求点详情(对齐原型 P4 双栏,2026-09-15 卡片化重排):
- * 左栏 = 标题/状态/版本 + 流转/编辑/AI 修订操作 + Summary Card(描述+溯源依据,
- * 单张白卡)+ Tasks Card(关联任务白卡);右栏 = 变更历史(卡片流)。
+ * P4 需求点详情(双栏,2026-09-23 视觉重心重排):
+ * 左栏 = 标题/状态/版本 + 流转/编辑/AI 修订操作 + Tasks Card(关联任务)+ 变更历史;
+ * 右栏(主内容,进页视觉中心)= Summary Card(描述+溯源依据,单张白卡)。
  * 写操作经 server actions;action 内 revalidatePath 使页面自动刷新。
  */
 export function PointDetailView({
@@ -95,8 +95,8 @@ export function PointDetailView({
         <span className="text-text-secondary">{point.title}</span>
       </nav>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        {/* 左栏:标题 + 操作 + Summary Card(描述+溯源)+ Tasks Card */}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]">
+        {/* 左栏:标题 + 操作 + Tasks Card + 变更历史 */}
         <div className="flex min-w-0 flex-col gap-5">
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="min-w-0 flex-1 text-[22px] font-bold leading-snug tracking-tight text-text-primary">
@@ -144,7 +144,30 @@ export function PointDetailView({
             )}
           </div>
 
-          {/* Summary Card:描述 + 溯源依据(原型 P4 单张白卡) */}
+          {/* Tasks Card:关联任务(原型 P4 白卡) */}
+          <section className="flex flex-col gap-3 rounded-lg bg-surface p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
+                {t('tasks')}
+              </h2>
+              {data.tasks.length > 0 && (
+                <span className="text-xs text-text-muted">
+                  {t('tasksCount', { count: data.tasks.length })}
+                </span>
+              )}
+            </div>
+            <TasksPanel tasks={data.tasks} />
+          </section>
+
+          {/* 变更历史(卡片流) */}
+          <section className="flex flex-col gap-2">
+            <h2 className="text-[15px] font-bold tracking-tight text-text-primary">{t('history')}</h2>
+            <HistoryTimeline changeLogs={data.changeLogs} />
+          </section>
+        </div>
+
+        {/* 右栏(主内容,进页视觉中心):Summary Card = 描述 + 溯源依据 */}
+        <div className="flex min-w-0 flex-col gap-5">
           <section className="flex flex-col gap-4 rounded-lg bg-surface p-5">
             <div className="flex flex-col gap-2">
               <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
@@ -163,29 +186,6 @@ export function PointDetailView({
               </h2>
               <Evidences evidences={point.evidences ?? []} materialTitles={data.materialTitles} />
             </div>
-          </section>
-
-          {/* Tasks Card:关联任务(原型 P4 白卡) */}
-          <section className="flex flex-col gap-3 rounded-lg bg-surface p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[15px] font-bold tracking-tight text-text-primary">
-                {t('tasks')}
-              </h2>
-              {data.tasks.length > 0 && (
-                <span className="text-xs text-text-muted">
-                  {t('tasksCount', { count: data.tasks.length })}
-                </span>
-              )}
-            </div>
-            <TasksPanel tasks={data.tasks} />
-          </section>
-        </div>
-
-        {/* 右栏:变更历史(卡片流) */}
-        <div className="flex min-w-0 flex-col gap-5">
-          <section className="flex flex-col gap-2">
-            <h2 className="text-[15px] font-bold tracking-tight text-text-primary">{t('history')}</h2>
-            <HistoryTimeline changeLogs={data.changeLogs} />
           </section>
         </div>
       </div>
