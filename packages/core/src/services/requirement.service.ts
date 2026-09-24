@@ -1,6 +1,12 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import type { ShipmateDb, ShipmateTx } from '../db/database.js';
-import { modules, projects, requirements, type RequirementRow } from '../db/schema.js';
+import {
+  modules,
+  projects,
+  requirementPoints,
+  requirements,
+  type RequirementRow,
+} from '../db/schema.js';
 import { newId } from '../db/id.js';
 import type { Actor } from '../types.js';
 import { DomainError } from '../errors.js';
@@ -183,6 +189,32 @@ export class RequirementService {
           after,
           actor,
         });
+        // 需求确认联动(spec §4.3):确认需求 = 认可其下全部内容,
+        // 同事务将其下仍为 draft 的需求点一并确认,逐点写 status_change 审计;
+        // developing/done 等已进入后续流程的点不动
+        if (input.status === 'confirmed') {
+          const draftPoints = await tx
+            .select()
+            .from(requirementPoints)
+            .where(and(eq(requirementPoints.requirementId, id), eq(requirementPoints.status, 'draft')));
+          for (const p of draftPoints) {
+            const confirmed = (
+              await tx
+                .update(requirementPoints)
+                .set({ status: 'confirmed', updatedAt: Date.now() })
+                .where(eq(requirementPoints.id, p.id))
+                .returning()
+            )[0]!;
+            await writeChangeLog(tx, {
+              entityType: 'requirement_point',
+              entityId: p.id,
+              changeType: 'status_change',
+              before: p,
+              after: confirmed,
+              actor,
+            });
+          }
+        }
       }
       return after;
     });

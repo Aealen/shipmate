@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { withDb } from '../db/database.js';
-import { changeLogs, projects, type RequirementRow } from '../db/schema.js';
+import { changeLogs, projects, requirementPoints, type RequirementRow } from '../db/schema.js';
 import { newId } from '../db/id.js';
 import { DomainError } from '../errors.js';
 import {
@@ -258,6 +258,61 @@ describe('RequirementService', () => {
         '未挂',
       ]);
       expect((await svc.listRequirements(p.id)).map((r) => r.title)).toEqual(['挂载', '未挂']);
+    });
+  });
+
+  it('updateRequirement:需求确认联动确认其下全部 draft 需求点(逐点写 status_change;非 draft 不动)', async () => {
+    await withDb(async (db) => {
+      const svc = new RequirementService(db);
+      const now = Date.now();
+      const p = (
+        await db
+          .insert(projects)
+          .values({ id: newId(), name: 'P', status: 'active', createdAt: now, updatedAt: now })
+          .returning()
+      )[0]!;
+      const r = await svc.createRequirement({ projectId: p.id, title: '联动确认' }, 'human');
+      const mkPoint = (title: string, status: 'draft' | 'confirmed') =>
+        db
+          .insert(requirementPoints)
+          .values({
+            id: newId(),
+            requirementId: r.id,
+            title,
+            status,
+            version: 1,
+            sourceMaterialIds: [],
+            evidences: [],
+            origin: 'analysis',
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning();
+      const d1 = (await mkPoint('草稿点1', 'draft'))[0]!;
+      const d2 = (await mkPoint('草稿点2', 'draft'))[0]!;
+      const c1 = (await mkPoint('已确认点', 'confirmed'))[0]!;
+
+      await svc.updateRequirement(r.id, { status: 'confirmed' }, 'human');
+
+      const after = await db
+        .select()
+        .from(requirementPoints)
+        .where(eq(requirementPoints.requirementId, r.id));
+      const byId = new Map(after.map((x) => [x.id, x]));
+      expect(byId.get(d1.id)?.status).toBe('confirmed');
+      expect(byId.get(d2.id)?.status).toBe('confirmed');
+      // 已进入后续流程的点不动
+      expect(byId.get(c1.id)?.status).toBe('confirmed');
+
+      // 逐点写 status_change 审计(2 个 draft 点各一条)
+      const logs = await db
+        .select()
+        .from(changeLogs)
+        .where(and(eq(changeLogs.entityType, 'requirement_point'), eq(changeLogs.changeType, 'status_change')));
+      const pointLogs = logs.filter((l) => [d1.id, d2.id].includes(l.entityId));
+      expect(pointLogs).toHaveLength(2);
+      expect(pointLogs[0]?.beforeSnapshot).toMatchObject({ status: 'draft' });
+      expect(pointLogs[0]?.afterSnapshot).toMatchObject({ status: 'confirmed' });
     });
   });
 });

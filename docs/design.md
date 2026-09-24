@@ -241,6 +241,7 @@ pending ──start──▶ in_progress ──complete──▶ done
 ### 4.3 Requirement / Project
 
 - Requirement:`draft` →(confirm)`confirmed` →(complete)`done` →(archive)`archived`;需求下全部需求点 done 方可 complete(校验,提示不强拦);complete 时写入 `completed_at`
+- **确认联动(2026-09-23)**:需求流转到 `confirmed` 时,同事务将其下全部 `draft` 需求点一并确认(逐点写 `status_change` 审计);developing/done 等已进入后续流程的点不动。语义:确认需求 = 认可其下全部内容,点级无需再逐个手动确认
 - **超期判定**:需求 status ∈ {draft, confirmed} 且 `plan_due_at` < 当前时间 → overdue。overdue 是**计算态不落库**,查询时算出,UI 徽章红色「已超期 N 天」;`plan_due_at` 临近(≤3 天)显示黄色「即将到期」;未设 `plan_due_at` 不参与超期判定
 - Project:`active` ⇄ `archived`
 
