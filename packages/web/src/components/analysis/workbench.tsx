@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { AnalysisResult, AnalysisRunDetail, MaterialRow, ModuleRow, ModuleSummary } from '@shipmate/core';
+import type { AnalysisResult, AnalysisRunDetail, AttachmentMeta, MaterialRow, ModuleRow, ModuleSummary } from '@shipmate/core';
 import {
   addMaterialAction,
   applyAnalysisRunAction,
@@ -355,17 +355,17 @@ export function AnalysisWorkbench({
 
   const handleAddMaterial = useCallback(
     async (input: {
-      type: MaterialRow['type'];
       title: string;
       rawContent: string;
+      attachments: AttachmentMeta[];
     }): Promise<boolean> => {
       const id = await ensureRun();
       if (!id) return false;
       const res = await addMaterialAction({
         runId: id,
-        type: input.type,
         title: input.title || undefined,
         rawContent: input.rawContent,
+        attachments: input.attachments,
       });
       if (!res.ok) {
         showToast(res.message, 'error');
@@ -378,11 +378,11 @@ export function AnalysisWorkbench({
     [ensureRun, t],
   );
 
-  /** 编辑素材(spec §3.3):成功后本地替换该行;失败 toast 并保持卡片编辑态 */
+  /** 编辑素材(spec §3.3,含附件替换):成功后本地替换该行;失败 toast 并保持卡片编辑态 */
   const handleUpdateMaterial = useCallback(
     async (
       id: string,
-      input: { title: string; rawContent: string },
+      input: { title: string; rawContent: string; attachments?: AttachmentMeta[] },
     ): Promise<boolean> => {
       const res = await updateMaterialAction(id, input);
       if (!res.ok) {
@@ -390,7 +390,7 @@ export function AnalysisWorkbench({
         return false;
       }
       setMaterials((prev) => prev.map((m) => (m.id === id ? res.data : m)));
-      // Modal 内保存后同步最新行,查看态立即反映新标题/内容
+      // Modal 内保存后同步最新行,查看态立即反映新标题/内容/附件
       setViewMaterial((cur) => (cur?.id === id ? res.data : cur));
       showToast(t('materialUpdated'));
       return true;

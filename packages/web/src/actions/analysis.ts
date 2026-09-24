@@ -70,9 +70,10 @@ export async function createAnalysisRunAction(input: {
 
 export async function addMaterialAction(input: {
   runId: string;
-  type: MaterialRow['type'];
   title?: string;
   rawContent: string;
+  /** 附件元数据(字节已由 /api/uploads 落盘,这里只传元信息) */
+  attachments?: { name: string; size: number; mime: string; path: string }[];
 }): Promise<ActionResult<MaterialRow>> {
   try {
     const { core } = await getShipmate();
@@ -85,12 +86,17 @@ export async function addMaterialAction(input: {
 }
 
 /**
- * 更新素材标题/原文(spec §3.3 素材可更新):只更新传入的字段。
- * title 传空串时 core 置 null,前端显示「未命名素材」回退。
+ * 更新素材标题/原文/附件(spec §3.3 素材可更新):只更新传入的字段。
+ * title 传空串时 core 置 null,前端显示「未命名素材」回退;
+ * attachments 传入时整体替换附件列表(编辑弹窗移除/追加后全量回传)。
  */
 export async function updateMaterialAction(
   id: string,
-  input: { title?: string; rawContent?: string },
+  input: {
+    title?: string;
+    rawContent?: string;
+    attachments?: { name: string; size: number; mime: string; path: string }[];
+  },
 ): Promise<ActionResult<MaterialRow>> {
   try {
     const { core } = await getShipmate();

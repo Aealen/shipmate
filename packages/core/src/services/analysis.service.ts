@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, ne } from 'drizzle-orm';
 import type { ShipmateDb, ShipmateTx } from '../db/database.js';
 import {
+  type AttachmentMeta,
   analysisRuns,
   materials,
   modules,
@@ -145,11 +146,23 @@ export class AnalysisService {
     });
   }
 
+  /**
+   * 添加素材(素材多附件模型):type 已废弃,新素材统一写兼容值 'paste_text';
+   * attachments 为文件元数据(字节由 web 层落盘,core 只存元信息)。
+   */
   async addMaterial(
-    input: { runId: string; type: MaterialRow['type']; title?: string; rawContent: string },
+    input: {
+      runId: string;
+      type?: MaterialRow['type'];
+      title?: string;
+      rawContent: string;
+      attachments?: AttachmentMeta[];
+    },
     actor: Actor,
   ): Promise<MaterialRow> {
-    if (!input.rawContent?.trim()) throw new DomainError('VALIDATION_ERROR', '素材内容不能为空');
+    if (!input.rawContent?.trim() && !input.attachments?.length) {
+      throw new DomainError('VALIDATION_ERROR', '素材内容与附件至少提供一项');
+    }
     return this.db.transaction(async (tx) => {
       const run = (await tx.select().from(analysisRuns).where(eq(analysisRuns.id, input.runId)))[0];
       if (!run) throw new DomainError('NOT_FOUND', `分析批次 ${input.runId} 不存在`);
@@ -159,9 +172,10 @@ export class AnalysisService {
           id: newId(),
           projectId: run.projectId,
           analysisRunId: run.id,
-          type: input.type,
+          type: input.type ?? 'paste_text',
           title: input.title ?? null,
           rawContent: input.rawContent,
+          attachments: input.attachments ?? [],
           actor,
           createdAt: Date.now(),
         })
@@ -179,28 +193,39 @@ export class AnalysisService {
   }
 
   /**
-   * 更新素材的标题/原文(spec §6 updateMaterial):title 与 rawContent 至少提供一项,
+   * 更新素材的标题/原文/附件(spec §6 updateMaterial):title 与 rawContent 至少提供一项;
+   * attachments 传入时整体替换附件列表(编辑弹窗的移除/追加在提交时全量回传)。
    * 只更新传入的字段;写 before/after 审计(entityType=material, changeType=update)。
    * materials 表无 updated_at 列(spec §3.3 有意为之),不新增;重新分析同一批次覆盖 Run 草稿。
    */
   async updateMaterial(
     id: string,
-    input: { title?: string; rawContent?: string },
+    input: { title?: string; rawContent?: string; attachments?: AttachmentMeta[] },
     actor: Actor,
   ): Promise<MaterialRow> {
     const title = input.title?.trim();
     const rawContent = input.rawContent?.trim();
-    if (title === undefined && rawContent === undefined) {
+    if (
+      title === undefined &&
+      rawContent === undefined &&
+      input.attachments === undefined
+    ) {
       throw new DomainError('VALIDATION_ERROR', 'title 与 rawContent 至少提供一项');
     }
-    if (rawContent === '') throw new DomainError('VALIDATION_ERROR', '素材内容不能为空');
+    if (rawContent === '' && !input.attachments?.length) {
+      throw new DomainError('VALIDATION_ERROR', '素材内容与附件至少保留一项');
+    }
     return this.db.transaction(async (tx) => {
       const before = (await tx.select().from(materials).where(eq(materials.id, id)))[0];
       if (!before) throw new DomainError('NOT_FOUND', `素材 ${id} 不存在`);
       const updated = (
         await tx
           .update(materials)
-          .set({ title: title || null, ...(rawContent !== undefined ? { rawContent } : {}) })
+          .set({
+            title: title || null,
+            ...(rawContent !== undefined ? { rawContent } : {}),
+            ...(input.attachments !== undefined ? { attachments: input.attachments } : {}),
+          })
           .where(eq(materials.id, id))
           .returning()
       )[0]!;

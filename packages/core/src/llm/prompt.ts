@@ -36,7 +36,12 @@ export function buildUserPrompt(
   moduleNames: string[] = [],
 ): string {
   const materialSection = materials
-    .map((m) => `【素材 ${m.id}】(${m.type}${m.title ? `,${m.title}` : ''})\n${m.rawContent}`)
+    .map((m) => {
+      const attInfo = m.attachments?.length
+        ? `,附件 ${m.attachments.length} 个:${m.attachments.map((a) => a.name).join('、')}`
+        : '';
+      return `【素材 ${m.id}】(文本${m.title ? `,${m.title}` : ''}${attInfo})\n${m.rawContent}`;
+    })
     .join('\n\n');
   const existingSection = existing.length
     ? existing

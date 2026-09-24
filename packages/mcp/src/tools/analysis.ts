@@ -21,17 +21,28 @@ export function registerAnalysisTools(server: McpServer, core: ShipmateCore, act
     'add_material',
     {
       title: '添加素材',
-      description: '向分析批次添加素材(同一批次可多次调用);内容不能为空',
+      description:
+        '向分析批次添加素材(同一批次可多次调用);文本内容与附件至少提供一项。附件为元数据数组,文件字节由系统侧落盘',
       inputSchema: {
         runId: z.string().describe('分析批次 id'),
-        type: z
-          .enum(['paste_text', 'screenshot_text', 'doc'])
-          .describe('素材类型:粘贴文本/截图提取文本/文档'),
-        rawContent: z.string().describe('素材原文内容'),
+        rawContent: z.string().optional().describe('素材文本内容'),
         title: z.string().optional().describe('素材标题'),
+        attachments: z
+          .array(
+            z.object({
+              name: z.string().describe('文件名(含扩展名)'),
+              size: z.number().int().describe('字节数'),
+              mime: z.string().describe('MIME 类型'),
+              path: z.string().describe('服务端存储相对路径'),
+            }),
+          )
+          .optional()
+          .describe('附件元数据列表(可选,可多个)'),
       },
     },
-    withCore(core, actor, (c, args) => c.analysis.addMaterial(args, actor)),
+    withCore(core, actor, (c, args) =>
+      c.analysis.addMaterial({ ...args, rawContent: args.rawContent ?? '' }, actor),
+    ),
   );
 
   server.registerTool(

@@ -6,6 +6,18 @@ export interface Evidence {
   quote: string;
 }
 
+/** 素材附件元数据(素材多附件):文件字节由 web 层落盘,core 只存元信息 */
+export interface AttachmentMeta {
+  /** 原始文件名(含扩展名) */
+  name: string;
+  /** 字节数 */
+  size: number;
+  /** MIME 类型,如 image/png */
+  mime: string;
+  /** 服务端存储相对路径(data/uploads/<materialId>/<file>) */
+  path: string;
+}
+
 /** 需求点冲突关系(spec §3.5 relations) */
 export interface PointRelation {
   type: 'duplicate' | 'conflict';
@@ -58,9 +70,12 @@ export const materials = pgTable('materials', {
   analysisRunId: text('analysis_run_id')
     .notNull()
     .references(() => analysisRuns.id),
+  // 类型已废弃(素材不再区分粘贴文本/截图/文档,UI 不展示);新素材固定写 'paste_text' 兼容旧列约束
   type: text('type', { enum: ['paste_text', 'screenshot_text', 'doc'] }).notNull(),
   title: text('title'),
   rawContent: text('raw_content').notNull(),
+  // 附件列表(spec 素材多附件):[{name,size,mime,path}];path 为服务端存储相对路径
+  attachments: jsonb('attachments').$type<AttachmentMeta[]>().notNull().default([]),
   actor: text('actor').notNull(),
   createdAt: bigint('created_at', { mode: 'number' }).notNull(),
 });

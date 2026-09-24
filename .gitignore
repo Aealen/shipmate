@@ -10,3 +10,6 @@ dist/
 # Playwright MCP 会话截图(调试遗留,不入库)
 .playwright-mcp/
 .superpowers/
+
+# 素材附件落盘目录(web dev 工作目录下的相对路径)
+packages/web/data/

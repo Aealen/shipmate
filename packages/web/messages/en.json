@@ -386,19 +386,17 @@
     "materialCount": "{count} materials",
     "materialEmptyTitle": "No materials yet",
     "materialEmptyDesc": "Add meeting notes, chat logs and other raw materials below; AI will extract requirement drafts from them",
-    "materialType": {
-      "paste_text": "Pasted text",
-      "screenshot_text": "Screenshot text",
-      "doc": "Document"
-    },
     "addMaterial": {
       "title": "Add material",
-      "type": "Type",
       "materialTitle": "Title (optional)",
       "content": "Content",
       "contentPlaceholder": "Paste the raw material text…",
       "submit": "Add",
-      "submitting": "Adding…"
+      "submitting": "Adding…",
+      "dropzone": "Drag & drop / paste files, or click to upload",
+      "dropzoneHint": "Images, documents, etc. Multiple allowed, submitted with the material",
+      "uploading": "Uploading…",
+      "removeAttachment": "Remove attachment {name}"
     },
     "materialAdded": "Material added",
     "materialUpdated": "Material updated",
@@ -508,7 +506,6 @@
       "cancelToast": "Revision canceled"
     },
     "materialModal": {
-      "meta": "{type} · {chars} chars · added {time}",
       "edit": "Edit",
       "editTitle": "Edit Material",
       "editHint": "Re-run the analysis after editing; empty content cannot be saved.",
@@ -516,7 +513,11 @@
       "titlePlaceholder": "e.g. Launch kickoff 09-12",
       "bodyLabel": "Raw content",
       "save": "Save changes",
-      "close": "Close"
+      "close": "Close",
+      "metaNoType": "{chars} chars · {count} attachments · added {time}",
+      "attachments": "{count} attachments",
+      "preview": "Preview",
+      "download": "Download"
     },
     "merge": {
       "blocksSelected": "{count} blocks selected",
@@ -587,7 +588,8 @@
     "deadlineLabel": "Deadline",
     "editDeadline": "Edit",
     "pointDeadlineExceeds": "Point deadline cannot be later than the block deadline ({blockDeadline})",
-    "planRangeLabel": "Plan"
+    "planRangeLabel": "Plan",
+    "materialNoText": "(no text, attachments only)"
   },
   "browse": {
     "runsTitle": "Material analyses",
